@@ -589,7 +589,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
-let imgBase64  = "", imgMime = "";
+let imgBase64  = "", imgMime = "", imgFileName = "";
 
 const ROLE_DESC = {
   owner:"👑 Owner — เข้าถึงได้ทุกอย่าง รวมถึงยอดรายได้, Business Insight และจัดการผู้ใช้งาน",
@@ -934,7 +934,7 @@ async function genPDF(rowId) {
 // NEW ORDER
 // ══════════════════════════════════════════════
 function openNewOrder() {
-  imgBase64="";imgMime="";
+  imgBase64="";imgMime="";imgFileName="";
   document.getElementById("img-prev").style.display="none";
   ["o-detail","o-addr","o-track","o-link","o-price"].forEach(id=>document.getElementById(id).value="");
   document.getElementById("o-recip").value="";document.getElementById("o-phone").value="";
@@ -987,21 +987,17 @@ function fillCust(cid){
 function handleFile(inp){ if(inp.files[0]) processImg(inp.files[0]); }
 function handleDrop(e){ e.preventDefault();document.getElementById("up-area").classList.remove("drag");const f=e.dataTransfer.files[0];if(f&&f.type.startsWith("image/"))processImg(f); }
 function processImg(f){
-  imgMime="image/jpeg"; // compress เป็น JPEG เสมอ
-  const canvas=document.createElement("canvas");
-  const img=new Image();
-  img.onload=()=>{
-    // resize ให้ไม่เกิน 800px
-    let w=img.width,h=img.height;
-    if(w>800||h>800){const r=Math.min(800/w,800/h);w=Math.round(w*r);h=Math.round(h*r);}
-    canvas.width=w;canvas.height=h;
-    canvas.getContext("2d").drawImage(img,0,0,w,h);
-    const dataUrl=canvas.toDataURL("image/jpeg",0.7);
-    imgBase64=dataUrl.split(",")[1];
-    const p=document.getElementById("img-prev");p.src=dataUrl;p.style.display="block";
-    URL.revokeObjectURL(img.src);
+  // ไม่ compress — อ่าน raw base64 โดยตรงจาก FileReader
+  imgMime = f.type || "image/jpeg";
+  imgFileName = f.name || ("img_" + Date.now() + ".jpg");
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const dataUrl = ev.target.result;
+    imgBase64 = dataUrl.split(",")[1];
+    const p = document.getElementById("img-prev");
+    p.src = dataUrl; p.style.display = "block";
   };
-  img.src=URL.createObjectURL(f);
+  reader.readAsDataURL(f);
 }
 async function submitOrder(){
   const cid=document.getElementById("o-cid").value.trim(),detail=document.getElementById("o-detail").value.trim();
@@ -1011,22 +1007,19 @@ async function submitOrder(){
   toast("กำลังบันทึก...");
   let imageUrl="";
   if(imgBase64){
-    // ส่งรูปแยกด้วย FormData (ไม่โดน CORS block)
+    // ส่ง base64 ผ่าน JSON (Drive API โดยตรง ไม่ compress)
     try {
-      const form = new FormData();
-      form.append("action", "uploadImage");
-      form.append("token", SESSION.token);
-      form.append("customerId", cid);
-      form.append("customerName", c.name||cid);
-      // แปลง base64 กลับเป็น blob
-      const byteStr = atob(imgBase64);
-      const arr = new Uint8Array(byteStr.length);
-      for(let i=0;i<byteStr.length;i++) arr[i]=byteStr.charCodeAt(i);
-      const blob = new Blob([arr], {type: imgMime||"image/jpeg"});
-      form.append("file", blob, "order_"+Date.now()+".jpg");
-      const ur = await fetch(SCRIPT_URL, {method:"POST", body:form});
-      const urData = await ur.json();
+      const urData = await api({
+        action:"uploadImage",
+        customerId: cid,
+        customerName: c.name||"",
+        customerRowId: c.rowId||"",   // Row ID จาก Sheet ลูกค้า → lookup ชื่อ Folder
+        imageData: imgBase64,
+        mimeType: imgMime||"image/jpeg",
+        fileName: imgFileName||("order_"+Date.now()+".jpg")
+      });
       if(urData&&urData.success) imageUrl=urData.imgUrl;
+      else toast("อัพโหลดรูปไม่สำเร็จ: "+(urData?.message||"")+" — จะบันทึก order ต่อ","err");
     } catch(e) { toast("อัพโหลดรูปไม่สำเร็จ แต่จะบันทึก order ต่อ","err"); }
   }
   const or=await api({action:"addOrder",customerId:cid,detail,price:document.getElementById("o-price").value,

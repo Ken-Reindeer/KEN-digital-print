@@ -478,8 +478,13 @@ textarea.fc{resize:vertical;min-height:76px;}
   <div class="modal-hd"><span class="modal-title">📝 เพิ่มออเดอร์ใหม่</span><button class="modal-x" onclick="closeM('m-order')">✕</button></div>
   <div class="modal-body">
     <div class="fgrid">
-      <div class="fg"><label class="lbl">รหัสลูกค้า *</label>
-        <select class="fc" id="o-cid" onchange="fillCust(this.value)"><option value="">-- เลือกลูกค้า --</option></select></div>
+      <div class="fg full" style="position:relative">
+        <label class="lbl">รหัสลูกค้า * (พิมพ์รหัสหรือชื่อเพื่อค้นหา)</label>
+        <input class="fc" id="o-cid-input" placeholder="เช่น 000004 หรือ น้ำผึ้ง" autocomplete="off"
+          oninput="filterCustSuggest(this.value)" onblur="setTimeout(()=>hideSuggest(),200)">
+        <input type="hidden" id="o-cid">
+        <div id="cust-suggest" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--border2);border-radius:8px;max-height:200px;overflow-y:auto;z-index:100;box-shadow:var(--shadow-md)"></div>
+      </div>
       <div class="fg"><label class="lbl">ชื่อลูกค้า</label>
         <input class="fc" id="o-cname" readonly placeholder="auto จากรหัสลูกค้า"></div>
       <div class="fg"><label class="lbl">ชื่อผู้รับ</label><input class="fc" id="o-recip" placeholder="ชื่อผู้รับสินค้า"></div>
@@ -581,7 +586,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"";
+let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(sessionStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
 let imgBase64  = "", imgMime = "";
@@ -771,11 +776,17 @@ function switchTab(t) {
 // ══════════════════════════════════════════════
 // ORDERS
 // ══════════════════════════════════════════════
-async function loadOrders() {
-  const res = await api({action:"getOrders"});
+let orderOffset = 0;
+const ORDER_LIMIT = 100;
+
+async function loadOrders(reset=true) {
+  if (reset) { orderOffset=0; allOrders=[]; }
+  const res = await api({action:"getOrders", limit:ORDER_LIMIT, offset:orderOffset});
   if (!res||!res.success) return;
-  allOrders = res.data;
-  renderOrders(allOrders);
+  if (reset) allOrders = res.data;
+  else allOrders = [...allOrders, ...res.data];
+  orderOffset += res.data.length;
+  renderOrders(allOrders, res.hasMore);
   renderProgress(allOrders.filter(o=>o.status==="กำลังผลิต"));
   document.getElementById("badge-pending").textContent = allOrders.filter(o=>o.status==="กำลังผลิต").length;
 }
@@ -796,19 +807,28 @@ function groupDate(orders) {
   return g;
 }
 
-function renderOrders(data) {
+function renderOrders(data, hasMore=false) {
   const wrap=document.getElementById("orders-wrap");
   if(!data.length){wrap.innerHTML='<div class="empty"><div class="empty-ico">📋</div>ไม่มีข้อมูล</div>';return;}
   const isOwner=SESSION?.user.role==="owner";
   const g=groupDate(data);
-  let html='<table><thead><tr><th>สถานะ</th><th>รหัส</th><th>รูป</th><th>รายละเอียด</th><th>Tracking</th><th>ผู้รับ</th>'+
-    (isOwner?'<th>ราคา</th>':'')+ '<th></th></tr></thead><tbody>';
+  let html='<table><thead><tr>'
+    +'<th style="width:90px">สถานะ</th>'
+    +'<th style="min-width:120px;resize:horizontal;overflow:auto">รหัส</th>'
+    +'<th style="width:46px">รูป</th>'
+    +'<th style="min-width:160px;resize:horizontal;overflow:auto">รายละเอียด</th>'
+    +'<th style="min-width:100px;resize:horizontal;overflow:auto">Tracking</th>'
+    +'<th style="min-width:100px;resize:horizontal;overflow:auto">ผู้รับ</th>'
+    +(isOwner?'<th style="width:80px">ราคา</th>':'')
+    +'<th style="width:120px"></th>'
+    +'</tr></thead><tbody>';
   Object.entries(g).forEach(([date,rows])=>{
     const total=rows.reduce((s,r)=>s+(parseFloat(r.price)||0),0);
     html+=`<tr><td colspan="8"><div class="grp-hd"><span>${date}</span>${isOwner?`<span class="grp-total">฿${total.toLocaleString()}</span>`:""}</div></td></tr>`;
     rows.forEach(o=>{html+=oRow(o,false,isOwner);});
   });
   html+='</tbody></table>';
+  if(hasMore) html+=`<div style="text-align:center;padding:12px"><button class="btn btn-ghost btn-sm" onclick="loadOrders(false)">โหลดเพิ่ม 100 รายการ ↓</button></div>`;
   wrap.innerHTML=html;
 }
 
@@ -854,10 +874,7 @@ function oRow(o,compact,isOwner){
     ${priceCol}
     <td><div style="display:flex;gap:3px;align-items:center">
       ${pdfBtn}
-      <select class="fc" style="padding:4px 6px;font-size:11px;width:100px" onchange="changeStatus('${o.rowId}',this.value)">
-        <option ${o.status==="กำลังผลิต"?"selected":""}>กำลังผลิต</option>
-        <option ${o.status==="จัดส่งสำเร็จ"?"selected":""}>จัดส่งสำเร็จ</option>
-      </select>
+      <button onclick="toggleStatus('${o.rowId}','${o.status}')" style="padding:4px 8px;font-size:11px;border-radius:6px;border:none;cursor:pointer;background:${o.status==='จัดส่งสำเร็จ'?'#dcfce7':'#fef3c7'};color:${o.status==='จัดส่งสำเร็จ'?'#16a34a':'#d97706'};font-weight:600" title="คลิกเพื่อสลับสถานะ">${o.status==='จัดส่งสำเร็จ'?'✅ สำเร็จ':'⏳ ผลิต'}</button>
     </div></td>
   </tr>`;
 }
@@ -865,6 +882,11 @@ function oRow(o,compact,isOwner){
 async function changeStatus(rowId,status) {
   const res=await api({action:"updateOrderStatus",rowId,status});
   if(res&&res.success){toast("อัพเดทสถานะ ✓");loadOrders();}
+}
+async function toggleStatus(rowId,currentStatus) {
+  const newStatus = currentStatus==="กำลังผลิต" ? "จัดส่งสำเร็จ" : "กำลังผลิต";
+  const res=await api({action:"updateOrderStatus",rowId,status:newStatus});
+  if(res&&res.success){toast("สถานะ: "+newStatus+" ✓");loadOrders();}
 }
 async function saveTrack(rowId,tracking) {
   if(!tracking) return;
@@ -908,13 +930,43 @@ function openNewOrder() {
   ["o-detail","o-addr","o-track","o-link","o-price"].forEach(id=>document.getElementById(id).value="");
   document.getElementById("o-recip").value="";document.getElementById("o-phone").value="";
   document.getElementById("o-cid").value="";document.getElementById("o-cname").value="";
+  document.getElementById("o-cid-input").value="";
+  document.getElementById("cust-suggest").style.display="none";
   document.getElementById("o-status").value="กำลังผลิต";
   populateCustSel();openM("m-order");
 }
-function populateCustSel(){
-  const s=document.getElementById("o-cid");
-  s.innerHTML='<option value="">-- เลือกลูกค้า --</option>'+customers.map(c=>`<option value="${c.customerId}">${c.customerId} ${c.name}</option>`).join("");
+function populateCustSel(){ /* autocomplete mode - no dropdown needed */ }
+
+function filterCustSuggest(q) {
+  const box = document.getElementById("cust-suggest");
+  if (!q||q.length<1) { box.style.display="none"; return; }
+  const s = q.toLowerCase();
+  // sort by customer id number
+  const sorted = [...customers].sort((a,b)=>a.customerId.localeCompare(b.customerId));
+  const matches = sorted.filter(c=>
+    c.customerId.toLowerCase().includes(s)||
+    (c.name||"").toLowerCase().includes(s)
+  ).slice(0,20);
+  if (!matches.length) { box.style.display="none"; return; }
+  box.innerHTML = matches.map(c=>`
+    <div onclick="selectCust('${c.customerId}')" style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f1f5f9"
+      onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
+      <span style="font-family:var(--mono);font-size:11px;color:var(--navy2);font-weight:600">${c.customerId}</span>
+      <span style="margin-left:8px">${c.name||""}</span>
+    </div>`).join("");
+  box.style.display="block";
 }
+
+function selectCust(cid) {
+  document.getElementById("o-cid").value = cid;
+  const c = customers.find(x=>x.customerId===cid); if(!c) return;
+  document.getElementById("o-cid-input").value = c.customerId + " " + (c.name||"");
+  document.getElementById("cust-suggest").style.display="none";
+  fillCust(cid);
+}
+
+function hideSuggest() { document.getElementById("cust-suggest").style.display="none"; }
+
 function fillCust(cid){
   const c=customers.find(x=>x.customerId===cid); if(!c) return;
   document.getElementById("o-cname").value=c.name||"";
@@ -943,8 +995,8 @@ function processImg(f){
   img.src=URL.createObjectURL(f);
 }
 async function submitOrder(){
-  const cid=document.getElementById("o-cid").value,detail=document.getElementById("o-detail").value.trim();
-  if(!cid)return toast("กรุณาเลือกลูกค้า","err");
+  const cid=document.getElementById("o-cid").value.trim(),detail=document.getElementById("o-detail").value.trim();
+  if(!cid)return toast("กรุณาเลือกลูกค้าจากรายการ","err");
   if(!detail)return toast("กรุณากรอกรายละเอียด","err");
   const c=customers.find(x=>x.customerId===cid)||{};
   toast("กำลังบันทึก...");
@@ -1143,6 +1195,13 @@ function toast(msg,type="ok"){
   el.innerHTML=`<span>${type==="err"?"❌":"✅"}</span><span>${msg}</span>`;
   c.appendChild(el);setTimeout(()=>el.remove(),3500);
 }
+
+// expose new functions
+window.toggleStatus = toggleStatus;
+window.filterCustSuggest = filterCustSuggest;
+window.selectCust = selectCust;
+window.hideSuggest = hideSuggest;
+window.loadOrders = loadOrders;
 </script>
 </body>
 </html>

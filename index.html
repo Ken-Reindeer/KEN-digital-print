@@ -588,7 +588,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.1.0";
+const APP_VERSION = "v1.4.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -731,12 +731,12 @@ async function api(params) {
   params.token = SESSION.token;
   delete params.method;
   try {
+    // GET URL — ใช้กับทุก action ยกเว้น upload รูป
     const data = encodeURIComponent(JSON.stringify(params));
     const url  = SCRIPT_URL + "?action=" + (params.action||"") + "&data=" + data;
     const r = await fetch(url);
     if (!r.ok) { toast("เชื่อมต่อล้มเหลว ("+r.status+")","err"); return null; }
     const result = await r.json();
-    // แยก UNAUTHORIZED จาก network error ชัดเจน
     if (result && result.code==="UNAUTHORIZED") {
       doLogout();
       toast("Session หมดอายุ กรุณา login ใหม่","err");
@@ -745,6 +745,25 @@ async function api(params) {
     return result;
   } catch(e) {
     toast("เชื่อมต่อล้มเหลว: "+e.message,"err");
+    return null;
+  }
+}
+
+// POST text/plain — GAS รับได้ ไม่มี CORS preflight
+// ใช้สำหรับ uploadImage ที่ payload ใหญ่เกิน URL limit
+async function apiPost(params) {
+  if (!SCRIPT_URL||!SESSION) return null;
+  params.token = SESSION.token;
+  try {
+    const r = await fetch(SCRIPT_URL + "?action=" + (params.action||""), {
+      method: "POST",
+      body: JSON.stringify(params)
+      // ไม่ใส่ Content-Type header → browser ส่งเป็น text/plain อัตโนมัติ ไม่มี preflight
+    });
+    if (!r.ok) { toast("เชื่อมต่อล้มเหลว ("+r.status+")","err"); return null; }
+    return await r.json();
+  } catch(e) {
+    toast("อัพโหลดล้มเหลว: "+e.message,"err");
     return null;
   }
 }
@@ -1014,11 +1033,11 @@ async function submitOrder(){
   if(imgBase64){
     // ส่ง base64 ผ่าน JSON (Drive API โดยตรง ไม่ compress)
     try {
-      const urData = await api({
+      const urData = await apiPost({
         action:"uploadImage",
         customerId: cid,
         customerName: c.name||"",
-        customerRowId: c.rowId||"",   // Row ID จาก Sheet ลูกค้า → lookup ชื่อ Folder
+        customerRowId: c.rowId||"",
         imageData: imgBase64,
         mimeType: imgMime||"image/jpeg",
         fileName: imgFileName||("order_"+Date.now()+".jpg")

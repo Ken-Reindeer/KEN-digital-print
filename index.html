@@ -588,11 +588,11 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.6.0";
+const APP_VERSION = "v1.7.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
-let imgBase64  = "", imgMime = "", imgFileName = "";
+let imgBase64  = "", imgMime = "", imgFileName = "", imgViewUrl = "";
 
 const ROLE_DESC = {
   owner:"👑 Owner — เข้าถึงได้ทุกอย่าง รวมถึงยอดรายได้, Business Insight และจัดการผู้ใช้งาน",
@@ -882,9 +882,9 @@ function renderProgress(data) {
 
 function oRow(o,compact,isOwner){
   const badge=o.status==="กำลังผลิต"
-    ?'<span class="badge b-prod"><span class="sdot d-prod"></span>กำลังผลิต</span>'
+    ?`<span class="badge b-prod" style="cursor:pointer" onclick="toggleStatus('${o.rowId}','${o.status}')" title="คลิกเพื่อเปลี่ยนเป็นจัดส่งสำเร็จ"><span class="sdot d-prod"></span>กำลังผลิต</span>`
     :o.status==="จัดส่งสำเร็จ"
-    ?'<span class="badge b-done"><span class="sdot d-done"></span>สำเร็จ</span>'
+    ?`<span class="badge b-done" style="cursor:pointer" onclick="toggleStatus('${o.rowId}','${o.status}')" title="คลิกเพื่อเปลี่ยนเป็นกำลังผลิต"><span class="sdot d-done"></span>สำเร็จ</span>`
     :`<span class="badge b-other">${o.status||"–"}</span>`;
   const thumb=o.imageUrl?`<img class="thumb" src="${o.imageUrl}" onclick="showLb('${o.imageUrl}')" loading="lazy">`
     :'<div class="no-thumb">🖼️</div>';
@@ -905,10 +905,7 @@ function oRow(o,compact,isOwner){
     <td style="font-size:12px">${o.recipient||"–"}</td>
     ${addrCol}
     ${priceCol}
-    <td><div style="display:flex;gap:3px;align-items:center">
-      ${pdfBtn}
-      <button onclick="toggleStatus('${o.rowId}','${o.status}')" style="padding:4px 8px;font-size:11px;border-radius:6px;border:none;cursor:pointer;background:${o.status==='จัดส่งสำเร็จ'?'#dcfce7':'#fef3c7'};color:${o.status==='จัดส่งสำเร็จ'?'#16a34a':'#d97706'};font-weight:600" title="คลิกเพื่อสลับสถานะ">${o.status==='จัดส่งสำเร็จ'?'✅ สำเร็จ':'⏳ ผลิต'}</button>
-    </div></td>
+    <td>${pdfBtn}</td>
   </tr>`;
 }
 
@@ -949,7 +946,11 @@ async function genPDF(rowId) {
   const o=allOrders.find(x=>x.rowId===rowId); if(!o) return;
   const c=customers.find(x=>x.customerId===o.customerId)||{};
   toast("กำลังสร้าง PDF...");
-  const res=await api({action:"generatePDF",rowId,customerId:o.customerId,customerName:c.name||o.customerId,phone:o.phone||c.phone||"",address:o.address||c.address||"",detail:o.detail||"",imgUrl:o.imageUrl||"",price:o.price||""});
+  // แปลง lh3 imgUrl → viewUrl สำหรับ GAS HtmlService
+  const imgViewUrl = o.imageUrl ? o.imageUrl.replace("https://lh3.googleusercontent.com/d/","https://drive.google.com/file/d/").replace(/$/,"/view") : "";
+  const res=await api({action:"generatePDF",rowId,customerId:o.customerId,customerName:c.name||o.customerId,
+    customerRowId:c.rowId||"",phone:o.phone||c.phone||"",address:o.address||c.address||"",
+    detail:o.detail||"",imgUrl:o.imageUrl||"",imgViewUrl,price:o.price||""});
   if(res&&res.success){toast("PDF สำเร็จ ✓");window.open(res.pdfUrl,"_blank");loadOrders();}
   else toast(res?.message||"สร้าง PDF ล้มเหลว","err");
 }
@@ -958,7 +959,7 @@ async function genPDF(rowId) {
 // NEW ORDER
 // ══════════════════════════════════════════════
 function openNewOrder() {
-  imgBase64="";imgMime="";imgFileName="";
+  imgBase64="";imgMime="";imgFileName="";imgViewUrl="";
   document.getElementById("img-prev").style.display="none";
   ["o-detail","o-addr","o-track","o-link","o-price"].forEach(id=>document.getElementById(id).value="");
   document.getElementById("o-recip").value="";document.getElementById("o-phone").value="";
@@ -1069,6 +1070,7 @@ async function submitOrder(){
         body:JSON.stringify({role:"reader",type:"anyone"})
       });
       imageUrl = "https://lh3.googleusercontent.com/d/"+fileId;
+      imgViewUrl = "https://drive.google.com/file/d/"+fileId+"/view";
     } catch(e) { toast("อัพโหลดรูปไม่สำเร็จ: "+e.message+" — จะบันทึก order ต่อ","err"); }
   }
   const or=await api({action:"addOrder",customerId:cid,detail,price:document.getElementById("o-price").value,
@@ -1081,7 +1083,8 @@ async function submitOrder(){
   const pr=await api({action:"generatePDF",rowId:or.rowId,customerId:cid,customerName:c.name||cid,
     phone:document.getElementById("o-phone").value||c.phone||"",
     address:document.getElementById("o-addr").value||c.address||"",
-    detail,imgUrl:imageUrl,price:document.getElementById("o-price").value});
+    customerRowId:c.rowId||"",
+    detail,imgUrl:imageUrl,imgViewUrl:imgViewUrl,price:document.getElementById("o-price").value});
   if(pr&&pr.success){toast("PDF สำเร็จ ✓");window.open(pr.pdfUrl,"_blank");}
   closeM("m-order");loadOrders();
 }

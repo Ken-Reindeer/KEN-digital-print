@@ -323,6 +323,7 @@ textarea.fc{resize:vertical;min-height:76px;}
     <div class="login-hint" style="margin-top:10px">
       <span id="url-status"></span>
     </div>
+    <div style="text-align:center;margin-top:14px;font-size:10px;color:var(--text3);font-family:var(--mono)" id="login-ver"></div>
   </div>
 </div>
 
@@ -378,6 +379,7 @@ textarea.fc{resize:vertical;min-height:76px;}
       </div>
       <div class="topbar-r">
         <span class="role-chip" id="role-chip">–</span>
+        <span id="ver-chip" style="font-size:9px;font-family:var(--mono);color:var(--text3);padding:2px 6px;background:var(--bg);border-radius:10px;border:1px solid var(--border)"></span>
         <button class="btn btn-ghost btn-sm" onclick="refresh()">⟳ <span>รีเฟรช</span></button>
         <button class="btn btn-primary btn-sm" onclick="openNewOrder()" id="btn-new-order">+ <span>ออเดอร์</span></button>
       </div>
@@ -586,6 +588,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
+const APP_VERSION = "v1.1.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -600,6 +603,8 @@ const ROLE_DESC = {
 // INIT
 // ══════════════════════════════════════════════
 window.onload = () => {
+  document.getElementById("login-ver").textContent = APP_VERSION;
+  document.getElementById("ver-chip").textContent = APP_VERSION;
   if (SESSION && SESSION.expiry > Date.now()) {
     document.getElementById("cfg-url").value = SCRIPT_URL||"";
     showApp();
@@ -823,7 +828,7 @@ function renderOrders(data, hasMore=false) {
   const g=groupDate(data);
   let html='<table><thead><tr>'
     +'<th style="width:90px">สถานะ</th>'
-    +'<th style="min-width:120px;resize:horizontal;overflow:auto">รหัส</th>'
+    +'<th style="min-width:120px;resize:horizontal;overflow:auto">รหัสลูกค้า</th>'
     +'<th style="width:46px">รูป</th>'
     +'<th style="min-width:160px;resize:horizontal;overflow:auto">รายละเอียด</th>'
     +'<th style="min-width:100px;resize:horizontal;overflow:auto">Tracking</th>'
@@ -846,7 +851,7 @@ function renderProgress(data) {
   if(!data.length){wrap.innerHTML='<div class="empty"><div class="empty-ico">⏳</div>ไม่มีงานค้างผลิต</div>';return;}
   const isOwner=SESSION?.user.role==="owner";
   const g=groupDate(data);
-  let html='<table><thead><tr><th>สถานะ</th><th>รหัส</th><th>รูป</th><th>รายละเอียด</th><th>ผู้รับ</th><th>ที่อยู่</th>'+
+  let html='<table><thead><tr><th>สถานะ</th><th>รหัสลูกค้า</th><th>รูป</th><th>รายละเอียด</th><th>ผู้รับ</th><th>ที่อยู่</th>'+
     (isOwner?'<th>ราคา</th>':'')+ '<th></th></tr></thead><tbody>';
   Object.entries(g).forEach(([date,rows])=>{
     html+=`<tr><td colspan="8"><div class="grp-hd"><span>${date}</span></div></td></tr>`;
@@ -874,7 +879,7 @@ function oRow(o,compact,isOwner){
   const priceCol=isOwner?`<td style="font-weight:600;color:${parseFloat(o.price)<0?"var(--danger)":"var(--success)"}">฿${(parseFloat(o.price)||0).toLocaleString()}</td>`:"";
   return `<tr>
     <td>${badge}</td>
-    <td style="font-family:var(--mono);font-size:11px;color:var(--navy2);font-weight:600">${o.customerId||"–"}</td>
+    <td style="font-family:var(--mono);font-size:11px;color:var(--navy2);font-weight:600">${o.customerLabel||o.customerId||"–"}</td>
     <td>${thumb}</td>
     <td style="max-width:180px;cursor:pointer" onclick="showDetail('${o.rowId}')">${det||"–"}</td>
     ${trackCol}

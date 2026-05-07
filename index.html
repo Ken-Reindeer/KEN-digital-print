@@ -709,23 +709,24 @@ function loadAll() { loadOrders(); loadCustomers(); if(SESSION?.user.role==="own
 async function apiNoAuth(body) {
   if (!SCRIPT_URL) return null;
   try {
-    const r = await fetch(SCRIPT_URL, {method:"POST",
-      headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
+    const data = encodeURIComponent(JSON.stringify(body));
+    const url  = SCRIPT_URL + "?action=" + (body.action||"") + "&data=" + data;
+    const r = await fetch(url);
     return await r.json();
   } catch(e) { return null; }
 }
 
 async function api(params) {
   if (!SCRIPT_URL||!SESSION) return null;
-  const method = params.method||"POST";
   params.token = SESSION.token;
   delete params.method;
   try {
-    const r = await fetch(SCRIPT_URL, {method:"POST",
-      headers:{"Content-Type":"application/json"}, body:JSON.stringify(params)});
-    const data = await r.json();
-    if (data && data.code==="UNAUTHORIZED") { doLogout(); toast("Session หมดอายุ กรุณา login ใหม่","err"); return null; }
-    return data;
+    const data = encodeURIComponent(JSON.stringify(params));
+    const url  = SCRIPT_URL + "?action=" + (params.action||"") + "&data=" + data;
+    const r = await fetch(url);
+    const result = await r.json();
+    if (result && result.code==="UNAUTHORIZED") { doLogout(); toast("Session หมดอายุ กรุณา login ใหม่","err"); return null; }
+    return result;
   } catch(e) { toast("เชื่อมต่อล้มเหลว","err"); return null; }
 }
 
@@ -925,10 +926,21 @@ function fillCust(cid){
 function handleFile(inp){ if(inp.files[0]) processImg(inp.files[0]); }
 function handleDrop(e){ e.preventDefault();document.getElementById("up-area").classList.remove("drag");const f=e.dataTransfer.files[0];if(f&&f.type.startsWith("image/"))processImg(f); }
 function processImg(f){
-  imgMime=f.type;
-  const r=new FileReader();
-  r.onload=ev=>{imgBase64=ev.target.result.split(",")[1];const p=document.getElementById("img-prev");p.src=ev.target.result;p.style.display="block";};
-  r.readAsDataURL(f);
+  imgMime="image/jpeg"; // compress เป็น JPEG เสมอ
+  const canvas=document.createElement("canvas");
+  const img=new Image();
+  img.onload=()=>{
+    // resize ให้ไม่เกิน 800px
+    let w=img.width,h=img.height;
+    if(w>800||h>800){const r=Math.min(800/w,800/h);w=Math.round(w*r);h=Math.round(h*r);}
+    canvas.width=w;canvas.height=h;
+    canvas.getContext("2d").drawImage(img,0,0,w,h);
+    const dataUrl=canvas.toDataURL("image/jpeg",0.7);
+    imgBase64=dataUrl.split(",")[1];
+    const p=document.getElementById("img-prev");p.src=dataUrl;p.style.display="block";
+    URL.revokeObjectURL(img.src);
+  };
+  img.src=URL.createObjectURL(f);
 }
 async function submitOrder(){
   const cid=document.getElementById("o-cid").value,detail=document.getElementById("o-detail").value.trim();

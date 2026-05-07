@@ -588,7 +588,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.4.0";
+const APP_VERSION = "v1.5.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -757,8 +757,8 @@ async function apiPost(params) {
   try {
     const r = await fetch(SCRIPT_URL + "?action=" + (params.action||""), {
       method: "POST",
+      headers: {"Content-Type": "text/plain"},
       body: JSON.stringify(params)
-      // ไม่ใส่ Content-Type header → browser ส่งเป็น text/plain อัตโนมัติ ไม่มี preflight
     });
     if (!r.ok) { toast("เชื่อมต่อล้มเหลว ("+r.status+")","err"); return null; }
     return await r.json();

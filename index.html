@@ -587,7 +587,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // STATE
 // ══════════════════════════════════════════════
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
-let SESSION    = JSON.parse(sessionStorage.getItem("ken_session")||"null");
+let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
 let imgBase64  = "", imgMime = "";
 
@@ -604,7 +604,7 @@ window.onload = () => {
     document.getElementById("cfg-url").value = SCRIPT_URL||"";
     showApp();
   } else {
-    sessionStorage.removeItem("ken_session");
+    localStorage.removeItem("ken_session");
     SESSION = null;
     initLoginPage();
   }
@@ -660,14 +660,14 @@ async function doLogin() {
   }
   document.getElementById("login-err").style.display="none";
   SESSION = { token:res.token, expiry:res.expiry, user:res.user };
-  sessionStorage.setItem("ken_session", JSON.stringify(SESSION));
+  localStorage.setItem("ken_session", JSON.stringify(SESSION));
   showApp();
 }
 
 async function doLogout() {
   if (SESSION) await api({action:"logout", token:SESSION.token});
   SESSION = null;
-  sessionStorage.removeItem("ken_session");
+  localStorage.removeItem("ken_session");
   document.getElementById("app").classList.remove("show");
   document.getElementById("login-page").style.display="flex";
   document.getElementById("l-pass").value="";
@@ -729,10 +729,19 @@ async function api(params) {
     const data = encodeURIComponent(JSON.stringify(params));
     const url  = SCRIPT_URL + "?action=" + (params.action||"") + "&data=" + data;
     const r = await fetch(url);
+    if (!r.ok) { toast("เชื่อมต่อล้มเหลว ("+r.status+")","err"); return null; }
     const result = await r.json();
-    if (result && result.code==="UNAUTHORIZED") { doLogout(); toast("Session หมดอายุ กรุณา login ใหม่","err"); return null; }
+    // แยก UNAUTHORIZED จาก network error ชัดเจน
+    if (result && result.code==="UNAUTHORIZED") {
+      doLogout();
+      toast("Session หมดอายุ กรุณา login ใหม่","err");
+      return null;
+    }
     return result;
-  } catch(e) { toast("เชื่อมต่อล้มเหลว","err"); return null; }
+  } catch(e) {
+    toast("เชื่อมต่อล้มเหลว: "+e.message,"err");
+    return null;
+  }
 }
 
 // ══════════════════════════════════════════════
@@ -1002,8 +1011,23 @@ async function submitOrder(){
   toast("กำลังบันทึก...");
   let imageUrl="";
   if(imgBase64){
-    const ur=await api({action:"uploadImage",customerId:cid,customerName:c.name||cid,imageData:imgBase64,mimeType:imgMime,fileName:"order_"+Date.now()+"."+(imgMime.split("/")[1]||"jpg")});
-    if(ur&&ur.success) imageUrl=ur.imgUrl;
+    // ส่งรูปแยกด้วย FormData (ไม่โดน CORS block)
+    try {
+      const form = new FormData();
+      form.append("action", "uploadImage");
+      form.append("token", SESSION.token);
+      form.append("customerId", cid);
+      form.append("customerName", c.name||cid);
+      // แปลง base64 กลับเป็น blob
+      const byteStr = atob(imgBase64);
+      const arr = new Uint8Array(byteStr.length);
+      for(let i=0;i<byteStr.length;i++) arr[i]=byteStr.charCodeAt(i);
+      const blob = new Blob([arr], {type: imgMime||"image/jpeg"});
+      form.append("file", blob, "order_"+Date.now()+".jpg");
+      const ur = await fetch(SCRIPT_URL, {method:"POST", body:form});
+      const urData = await ur.json();
+      if(urData&&urData.success) imageUrl=urData.imgUrl;
+    } catch(e) { toast("อัพโหลดรูปไม่สำเร็จ แต่จะบันทึก order ต่อ","err"); }
   }
   const or=await api({action:"addOrder",customerId:cid,detail,price:document.getElementById("o-price").value,
     recipient:document.getElementById("o-recip").value,address:document.getElementById("o-addr").value,

@@ -589,7 +589,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.9.0";
+const APP_VERSION = "v1.10.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -833,12 +833,22 @@ function cacheAge() {
   return ts ? Math.round((Date.now()-ts)/1000) : null;
 }
 
-// full sync จาก server → บันทึก cache → render
+// full sync จาก server แบบ batch → บันทึก cache → render
 async function syncOrders(showLoading=true) {
   if(showLoading) document.getElementById("orders-wrap").innerHTML='<div class="loading-r"><span class="spin"></span>กำลังซิงค์ข้อมูล...</div>';
-  const res = await api({action:"getOrders", limit:0, offset:0}); // limit=0 = ทั้งหมด
-  if(!res||!res.success) { toast("โหลดข้อมูลล้มเหลว","err"); return; }
-  allOrders = res.data;
+  const BATCH = 500;
+  let offset = 0, all = [], hasMore = true;
+  while(hasMore) {
+    const res = await api({action:"getOrders", limit:BATCH, offset});
+    if(!res||!res.success) { toast("โหลดข้อมูลล้มเหลว","err"); return; }
+    all = [...all, ...res.data];
+    hasMore = res.hasMore;
+    offset += res.data.length;
+    if(showLoading && hasMore) {
+      document.getElementById("orders-wrap").innerHTML=`<div class="loading-r"><span class="spin"></span>กำลังซิงค์... ${all.length} รายการ</div>`;
+    }
+  }
+  allOrders = all;
   saveCache(allOrders);
   renderAfterLoad();
 }

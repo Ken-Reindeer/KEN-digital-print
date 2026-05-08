@@ -589,7 +589,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.10.0";
+const APP_VERSION = "v1.11.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -833,24 +833,84 @@ function cacheAge() {
   return ts ? Math.round((Date.now()-ts)/1000) : null;
 }
 
-// full sync จาก server แบบ batch → บันทึก cache → render
+// full sync จาก Sheets API v4 โดยตรง (เร็วกว่า GAS มาก)
 async function syncOrders(showLoading=true) {
   if(showLoading) document.getElementById("orders-wrap").innerHTML='<div class="loading-r"><span class="spin"></span>กำลังซิงค์ข้อมูล...</div>';
-  const BATCH = 500;
-  let offset = 0, all = [], hasMore = true;
-  while(hasMore) {
-    const res = await api({action:"getOrders", limit:BATCH, offset});
-    if(!res||!res.success) { toast("โหลดข้อมูลล้มเหลว","err"); return; }
-    all = [...all, ...res.data];
-    hasMore = res.hasMore;
-    offset += res.data.length;
-    if(showLoading && hasMore) {
-      document.getElementById("orders-wrap").innerHTML=`<div class="loading-r"><span class="spin"></span>กำลังซิงค์... ${all.length} รายการ</div>`;
+
+  // ขอ token + spreadsheetId จาก GAS ครั้งเดียว
+  const cfg = await api({action:"getConfig"});
+  if(!cfg||!cfg.success) { toast("โหลด config ล้มเหลว","err"); return; }
+
+  try {
+    // ดึง Sheet ประวัติการสั่งซื้อ ทั้ง sheet ในครั้งเดียว
+    const encSheet = encodeURIComponent(cfg.sheetOrders);
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${cfg.spreadsheetId}/values/${encSheet}`;
+    const r = await fetch(url, {headers:{Authorization:"Bearer "+cfg.token}});
+    if(!r.ok) throw new Error("Sheets API "+r.status);
+    const json = await r.json();
+    const rows = json.values || [];
+    if(rows.length < 2) { allOrders=[]; saveCache([]); renderAfterLoad(); return; }
+
+    // ดึง Sheet ลูกค้าเพื่อ build custMap
+    const encCust = encodeURIComponent(cfg.sheetCustomers);
+    const urlC = `https://sheets.googleapis.com/v4/spreadsheets/${cfg.spreadsheetId}/values/${encCust}`;
+    const rC = await fetch(urlC, {headers:{Authorization:"Bearer "+cfg.token}});
+    const jsonC = await rC.json();
+    const custRows = jsonC.values || [];
+
+    // build custMap: Row ID → "000016 ชื่อ"
+    const custMap = {};
+    if(custRows.length > 1) {
+      const ch = custRows[0];
+      const iRowId=ch.indexOf("Row ID"), iCode=ch.indexOf("รหัสลูกค้า"), iName=ch.indexOf("ชื่อลูกค้า");
+      if(iRowId>=0 && iCode>=0) {
+        for(let i=1;i<custRows.length;i++){
+          const rowId=custRows[i][iRowId]||"", code=custRows[i][iCode]||"", name=iName>=0?custRows[i][iName]||"":"";
+          if(rowId) custMap[rowId] = code+(name?" "+name:"");
+        }
+      }
     }
+
+    // แปลง rows → objects (ล่าสุดก่อน)
+    const headers = rows[0];
+    const iMap = {};
+    headers.forEach((h,i)=>iMap[h.trim()]=i);
+    const g = k => (iMap[k]!==undefined ? rows[0] : null); // helper ไม่ใช้
+    const fv = (row,k) => { const i=iMap[k]; return i!==undefined?(row[i]||""):""; };
+
+    const data = [];
+    for(let i=rows.length-1;i>=1;i--){
+      const row=rows[i];
+      const cid = fv(row,"รหัสลูกค้า");
+      data.push({
+        rowId:fv(row,"Row ID"), date:fv(row,"วันที่/เวลา"), status:fv(row,"สถานะ"),
+        detail:fv(row,"รายละเอียด"), price:fv(row,"ราคารวม"), recipient:fv(row,"ชื่อผู้รับ"),
+        address:fv(row,"ที่อยู่จัดส่ง"), phone:fv(row,"เบอร์โทรศัพท์"), link:fv(row,"ลิ้งค์ลูกค้า"),
+        customerId:cid, customerLabel:custMap[cid]||cid,
+        tracking:fv(row,"Tracking number"),
+        imageUrl:fv(row,"Image URL"), pdfUrl:fv(row,"PDF URL")
+      });
+    }
+
+    allOrders = data;
+    saveCache(allOrders);
+    renderAfterLoad();
+  } catch(e) {
+    toast("Sheets API error: "+e.message+" — fallback GAS","err");
+    // fallback: ใช้ GAS batch เดิม
+    await syncOrdersGAS(showLoading);
   }
-  allOrders = all;
-  saveCache(allOrders);
-  renderAfterLoad();
+}
+
+// fallback: GAS batch (ช้ากว่าแต่ยังใช้ได้)
+async function syncOrdersGAS(showLoading=true) {
+  const BATCH=500; let offset=0, all=[], hasMore=true;
+  while(hasMore){
+    const res=await api({action:"getOrders",limit:BATCH,offset});
+    if(!res||!res.success){toast("โหลดข้อมูลล้มเหลว","err");return;}
+    all=[...all,...res.data]; hasMore=res.hasMore; offset+=res.data.length;
+  }
+  allOrders=all; saveCache(allOrders); renderAfterLoad();
 }
 
 // โหลดจาก cache ก่อน แล้ว sync background

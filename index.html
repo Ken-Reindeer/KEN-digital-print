@@ -590,7 +590,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.13.0";
+const APP_VERSION = "v1.14.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -715,8 +715,6 @@ function saveConfig() {
 function refresh() { syncOrders(true); loadCustomers(); loadStats(); toast("กำลังซิงค์ข้อมูลใหม่..."); }
 function loadAll() {
   initGIS();
-  // ขอ GIS token ล่วงหน้า (popup ครั้งแรก)
-  getGISToken().catch(()=>{}); // ถ้า popup ถูก block จะ fallback GAS เอง
   loadOrders(); loadCustomers();
   if(SESSION?.user.role==="owner") loadStats();
   startAutoSync();
@@ -838,19 +836,19 @@ function initGIS() {
   });
 }
 
-// ขอ token — ถ้ายังไม่มีหรือหมดอายุ popup ขอใหม่
 function getGISToken() {
   return new Promise((resolve, reject) => {
     if (gisToken && Date.now() < gisTokenExpiry) { resolve(gisToken); return; }
     if (!gisClient) { reject(new Error("GIS ยังไม่พร้อม")); return; }
     const origCb = gisClient.callback;
     gisClient.callback = (resp) => {
-      origCb(resp);
-      if (resp.error) reject(new Error(resp.error));
-      else resolve(gisToken);
       gisClient.callback = origCb;
+      if (resp.error) { reject(new Error(resp.error)); return; }
+      gisToken = resp.access_token;
+      gisTokenExpiry = Date.now() + (parseInt(resp.expires_in)||3600)*1000 - 60000;
+      resolve(gisToken);
     };
-    gisClient.requestAccessToken({prompt: gisToken ? "" : "none"});
+    gisClient.requestAccessToken({prompt:"consent"});
   });
 }
 
@@ -897,11 +895,9 @@ function cacheAge() {
   return ts ? Math.round((Date.now()-ts)/1000) : null;
 }
 
-// sync จาก Sheets API โดยตรง (เร็ว) — fallback GAS ถ้าไม่มี token
+// sync จาก Sheets API โดยตรง
 async function syncOrders(showLoading=true) {
   if(showLoading) document.getElementById("orders-wrap").innerHTML='<div class="loading-r"><span class="spin"></span>กำลังซิงค์ข้อมูล...</div>';
-
-  // ลอง Sheets API ก่อน
   try {
     const ok = await ensureSpreadsheetId();
     if (!ok) throw new Error("ไม่ได้ spreadsheetId");
@@ -915,12 +911,10 @@ async function syncOrders(showLoading=true) {
     ]);
     if(!ordersRes.ok) throw new Error("Sheets API "+ordersRes.status);
 
-    const oJson = await ordersRes.json();
-    const cJson = await custsRes.json();
-    const oRows = oJson.values||[], cRows = cJson.values||[];
+    const oJson=await ordersRes.json(), cJson=await custsRes.json();
+    const oRows=oJson.values||[], cRows=cJson.values||[];
 
-    // build custMap
-    const custMap = {};
+    const custMap={};
     if(cRows.length>1){
       const ch=cRows[0];
       const iR=ch.indexOf("Row ID"),iC=ch.indexOf("รหัสลูกค้า"),iN=ch.indexOf("ชื่อลูกค้า");
@@ -930,7 +924,6 @@ async function syncOrders(showLoading=true) {
       }
     }
 
-    // แปลง rows → objects
     const h=oRows[0]||[], iMap={};
     h.forEach((k,i)=>iMap[k.trim()]=i);
     const fv=(row,k)=>{const i=iMap[k];return i!==undefined?(row[i]||""):"";};
@@ -944,15 +937,9 @@ async function syncOrders(showLoading=true) {
         tracking:fv(row,"Tracking number"),imageUrl:fv(row,"Image URL"),pdfUrl:fv(row,"PDF URL")});
     }
     allOrders=data; saveCache(allOrders); renderAfterLoad();
-    return;
   } catch(e) {
-    console.warn("Sheets API ไม่ได้ใช้งาน fallback GAS:", e.message);
+    toast("sync ล้มเหลว: "+e.message,"err");
   }
-
-  // fallback: GAS
-  const res = await api({action:"getOrders", limit:9999, offset:0});
-  if(!res||!res.success){toast("โหลดข้อมูลล้มเหลว","err");return;}
-  allOrders=res.data; saveCache(allOrders); renderAfterLoad();
 }
 
 // โหลดจาก cache ก่อน แล้ว sync background

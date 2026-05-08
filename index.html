@@ -605,7 +605,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.18.0";
+const APP_VERSION = "v1.19.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -1371,8 +1371,6 @@ async function submitOrder(){
   toast("บันทึกสำเร็จ ✓");
   // upload รูปผ่าน GAS (owner ของไฟล์ = script owner → generatePDF access ได้)
   const imageUrl = await uploadImageViaGAS(cid, c, or.rowId);
-  // ถ้ามีรูป อัพเดท imageUrl ใน sheet
-  if(imageUrl) await api({action:"updateOrder",rowId:or.rowId,imageUrl});
   toast("กำลังสร้าง PDF...");
   const pr=await api({action:"generatePDF",rowId:or.rowId,customerId:cid,customerName:c.name||cid,
     phone:document.getElementById("o-phone").value||c.phone||"",

@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Customer Database — KEN Digital Print</title>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
   --navy:#0d2461;--navy2:#1a3faa;--navy3:#2563eb;
@@ -17,7 +17,7 @@
   --text:#0f172a;--text2:#475569;--text3:#94a3b8;
   --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
   --shadow-md:0 4px 20px rgba(0,0,0,.13);
-  --sans:'Sarabun',sans-serif;--mono:'IBM Plex Mono',monospace;
+  --sans:'Roboto','Tahoma',sans-serif;--mono:'IBM Plex Mono',monospace;
   --sb:220px;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -55,11 +55,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .sidebar{width:var(--sb);background:var(--navy);display:flex;flex-direction:column;
   flex-shrink:0;height:100vh;overflow-y:auto;transition:width .1s ease,transform .25s ease;z-index:200;}
 .sidebar.collapsed{width:48px;}
-.sidebar.collapsed .sb-app-name,.sidebar.collapsed .sb-app-sub,
+  .sidebar.collapsed .sb-app-name,.sidebar.collapsed .sb-app-sub,.sidebar.collapsed .sb-logo div,
 .sidebar.collapsed .nav-btn span:not(.nav-ico),.sidebar.collapsed .nav-badge,
 .sidebar.collapsed .nav-grp,.sidebar.collapsed .sb-uname,
 .sidebar.collapsed .sb-role,.sidebar.collapsed .btn-logout{display:none;}
-  .sidebar.collapsed .sb-logo{padding:10px 0;justify-content:center;gap:0;width:48px;}
+  .sidebar.collapsed .sb-logo{padding:8px 0;display:flex;flex-direction:column;align-items:center;gap:0;width:48px;}
   .sidebar.collapsed .sb-logo img{width:28px;height:28px;display:block;margin:0 auto;}
   .sidebar.collapsed .sb-toggle-bar{justify-content:center;padding:4px 0 8px;width:48px;}
 .sidebar.collapsed nav{padding:6px 3px;}
@@ -67,7 +67,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .sidebar.collapsed .nav-ico{width:auto;}
   .sidebar.collapsed .sb-user{padding:8px 0;justify-content:center;gap:0;width:48px;}
   .sidebar.collapsed .sb-av{width:26px;height:26px;font-size:10px;margin:0 auto;}
-.sb-logo{padding:12px 14px 10px;border-bottom:none;
+  .sb-logo{padding:12px 14px 10px;border-bottom:none;
   display:flex;align-items:center;gap:10px;flex-shrink:0;overflow:hidden;}
 .sb-logo img{width:32px;height:32px;border-radius:50%;flex-shrink:0;object-fit:cover;}
 .sb-app-name{color:white;font-size:11px;font-weight:700;line-height:1.35;white-space:nowrap;overflow:hidden;}
@@ -168,7 +168,7 @@ nav{padding:10px 8px;flex:1;}
 .card{background:white;border:1px solid var(--border);border-radius:10px;
   overflow:hidden;box-shadow:var(--shadow);}
 .table-scroll{width:100%;}
-.table-scroll table{border-collapse:collapse;width:100%;table-layout:fixed;}
+.table-scroll table{border-collapse:collapse;width:100%;table-layout:fixed;min-width:900px;}
 table{width:100%;border-collapse:collapse;min-width:600px;}
 thead tr{background:#f8fafc;}
 th{padding:5px 8px;text-align:left;font-size:11px;font-family:var(--mono);
@@ -628,7 +628,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.34.0";
+const APP_VERSION = "v1.35.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -1075,17 +1075,26 @@ function restoreColWidths(table) {
 function enableColResize(table) {
   if(!table) return;
   restoreColWidths(table);
-  table.querySelectorAll("th").forEach(th=>{
+  table.querySelectorAll("th").forEach((th,idx)=>{
     if(th.querySelector(".col-resizer")) return;
     const div=document.createElement("div");
     div.className="col-resizer";
-    div.style.cssText="position:absolute;right:0;top:0;bottom:0;width:5px;cursor:col-resize;z-index:1;";
+    div.style.cssText="position:absolute;right:-2px;top:0;bottom:0;width:6px;cursor:col-resize;z-index:1;";
     th.style.position="relative";
     th.appendChild(div);
     let startX,startW;
     div.addEventListener("mousedown",e=>{
       startX=e.pageX; startW=th.offsetWidth;
-      const onMove=e=>{th.style.width=Math.max(40,startW+e.pageX-startX)+"px";th.style.minWidth="0";};
+      // set explicit width บน th ทุกตัวก่อน เพื่อ lock ไม่ให้ขยับตาม
+      table.querySelectorAll("th").forEach(t=>{t.style.width=t.offsetWidth+"px";});
+      const onMove=e=>{
+        const newW=Math.max(40,startW+e.pageX-startX);
+        th.style.width=newW+"px";
+        // ปรับ table min-width ให้รองรับ
+        let total=0;
+        table.querySelectorAll("th").forEach(t=>total+=t.offsetWidth);
+        table.style.minWidth=total+"px";
+      };
       const onUp=()=>{
         document.removeEventListener("mousemove",onMove);
         document.removeEventListener("mouseup",onUp);
@@ -1598,13 +1607,14 @@ function renderCust(data){
   });
   tb.innerHTML="";
   sorted.forEach(c=>{
-    const orderTotal=allOrders.filter(o=>o.customerId===c.customerId).reduce((s,o)=>s+(parseFloat(o.price)||0),0);
+    // fix: o.customerId เก็บ Row ID ของ Sheet ลูกค้า → ต้อง match กับ c.rowId
+    const orderTotal=allOrders.filter(o=>o.customerId===c.rowId).reduce((s,o)=>s+(parseFloat(o.price)||0),0);
     tb.innerHTML+=`<tr>
-      <td style="font-family:var(--mono);font-size:11px;font-weight:600;color:var(--navy2)">${c.customerId}</td>
-      <td><strong style="cursor:pointer;color:var(--navy2)" onclick="showCustProfile('${c.customerId}')">${c.name||"–"}</strong></td>
-      <td style="font-family:var(--mono);font-size:11px">${c.phone||"–"}</td>
+      <td style="font-size:12px">${c.customerId}</td>
+      <td style="font-size:12px;cursor:pointer" onclick="showCustProfile('${c.customerId}')">${c.name||"–"}</td>
+      <td style="font-size:12px">${c.phone||"–"}</td>
       <td style="font-size:12px">${c.recipient||"–"}</td>
-      <td style="font-size:11px;color:var(--text2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.address||"–"}</td>
+      <td style="font-size:12px;color:var(--text2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.address||"–"}</td>
       ${isOwner?`<td style="font-weight:600;color:var(--success)">฿${orderTotal.toLocaleString()}</td>`:"<td>–</td>"}
       <td>${c.sns?`<a href="${c.sns}" target="_blank" class="btn btn-xs btn-ghost">💬</a>`:"–"}</td>
       <td><button class="btn btn-xs" style="background:#dbeafe;color:var(--navy2);border:none" onclick='editCust(${JSON.stringify(c)})'>✏️</button></td>

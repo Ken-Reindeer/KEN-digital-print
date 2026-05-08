@@ -130,7 +130,7 @@ nav{padding:10px 8px;flex:1;}
 .tab-panel{display:none;}
 .tab-panel.active{display:block;}
 /* orders-wrap scrolls x independently */
-#orders-wrap,#progress-wrap{overflow-x:auto;}
+  
 
 /* ── STATS ── */
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
@@ -169,8 +169,8 @@ nav{padding:10px 8px;flex:1;}
 /* ── CARD / TABLE ── */
 .card{background:white;border:1px solid var(--border);border-radius:10px;
   overflow:hidden;box-shadow:var(--shadow);}
-.table-scroll{width:100%;}
-.table-scroll table{border-collapse:collapse;table-layout:fixed;width:max-content;min-width:100%;}
+  .table-scroll{width:100%;overflow-x:auto;}
+  .table-scroll table{border-collapse:collapse;table-layout:fixed;width:100%;min-width:800px;}
 table{width:100%;border-collapse:collapse;min-width:600px;}
 thead tr{background:#f8fafc;}
 th{padding:5px 8px;text-align:left;font-size:11px;font-family:var(--mono);
@@ -178,7 +178,7 @@ th{padding:5px 8px;text-align:left;font-size:11px;font-family:var(--mono);
   border-bottom:2px solid var(--border);font-weight:600;white-space:nowrap;
   position:sticky;top:0;background:white;z-index:10;box-shadow:0 1px 0 var(--border);}
 th.th-normal{text-transform:none;font-weight:500;letter-spacing:0;}
-td{padding:2px 8px;border-bottom:1px solid #f1f5f9;font-size:12px;vertical-align:middle;}
+  td{padding:2px 8px;border-bottom:1px solid #f1f5f9;font-size:12px;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 tbody tr:last-child td{border-bottom:none;}
 tbody tr:hover{background:#fafbfc;}
 .grp-hd{background:#f1f5f9;padding:7px 12px;font-size:11px;font-weight:600;
@@ -630,7 +630,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.36.0";
+const APP_VERSION = "v1.38.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -1077,27 +1077,33 @@ function restoreColWidths(table) {
 function enableColResize(table) {
   if(!table) return;
   restoreColWidths(table);
-  table.querySelectorAll("th").forEach((th,idx)=>{
+  table.querySelectorAll("th").forEach((th)=>{
     if(th.querySelector(".col-resizer")) return;
     const div=document.createElement("div");
     div.className="col-resizer";
-    div.style.cssText="position:absolute;right:-2px;top:0;bottom:0;width:6px;cursor:col-resize;z-index:1;";
+    div.style.cssText="position:absolute;right:0;top:0;bottom:0;width:5px;cursor:col-resize;z-index:1;";
     th.style.position="relative";
     th.appendChild(div);
-    let startX,startW;
+    let startX,startW,rafId;
     div.addEventListener("mousedown",e=>{
       startX=e.pageX; startW=th.offsetWidth;
-      // set explicit width บน th ทุกตัวก่อน เพื่อ lock ไม่ให้ขยับตาม
-      table.querySelectorAll("th").forEach(t=>{t.style.width=t.offsetWidth+"px";});
+      const ths=table.querySelectorAll("th");
+      ths.forEach(t=>{t.style.width=t.offsetWidth+"px";});
+      table.style.width=table.offsetWidth+"px";
+      table.style.minWidth=table.offsetWidth+"px";
+      th.style.willChange="width";
+      let pendingX=startX;
       const onMove=e=>{
-        const newW=Math.max(40,startW+e.pageX-startX);
-        th.style.width=newW+"px";
-        // ปรับ table min-width ให้รองรับ
-        let total=0;
-        table.querySelectorAll("th").forEach(t=>total+=t.offsetWidth);
-        table.style.minWidth=total+"px";
+        pendingX=e.pageX;
+        if(rafId) return;
+        rafId=requestAnimationFrame(()=>{
+          th.style.width=Math.max(40,startW+pendingX-startX)+"px";
+          rafId=null;
+        });
       };
       const onUp=()=>{
+        if(rafId){cancelAnimationFrame(rafId);rafId=null;}
+        th.style.willChange="auto";
         document.removeEventListener("mousemove",onMove);
         document.removeEventListener("mouseup",onUp);
         saveColWidths(table);

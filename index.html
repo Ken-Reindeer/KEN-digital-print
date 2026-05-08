@@ -606,11 +606,11 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.24.0";
+const APP_VERSION = "v1.25.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
-let imgBase64  = "", imgMime = "", imgFileName = "", imgViewUrl = "";
+let imgBase64  = "", imgMime = "", imgFileName = "", imgViewUrl = "", copiedImageUrl = "";
 
 const ROLE_DESC = {
   owner:"👑 Owner — เข้าถึงได้ทุกอย่าง รวมถึงยอดรายได้, Business Insight และจัดการผู้ใช้งาน",
@@ -1127,7 +1127,7 @@ function editOrder(rowId) {
   // o.customerId คือ Row ID ของ Sheet ลูกค้า → lookup จาก c.rowId
   const c=customers.find(x=>x.rowId===o.customerId)||customers.find(x=>x.customerId===o.customerId)||{};
   closeM("m-detail");
-  imgBase64="";imgMime="";imgFileName="";imgViewUrl="";
+  imgBase64="";imgMime="";imgFileName="";imgViewUrl="";copiedImageUrl="";
   document.getElementById("img-prev").style.display="none";
   document.getElementById("o-cid").value=c.customerId||o.customerId;
   document.getElementById("o-cid-input").value=o.customerLabel||o.customerId;
@@ -1189,7 +1189,7 @@ function resetOrderForm() {
 function copyOrder(rowId) {
   const o=allOrders.find(x=>x.rowId===rowId); if(!o) return;
   closeM("m-detail");
-  imgBase64="";imgMime="";imgFileName="";imgViewUrl="";
+  imgBase64="";imgMime="";imgFileName="";imgViewUrl="";copiedImageUrl="";
   document.getElementById("img-prev").style.display="none";
   const c=customers.find(x=>x.rowId===o.customerId)||customers.find(x=>x.customerId===o.customerId)||{};
   document.getElementById("o-cid").value=c.customerId||o.customerId;
@@ -1200,10 +1200,16 @@ function copyOrder(rowId) {
   document.getElementById("o-addr").value=o.address||"";
   document.getElementById("o-detail").value=o.detail||"";
   document.getElementById("o-price").value=o.price||"";
-  document.getElementById("o-track").value=""; // tracking ใหม่
+  document.getElementById("o-track").value="";
   document.getElementById("o-link").value=o.link||"";
   document.getElementById("o-status").value="กำลังผลิต";
-  document.getElementById("o-datetime").value=nowLocalISO(); // วันที่ปัจจุบัน
+  document.getElementById("o-datetime").value=nowLocalISO();
+  // แสดงรูปเดิมใน preview และเก็บ URL ไว้ใช้ถ้าไม่ได้เลือกรูปใหม่
+  if(o.imageUrl){
+    const p=document.getElementById("img-prev");
+    p.src=o.imageUrl; p.style.display="block";
+    copiedImageUrl=o.imageUrl;
+  } else { copiedImageUrl=""; }
   document.getElementById("m-order-title").textContent="📋 Copy ออเดอร์ (ใหม่)";
   resetOrderForm();
   openM("m-order");
@@ -1255,60 +1261,67 @@ function printOrder(rowId) {
   const o=allOrders.find(x=>x.rowId===rowId); if(!o) return;
   const c=customers.find(x=>x.rowId===o.customerId)||customers.find(x=>x.customerId===o.customerId)||{};
   const isOwner=SESSION?.user.role==="owner";
+  const logoSrc=document.querySelector(".sb-logo img")?.src||"";
+  const imgTag=o.imageUrl?`<div class="img-box"><img src="${o.imageUrl}"></div>`:"";
 
-  // สร้าง HTML ใบสั่งงาน
-  const imgTag = o.imageUrl
-    ? `<div style="margin-top:16px;border:1px solid #ddd;padding:8px;border-radius:4px;text-align:center">
-        <img src="${o.imageUrl}" style="max-width:100%;max-height:300px;object-fit:contain">
-      </div>` : "";
-
-  const html = `<!DOCTYPE html><html lang="th"><head>
-<meta charset="UTF-8"><title>ใบสั่งงาน — ${c.customerId||""} ${c.name||""}</title>
+  const html=`<!DOCTYPE html><html lang="th"><head>
+<meta charset="UTF-8"><title>ใบสั่งงาน</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  *{margin:0;padding:0;box-sizing:border-box;}
-  body{font-family:'Sarabun',sans-serif;font-size:14px;padding:32px;color:#111;max-width:700px;margin:0 auto;}
-  .hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
-  .logo{width:56px;height:56px;border-radius:50%;background:#0d2461;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:13px;}
-  .title{font-size:24px;font-weight:700;text-align:center;flex:1;}
-  hr{border:none;border-top:1.5px solid #ccc;margin:12px 0;}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin-bottom:12px;}
-  .row{display:flex;gap:8px;padding:3px 0;}
-  .lbl{font-weight:700;min-width:90px;font-size:13px;color:#555;}
-  .val{color:#111;font-size:13px;}
-  .cbs{display:flex;gap:32px;margin:14px 0;}
-  .cb{display:flex;align-items:center;gap:8px;font-size:14px;}
-  .box{width:18px;height:18px;border:2px solid #333;flex-shrink:0;}
-  .sec{font-weight:700;font-size:15px;margin-bottom:8px;color:#0d2461;}
-  .detail{white-space:pre-wrap;line-height:1.8;font-size:13px;background:#f8f9fa;padding:12px;border-radius:6px;}
-  .print-btn{position:fixed;top:16px;right:16px;background:#0d2461;color:white;border:none;padding:10px 20px;border-radius:8px;font-size:14px;cursor:pointer;font-family:'Sarabun',sans-serif;}
-  @media print{.print-btn{display:none;} body{padding:16px;}}
+@page{size:A5;margin:12mm;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Sarabun',sans-serif;font-size:12px;color:#111;width:148mm;}
+.hdr{display:flex;align-items:center;gap:10px;margin-bottom:8px;border-bottom:2px solid #0d2461;padding-bottom:8px;}
+.logo{width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;}
+.hdr-txt{flex:1;}
+.hdr-title{font-size:18px;font-weight:700;color:#0d2461;}
+.hdr-sub{font-size:10px;color:#666;}
+.date{font-size:10px;color:#666;text-align:right;}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;margin:8px 0;}
+.row{display:flex;gap:6px;}
+.lbl{font-weight:700;min-width:72px;font-size:11px;color:#555;flex-shrink:0;}
+.val{font-size:11px;color:#111;}
+.full{grid-column:1/-1;}
+.divider{border:none;border-top:1px solid #ccc;margin:6px 0;}
+.cbs{display:flex;gap:20px;margin:6px 0;}
+.cb{display:flex;align-items:center;gap:6px;font-size:11px;}
+.box{width:14px;height:14px;border:1.5px solid #333;flex-shrink:0;}
+.sec{font-weight:700;font-size:12px;color:#0d2461;margin-bottom:4px;}
+.detail{white-space:pre-wrap;line-height:1.7;font-size:11px;background:#f8f9fa;padding:8px;border-radius:4px;}
+.img-box{margin-top:8px;text-align:center;}
+.img-box img{max-width:100%;max-height:200px;object-fit:contain;border:1px solid #ddd;border-radius:4px;padding:4px;}
+.price{font-weight:700;color:#16a34a;font-size:14px;}
+@media print{body{width:100%;}}
 </style></head><body>
-<button class="print-btn" onclick="window.print()">🖨️ พิมพ์ / บันทึก PDF</button>
 <div class="hdr">
-  <div style="font-size:12px;color:#666">วันที่ ${o.date||""}</div>
-  <div class="title">ใบสั่งงาน</div>
-  <div class="logo">KEN</div>
-</div><hr>
+  ${logoSrc?`<img class="logo" src="${logoSrc}">`:""}
+  <div class="hdr-txt">
+    <div class="hdr-title">ใบสั่งงาน</div>
+    <div class="hdr-sub">KEN Digital Print</div>
+  </div>
+  <div class="date">วันที่ ${o.date||""}</div>
+</div>
 <div class="grid">
   <div class="row"><span class="lbl">รหัสลูกค้า</span><span class="val">${o.customerLabel||o.customerId||"–"}</span></div>
   <div class="row"><span class="lbl">ชื่อลูกค้า</span><span class="val">${c.name||"–"}</span></div>
   <div class="row"><span class="lbl">เบอร์โทร</span><span class="val">${o.phone||c.phone||"–"}</span></div>
   <div class="row"><span class="lbl">ผู้รับ</span><span class="val">${o.recipient||"–"}</span></div>
-  <div style="grid-column:1/-1" class="row"><span class="lbl">ที่อยู่จัดส่ง</span><span class="val">${o.address||"–"}</span></div>
-  ${isOwner?`<div class="row"><span class="lbl">ราคารวม</span><span class="val" style="font-weight:700;color:#16a34a;font-size:16px">฿${(parseFloat(o.price)||0).toLocaleString()}</span></div>`:""}
+  <div class="row full"><span class="lbl">ที่อยู่จัดส่ง</span><span class="val">${o.address||"–"}</span></div>
+  ${isOwner?`<div class="row"><span class="lbl">ราคารวม</span><span class="val price">฿${(parseFloat(o.price)||0).toLocaleString()}</span></div>`:""}
 </div>
 <div class="cbs">
-  <div class="cb"><div class="box"></div> รับหน้าร้าน</div>
-  <div class="cb"><div class="box"></div> ส่งขนส่ง</div>
-  <div class="cb"><div class="box"></div> Lalamove</div>
-</div><hr>
+  <div class="cb"><div class="box"></div>รับหน้าร้าน</div>
+  <div class="cb"><div class="box"></div>ส่งขนส่ง</div>
+  <div class="cb"><div class="box"></div>Lalamove</div>
+</div>
+<hr class="divider">
 <div class="sec">รายละเอียด</div>
 <div class="detail">${(o.detail||"–").replace(/</g,"&lt;")}</div>
 ${imgTag}
+<script>window.onload=()=>{window.print();}<\/script>
 </body></html>`;
 
-  const w = window.open("","_blank");
+  const w=window.open("","_blank");
   w.document.write(html);
   w.document.close();
 }
@@ -1321,7 +1334,7 @@ function nowLocalISO() {
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 function openNewOrder() {
-  imgBase64="";imgMime="";imgFileName="";imgViewUrl="";
+  imgBase64="";imgMime="";imgFileName="";imgViewUrl="";copiedImageUrl="";
   document.getElementById("img-prev").style.display="none";
   ["o-detail","o-addr","o-track","o-link","o-price"].forEach(id=>document.getElementById(id).value="");
   document.getElementById("o-recip").value="";document.getElementById("o-phone").value="";
@@ -1448,8 +1461,8 @@ async function submitOrder(){
   if(!or||!or.success)return toast("บันทึกล้มเหลว","err");
   toast("บันทึกสำเร็จ ✓");
   const imgData = await uploadImageViaDrive(cid, c, or.rowId);
-  const imageUrl = imgData.imgUrl;
-  // บันทึก imageUrl ลง sheet
+  // ถ้าไม่มีรูปใหม่ แต่มีรูป copy มาจากออเดอร์เดิม ให้ใช้ URL เดิม
+  const imageUrl = imgData.imgUrl || copiedImageUrl || "";
   if(imageUrl) await api({action:"updateOrder", rowId:or.rowId, imageUrl});
   closeM("m-order");
   syncOrders(false);

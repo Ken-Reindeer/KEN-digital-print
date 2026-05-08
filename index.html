@@ -589,7 +589,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.11.0";
+const APP_VERSION = "v1.12.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -712,7 +712,7 @@ function saveConfig() {
   toast("บันทึก URL สำเร็จ ✓"); loadAll();
 }
 function refresh() { syncOrders(true); loadCustomers(); loadStats(); toast("กำลังซิงค์ข้อมูลใหม่..."); }
-function loadAll() { loadOrders(); loadCustomers(); if(SESSION?.user.role==="owner") loadStats(); }
+function loadAll() { loadOrders(); loadCustomers(); if(SESSION?.user.role==="owner") loadStats(); startAutoSync(); }
 
 // ══════════════════════════════════════════════
 // API
@@ -811,8 +811,28 @@ function switchTab(t) {
 // ORDERS
 // ══════════════════════════════════════════════
 // ══════════════════════════════════════════════
-// ORDERS — localStorage cache system
+// AUTO SYNC + TOKEN REFRESH
 // ══════════════════════════════════════════════
+let autoSyncTimer = null;
+const AUTO_SYNC_MS = 5 * 60 * 1000; // 5 นาที
+
+function startAutoSync() {
+  if (autoSyncTimer) clearInterval(autoSyncTimer);
+  autoSyncTimer = setInterval(async () => {
+    // sync เงียบๆ เฉพาะตอน tab active
+    if (!document.hidden) syncOrders(false);
+  }, AUTO_SYNC_MS);
+}
+
+// token มีอายุ ~1 ชั่วโมง — ดึงใหม่ทุกครั้งที่ sync
+let cachedConfig = null, configFetchedAt = 0;
+async function getConfig() {
+  const AGE = Date.now() - configFetchedAt;
+  if (cachedConfig && AGE < 45 * 60 * 1000) return cachedConfig; // ใช้ cache ถ้าไม่เกิน 45 นาที
+  const cfg = await api({action:"getConfig"});
+  if (cfg && cfg.success) { cachedConfig = cfg; configFetchedAt = Date.now(); }
+  return cfg;
+}
 const CACHE_KEY   = "ken_orders_cache";
 const CACHE_TS_KEY= "ken_orders_ts";
 let isSearchMode  = false;
@@ -837,8 +857,8 @@ function cacheAge() {
 async function syncOrders(showLoading=true) {
   if(showLoading) document.getElementById("orders-wrap").innerHTML='<div class="loading-r"><span class="spin"></span>กำลังซิงค์ข้อมูล...</div>';
 
-  // ขอ token + spreadsheetId จาก GAS ครั้งเดียว
-  const cfg = await api({action:"getConfig"});
+  // ขอ token + spreadsheetId จาก GAS (cached 45 นาที)
+  const cfg = await getConfig();
   if(!cfg||!cfg.success) { toast("โหลด config ล้มเหลว","err"); return; }
 
   try {

@@ -65,7 +65,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .sidebar.collapsed nav{padding:6px 3px;}
 .sidebar.collapsed .nav-btn{padding:9px;justify-content:center;gap:0;}
 .sidebar.collapsed .nav-ico{width:auto;}
-  .sidebar.collapsed .sb-user{padding:8px 0;justify-content:center;gap:0;width:48px;}
+  .sidebar.collapsed .sb-user{padding:8px 0;display:flex;flex-direction:column;align-items:center;gap:0;width:48px;}
   .sidebar.collapsed .sb-av{width:26px;height:26px;font-size:10px;margin:0 auto;}
   .sb-logo{padding:12px 14px 10px;border-bottom:none;
   display:flex;align-items:center;gap:10px;flex-shrink:0;overflow:hidden;}
@@ -125,10 +125,12 @@ nav{padding:10px 8px;flex:1;}
 .cfg-inp:focus{border-color:var(--navy2);}
 
 /* ── SCROLL AREA ── */
-.scroll-area{flex:1;overflow-y:auto;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.scroll-area{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;position:relative;}
 .content{padding:16px 20px;min-height:100%;}
 .tab-panel{display:none;}
 .tab-panel.active{display:block;}
+/* orders-wrap scrolls x independently */
+#orders-wrap,#progress-wrap{overflow-x:auto;}
 
 /* ── STATS ── */
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
@@ -168,7 +170,7 @@ nav{padding:10px 8px;flex:1;}
 .card{background:white;border:1px solid var(--border);border-radius:10px;
   overflow:hidden;box-shadow:var(--shadow);}
 .table-scroll{width:100%;}
-.table-scroll table{border-collapse:collapse;width:100%;table-layout:fixed;min-width:900px;}
+.table-scroll table{border-collapse:collapse;table-layout:fixed;width:max-content;min-width:100%;}
 table{width:100%;border-collapse:collapse;min-width:600px;}
 thead tr{background:#f8fafc;}
 th{padding:5px 8px;text-align:left;font-size:11px;font-family:var(--mono);
@@ -181,8 +183,8 @@ tbody tr:last-child td{border-bottom:none;}
 tbody tr:hover{background:#fafbfc;}
 .grp-hd{background:#f1f5f9;padding:7px 12px;font-size:11px;font-weight:600;
   color:var(--text2);font-family:var(--mono);border-bottom:1px solid var(--border);
-  display:flex;justify-content:space-between;}
-.grp-total{color:var(--navy2);}
+  display:flex;justify-content:space-between;align-items:center;width:100%;box-sizing:border-box;}
+.grp-total{color:var(--navy2);white-space:nowrap;margin-left:8px;}
 
 /* ── BADGES ── */
 .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;
@@ -628,7 +630,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.35.0";
+const APP_VERSION = "v1.36.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -1325,11 +1327,11 @@ async function deleteOrder(rowId) {
 }
 
 // ──── CUSTOMER PROFILE ────
-function showCustProfile(customerId) {
-  // customerId อาจเป็น รหัส (000016) หรือ Row ID ของ Sheet ลูกค้า
-  const c=customers.find(x=>x.customerId===customerId)||customers.find(x=>x.rowId===customerId);
+function showCustProfile(custIdOrRowId) {
+  const c=customers.find(x=>x.customerId===custIdOrRowId)||customers.find(x=>x.rowId===custIdOrRowId);
   if(!c){toast("ไม่พบข้อมูลลูกค้า","err");return;}
-  const orders=allOrders.filter(o=>o.customerId===customerId);
+  // o.customerId เก็บ Row ID ของ Sheet ลูกค้า → ใช้ c.rowId filter
+  const orders=allOrders.filter(o=>o.customerId===c.rowId);
   const total=orders.reduce((s,o)=>s+(parseFloat(o.price)||0),0);
   const isOwner=SESSION?.user.role==="owner";
   document.getElementById("cust-profile-title").textContent=c.customerId+" "+c.name;
@@ -1611,7 +1613,7 @@ function renderCust(data){
     const orderTotal=allOrders.filter(o=>o.customerId===c.rowId).reduce((s,o)=>s+(parseFloat(o.price)||0),0);
     tb.innerHTML+=`<tr>
       <td style="font-size:12px">${c.customerId}</td>
-      <td style="font-size:12px;cursor:pointer" onclick="showCustProfile('${c.customerId}')">${c.name||"–"}</td>
+      <td style="font-size:12px;cursor:pointer;color:var(--navy2)" onclick="showCustProfile('${c.rowId||c.customerId}')">${c.name||"–"}</td>
       <td style="font-size:12px">${c.phone||"–"}</td>
       <td style="font-size:12px">${c.recipient||"–"}</td>
       <td style="font-size:12px;color:var(--text2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.address||"–"}</td>

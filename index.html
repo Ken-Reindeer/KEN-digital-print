@@ -399,8 +399,9 @@ textarea.fc{resize:vertical;min-height:76px;}
         <!-- ORDERS -->
         <div class="tab-panel active" id="tab-orders">
           <div class="toolbar">
-            <div class="srch"><span>🔍</span><input type="text" placeholder="ค้นหา..." oninput="filterOrders(this.value)"></div>
-            <select class="fsel" id="status-filter" onchange="filterOrders(document.querySelector('#tab-orders .srch input').value)">
+            <div class="srch"><span>🔍</span><input type="text" id="orders-search" placeholder="ค้นหา..." oninput="filterOrdersLocal(this.value)">
+            <button class="btn btn-sm btn-ghost" onclick="searchOrdersServer()" title="ค้นหาในทุกรายการ (กด Enter หรือกดแว่น)">🔎</button></div>
+            <select class="fsel" id="status-filter" onchange="filterOrdersLocal(document.getElementById('orders-search').value)">
               <option value="">ทุกสถานะ</option>
               <option value="กำลังผลิต">กำลังผลิต</option>
               <option value="จัดส่งสำเร็จ">จัดส่งสำเร็จ</option>
@@ -588,7 +589,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.7.0";
+const APP_VERSION = "v1.8.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -809,27 +810,56 @@ function switchTab(t) {
 // ══════════════════════════════════════════════
 // ORDERS
 // ══════════════════════════════════════════════
-let orderOffset = 0;
+let orderOffset = 0, isSearchMode = false;
 const ORDER_LIMIT = 100;
 
 async function loadOrders(reset=true) {
-  if (reset) { orderOffset=0; allOrders=[]; }
+  if (reset) { orderOffset=0; allOrders=[]; isSearchMode=false;
+    document.getElementById("orders-search").value="";
+    document.getElementById("status-filter").value="";
+  }
   const res = await api({action:"getOrders", limit:ORDER_LIMIT, offset:orderOffset});
   if (!res||!res.success) return;
-  if (reset) allOrders = res.data;
-  else allOrders = [...allOrders, ...res.data];
-  orderOffset += res.data.length;
+  // ป้องกันซ้ำ: append เฉพาะ rowId ที่ยังไม่มีใน allOrders
+  if (reset) {
+    allOrders = res.data;
+  } else {
+    const existing = new Set(allOrders.map(o=>o.rowId));
+    allOrders = [...allOrders, ...res.data.filter(o=>!existing.has(o.rowId))];
+  }
+  orderOffset = allOrders.length;
   renderOrders(allOrders, res.hasMore);
   renderProgress(allOrders.filter(o=>o.status==="กำลังผลิต"));
   document.getElementById("badge-pending").textContent = allOrders.filter(o=>o.status==="กำลังผลิต").length;
 }
 
-function filterOrders(q) {
+// ค้นหาใน allOrders ที่โหลดมาแล้ว (เร็ว)
+function filterOrdersLocal(q) {
+  if (isSearchMode) return; // ถ้าอยู่ใน search mode ไม่ filter local
   const s=q.toLowerCase(), st=document.getElementById("status-filter").value;
-  let d=allOrders.filter(o=>(o.detail||"").toLowerCase().includes(s)||(o.customerId||"").toLowerCase().includes(s));
+  let d=allOrders.filter(o=>(o.detail||"").toLowerCase().includes(s)||(o.customerLabel||o.customerId||"").toLowerCase().includes(s));
   if(st) d=d.filter(o=>o.status===st);
   renderOrders(d);
 }
+
+// ค้นหาทุกรายการจาก server (กดปุ่มแว่นขยาย หรือกด Enter)
+async function searchOrdersServer() {
+  const q = document.getElementById("orders-search").value.trim();
+  const st = document.getElementById("status-filter").value;
+  if (!q && !st) { isSearchMode=false; loadOrders(true); return; }
+  isSearchMode = true;
+  document.getElementById("orders-wrap").innerHTML='<div class="loading-r"><span class="spin"></span>กำลังค้นหา...</div>';
+  const res = await api({action:"getOrders", limit:9999, offset:0, search:q, status:st});
+  if (!res||!res.success) return;
+  renderOrders(res.data, false);
+}
+
+// กด Enter ใน search box → search server
+document.addEventListener("DOMContentLoaded",()=>{
+  document.getElementById("orders-search")?.addEventListener("keydown", e=>{
+    if(e.key==="Enter") searchOrdersServer();
+  });
+});
 function filterProgress(q) {
   const s=q.toLowerCase();
   renderProgress(allOrders.filter(o=>o.status==="กำลังผลิต"&&((o.detail||"").toLowerCase().includes(s)||(o.customerId||"").toLowerCase().includes(s))));
@@ -890,8 +920,8 @@ function oRow(o,compact,isOwner){
     :'<div class="no-thumb">🖼️</div>';
   const det=(o.detail||"").replace(/\n/g," ").substring(0,45)+((o.detail||"").length>45?"…":"");
   const pdfBtn=o.pdfUrl
-    ?`<a href="${o.pdfUrl}" target="_blank" class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none">📄</a>`
-    :`<button class="btn btn-xs btn-ghost" onclick="genPDF('${o.rowId}')">📄</button>`;
+    ?`<a href="${o.pdfUrl}" target="_blank" class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none" title="เปิด PDF">📄</a>`
+    :`<button class="btn btn-xs btn-ghost" onclick="genPDF('${o.rowId}')" title="สร้าง PDF">📄</button>`;
   const trackCol=!compact
     ?`<td><input class="fc" style="width:100px;padding:4px 8px;font-size:11px" value="${o.tracking||""}" onblur="saveTrack('${o.rowId}',this.value)" placeholder="tracking"></td>`:"";
   const addrCol=compact?`<td style="font-size:11px;color:var(--text2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(o.address||"–").substring(0,30)}</td>`:"";
@@ -1110,7 +1140,13 @@ function renderCust(data){
   const tb=document.getElementById("cust-body");
   const isOwner=SESSION?.user.role==="owner";
   if(!data.length){tb.innerHTML='<tr><td colspan="8"><div class="empty"><div class="empty-ico">👤</div>ไม่มีข้อมูล</div></td></tr>';return;}
-  tb.innerHTML=data.map(c=>`<tr>
+  // sort ตามรหัสลูกค้า (ตัวเลข)
+  const sorted=[...data].sort((a,b)=>{
+    const na=parseInt((a.customerId||"").replace(/\D/g,""))||0;
+    const nb=parseInt((b.customerId||"").replace(/\D/g,""))||0;
+    return na-nb;
+  });
+  tb.innerHTML=sorted.map(c=>`<tr>
     <td style="font-family:var(--mono);font-size:11px;font-weight:600;color:var(--navy2)">${c.customerId}</td>
     <td><strong>${c.name||"–"}</strong></td>
     <td style="font-family:var(--mono);font-size:11px">${c.phone||"–"}</td>

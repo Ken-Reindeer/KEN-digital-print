@@ -59,13 +59,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .sidebar.collapsed .nav-btn span:not(.nav-ico),.sidebar.collapsed .nav-badge,
 .sidebar.collapsed .nav-grp,.sidebar.collapsed .sb-uname,
 .sidebar.collapsed .sb-role,.sidebar.collapsed .btn-logout{display:none;}
-.sidebar.collapsed .sb-logo{padding:10px 6px;justify-content:center;}
+.sidebar.collapsed .sb-logo{padding:10px 0;justify-content:center;}
 .sidebar.collapsed .sb-logo img{width:28px;height:28px;}
-.sidebar.collapsed .sb-toggle-bar{justify-content:center;}
+.sidebar.collapsed .sb-toggle-bar{justify-content:center;padding:4px 0 8px;}
 .sidebar.collapsed nav{padding:6px 3px;}
 .sidebar.collapsed .nav-btn{padding:9px;justify-content:center;gap:0;}
 .sidebar.collapsed .nav-ico{width:auto;}
-.sidebar.collapsed .sb-user{padding:8px 4px;justify-content:center;}
+.sidebar.collapsed .sb-user{padding:8px 0;justify-content:center;}
 .sidebar.collapsed .sb-av{width:26px;height:26px;font-size:10px;}
 .sb-logo{padding:12px 14px 10px;border-bottom:none;
   display:flex;align-items:center;gap:10px;flex-shrink:0;overflow:hidden;}
@@ -174,6 +174,7 @@ th{padding:5px 8px;text-align:left;font-size:11px;font-family:var(--mono);
   color:var(--text2);text-transform:uppercase;letter-spacing:.3px;
   border-bottom:1px solid var(--border);font-weight:600;white-space:nowrap;
   position:sticky;top:0;background:white;z-index:2;}
+th.th-normal{text-transform:none;font-weight:500;letter-spacing:0;}
 td{padding:2px 8px;border-bottom:1px solid #f1f5f9;font-size:12px;vertical-align:middle;}
 tbody tr:last-child td{border-bottom:none;}
 tbody tr:hover{background:#fafbfc;}
@@ -626,7 +627,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.30.0";
+const APP_VERSION = "v1.31.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -1106,9 +1107,10 @@ function renderOrders(data) {
     +'<th style="min-width:120px">รหัสลูกค้า</th>'
     +'<th style="width:60px">รูป</th>'
     +'<th style="min-width:160px">รายละเอียด</th>'
-    +'<th style="min-width:90px">Tracking</th>'
+    +'<th class="th-normal" style="min-width:90px">เลข tracking</th>'
     +'<th style="min-width:80px">ผู้รับ</th>'
     +'<th style="min-width:90px">เบอร์โทร</th>'
+    +'<th style="min-width:100px">ที่อยู่จัดส่ง</th>'
     +(isOwner?'<th style="width:80px">ราคา</th>':'')
     +'<th style="width:40px"></th>'
     +'</tr></thead><tbody>';
@@ -1152,7 +1154,9 @@ function oRow(o,compact,isOwner){
   const trackCol=!compact
     ?`<td style="font-size:12px;color:var(--text2);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.tracking||"–"}</td>`:"";
   // double-click เพื่อแก้ tracking
-  const addrCol=compact?`<td style="font-size:11px;color:var(--text2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(o.address||"–").substring(0,30)}</td>`:"";
+  const addrCol=compact
+    ?`<td style="font-size:11px;color:var(--text2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(o.address||"–").substring(0,30)}</td>`
+    :`<td style="font-size:12px;color:var(--text2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(o.address||"–").substring(0,35)+(o.address&&o.address.length>35?"…":"")}</td>`;
   const priceCol=isOwner?`<td style="font-weight:600;color:${parseFloat(o.price)<0?"var(--danger)":"var(--success)"}">฿${(parseFloat(o.price)||0).toLocaleString()}</td>`:"";
   const phoneCol=!compact?`<td style="font-size:12px;color:var(--text2)">${o.phone||"–"}</td>`:"";
   return `<tr>
@@ -1161,7 +1165,7 @@ function oRow(o,compact,isOwner){
     <td>${thumb}</td>
     <td style="max-width:180px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onclick="showDetail('${o.rowId}')">${det||"–"}</td>
     ${trackCol}
-    <td style="font-size:12px">${o.recipient||"–"}</td>
+    <td style="font-size:12px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.recipient||"–"}</td>
     ${phoneCol}
     ${addrCol}
     ${priceCol}

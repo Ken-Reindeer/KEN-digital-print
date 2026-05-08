@@ -556,6 +556,7 @@ textarea.fc{resize:vertical;min-height:76px;}
     <button class="btn btn-ghost" onclick="closeM('m-detail')">ปิด</button>
     <button class="btn" style="background:#fef3c7;color:#92400e;border:none" onclick="editOrder(currentDetailRowId)">✏️ แก้ไข</button>
     <button class="btn" style="background:#dbeafe;color:#1e40af;border:none" onclick="copyOrder(currentDetailRowId)">📋 Copy</button>
+    <button class="btn" style="background:#dcfce7;color:#166534;border:none" onclick="closeM('m-detail');printOrder(currentDetailRowId)">🖨️ พิมพ์</button>
     <button class="btn" style="background:#fee2e2;color:#dc2626;border:none" onclick="deleteOrder(currentDetailRowId)">🗑️ ลบ</button>
   </div>
 </div></div>
@@ -605,7 +606,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.23.0";
+const APP_VERSION = "v1.24.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -1066,7 +1067,7 @@ function oRow(o,compact,isOwner){
   const det=(o.detail||"").replace(/\n/g," ").substring(0,45)+((o.detail||"").length>45?"…":"");
   const pdfBtn=o.pdfUrl
     ?`<a href="${o.pdfUrl}" target="_blank" class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none" title="เปิด PDF">📄</a>`
-    :`<button class="btn btn-xs btn-ghost" onclick="genPDF('${o.rowId}')" title="สร้าง PDF">📄</button>`;
+    :`<button class="btn btn-xs btn-ghost" onclick="printOrder('${o.rowId}')" title="พิมพ์ใบสั่งงาน">🖨️</button>`;
   const trackCol=!compact
     ?`<td><input class="fc" style="width:100px;padding:4px 8px;font-size:11px" value="${o.tracking||""}" onblur="saveTrack('${o.rowId}',this.value)" placeholder="tracking"></td>`:"";
   const addrCol=compact?`<td style="font-size:11px;color:var(--text2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(o.address||"–").substring(0,30)}</td>`:"";
@@ -1250,29 +1251,66 @@ function showCustProfile(customerId) {
   openM("m-cust-profile");
 }
 
-// ส่ง generatePDF ผ่าน POST เพราะ imgBase64 ใหญ่เกิน GET URL limit
-async function apiPDF(params) {
-  if (!SCRIPT_URL||!SESSION) return null;
-  params.token = SESSION.token;
-  try {
-    const r = await fetch(SCRIPT_URL + "?action=generatePDF", {
-      method: "POST",
-      body: JSON.stringify(params)
-    });
-    const text = await r.text();
-    try { return JSON.parse(text); } catch(e) { return null; }
-  } catch(e) { toast("สร้าง PDF ล้มเหลว: "+e.message,"err"); return null; }
-}
-
-async function genPDF(rowId) {
+function printOrder(rowId) {
   const o=allOrders.find(x=>x.rowId===rowId); if(!o) return;
-  const c=customers.find(x=>x.customerId===o.customerId)||c||{};
-  toast("กำลังสร้าง PDF...");
-  const res=await apiPDF({action:"generatePDF",rowId,customerId:o.customerId,customerName:c.name||o.customerId,
-    customerRowId:c.rowId||"",phone:o.phone||c.phone||"",address:o.address||c.address||"",
-    detail:o.detail||"",imgUrl:o.imageUrl||"",price:o.price||""});
-  if(res&&res.success){toast("PDF สำเร็จ ✓");window.open(res.pdfUrl,"_blank");syncOrders(false);}
-  else toast(res?.message||"สร้าง PDF ล้มเหลว","err");
+  const c=customers.find(x=>x.rowId===o.customerId)||customers.find(x=>x.customerId===o.customerId)||{};
+  const isOwner=SESSION?.user.role==="owner";
+
+  // สร้าง HTML ใบสั่งงาน
+  const imgTag = o.imageUrl
+    ? `<div style="margin-top:16px;border:1px solid #ddd;padding:8px;border-radius:4px;text-align:center">
+        <img src="${o.imageUrl}" style="max-width:100%;max-height:300px;object-fit:contain">
+      </div>` : "";
+
+  const html = `<!DOCTYPE html><html lang="th"><head>
+<meta charset="UTF-8"><title>ใบสั่งงาน — ${c.customerId||""} ${c.name||""}</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Sarabun',sans-serif;font-size:14px;padding:32px;color:#111;max-width:700px;margin:0 auto;}
+  .hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+  .logo{width:56px;height:56px;border-radius:50%;background:#0d2461;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:13px;}
+  .title{font-size:24px;font-weight:700;text-align:center;flex:1;}
+  hr{border:none;border-top:1.5px solid #ccc;margin:12px 0;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin-bottom:12px;}
+  .row{display:flex;gap:8px;padding:3px 0;}
+  .lbl{font-weight:700;min-width:90px;font-size:13px;color:#555;}
+  .val{color:#111;font-size:13px;}
+  .cbs{display:flex;gap:32px;margin:14px 0;}
+  .cb{display:flex;align-items:center;gap:8px;font-size:14px;}
+  .box{width:18px;height:18px;border:2px solid #333;flex-shrink:0;}
+  .sec{font-weight:700;font-size:15px;margin-bottom:8px;color:#0d2461;}
+  .detail{white-space:pre-wrap;line-height:1.8;font-size:13px;background:#f8f9fa;padding:12px;border-radius:6px;}
+  .print-btn{position:fixed;top:16px;right:16px;background:#0d2461;color:white;border:none;padding:10px 20px;border-radius:8px;font-size:14px;cursor:pointer;font-family:'Sarabun',sans-serif;}
+  @media print{.print-btn{display:none;} body{padding:16px;}}
+</style></head><body>
+<button class="print-btn" onclick="window.print()">🖨️ พิมพ์ / บันทึก PDF</button>
+<div class="hdr">
+  <div style="font-size:12px;color:#666">วันที่ ${o.date||""}</div>
+  <div class="title">ใบสั่งงาน</div>
+  <div class="logo">KEN</div>
+</div><hr>
+<div class="grid">
+  <div class="row"><span class="lbl">รหัสลูกค้า</span><span class="val">${o.customerLabel||o.customerId||"–"}</span></div>
+  <div class="row"><span class="lbl">ชื่อลูกค้า</span><span class="val">${c.name||"–"}</span></div>
+  <div class="row"><span class="lbl">เบอร์โทร</span><span class="val">${o.phone||c.phone||"–"}</span></div>
+  <div class="row"><span class="lbl">ผู้รับ</span><span class="val">${o.recipient||"–"}</span></div>
+  <div style="grid-column:1/-1" class="row"><span class="lbl">ที่อยู่จัดส่ง</span><span class="val">${o.address||"–"}</span></div>
+  ${isOwner?`<div class="row"><span class="lbl">ราคารวม</span><span class="val" style="font-weight:700;color:#16a34a;font-size:16px">฿${(parseFloat(o.price)||0).toLocaleString()}</span></div>`:""}
+</div>
+<div class="cbs">
+  <div class="cb"><div class="box"></div> รับหน้าร้าน</div>
+  <div class="cb"><div class="box"></div> ส่งขนส่ง</div>
+  <div class="cb"><div class="box"></div> Lalamove</div>
+</div><hr>
+<div class="sec">รายละเอียด</div>
+<div class="detail">${(o.detail||"–").replace(/</g,"&lt;")}</div>
+${imgTag}
+</body></html>`;
+
+  const w = window.open("","_blank");
+  w.document.write(html);
+  w.document.close();
 }
 
 // ══════════════════════════════════════════════
@@ -1411,16 +1449,12 @@ async function submitOrder(){
   toast("บันทึกสำเร็จ ✓");
   const imgData = await uploadImageViaDrive(cid, c, or.rowId);
   const imageUrl = imgData.imgUrl;
-  toast("กำลังสร้าง PDF...");
-  const pr=await apiPDF({action:"generatePDF",rowId:or.rowId,customerId:cid,customerName:c.name||cid,
-    phone:document.getElementById("o-phone").value||c.phone||"",
-    address:document.getElementById("o-addr").value||c.address||"",
-    customerRowId:c.rowId||"",
-    detail,imgUrl:imageUrl,imgBase64:imgData.imgBase64||"",imgMimeType:imgData.mimeType||"image/jpeg",
-    price:document.getElementById("o-price").value});
-  if(pr&&pr.success){toast("PDF สำเร็จ ✓");window.open(pr.pdfUrl,"_blank");}
+  // บันทึก imageUrl ลง sheet
+  if(imageUrl) await api({action:"updateOrder", rowId:or.rowId, imageUrl});
   closeM("m-order");
   syncOrders(false);
+  // เปิดใบสั่งงานให้พิมพ์ทันที
+  setTimeout(()=>printOrder(or.rowId), 1500);
 }
 
 async function getAccessToken() {

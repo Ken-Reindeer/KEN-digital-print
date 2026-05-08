@@ -589,7 +589,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.8.0";
+const APP_VERSION = "v1.9.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -711,7 +711,7 @@ function saveConfig() {
   document.getElementById("cfg-bar").style.display="none";
   toast("บันทึก URL สำเร็จ ✓"); loadAll();
 }
-function refresh() { loadAll(); toast("รีเฟรชแล้ว"); }
+function refresh() { syncOrders(true); loadCustomers(); loadStats(); toast("กำลังซิงค์ข้อมูลใหม่..."); }
 function loadAll() { loadOrders(); loadCustomers(); if(SESSION?.user.role==="owner") loadStats(); }
 
 // ══════════════════════════════════════════════
@@ -810,54 +810,81 @@ function switchTab(t) {
 // ══════════════════════════════════════════════
 // ORDERS
 // ══════════════════════════════════════════════
-let orderOffset = 0, isSearchMode = false;
-const ORDER_LIMIT = 100;
+// ══════════════════════════════════════════════
+// ORDERS — localStorage cache system
+// ══════════════════════════════════════════════
+const CACHE_KEY   = "ken_orders_cache";
+const CACHE_TS_KEY= "ken_orders_ts";
+let isSearchMode  = false;
 
-async function loadOrders(reset=true) {
-  if (reset) { orderOffset=0; allOrders=[]; isSearchMode=false;
-    document.getElementById("orders-search").value="";
-    document.getElementById("status-filter").value="";
-  }
-  const res = await api({action:"getOrders", limit:ORDER_LIMIT, offset:orderOffset});
-  if (!res||!res.success) return;
-  // ป้องกันซ้ำ: append เฉพาะ rowId ที่ยังไม่มีใน allOrders
-  if (reset) {
-    allOrders = res.data;
+// บันทึก cache
+function saveCache(data) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+    localStorage.setItem(CACHE_TS_KEY, Date.now().toString());
+  } catch(e) {}
+}
+// อ่าน cache
+function loadCache() {
+  try { const d=localStorage.getItem(CACHE_KEY); return d?JSON.parse(d):[]; } catch(e){ return []; }
+}
+function cacheAge() {
+  const ts=parseInt(localStorage.getItem(CACHE_TS_KEY)||"0");
+  return ts ? Math.round((Date.now()-ts)/1000) : null;
+}
+
+// full sync จาก server → บันทึก cache → render
+async function syncOrders(showLoading=true) {
+  if(showLoading) document.getElementById("orders-wrap").innerHTML='<div class="loading-r"><span class="spin"></span>กำลังซิงค์ข้อมูล...</div>';
+  const res = await api({action:"getOrders", limit:0, offset:0}); // limit=0 = ทั้งหมด
+  if(!res||!res.success) { toast("โหลดข้อมูลล้มเหลว","err"); return; }
+  allOrders = res.data;
+  saveCache(allOrders);
+  renderAfterLoad();
+}
+
+// โหลดจาก cache ก่อน แล้ว sync background
+async function loadOrders(forceSync=false) {
+  isSearchMode=false;
+  document.getElementById("orders-search").value="";
+  document.getElementById("status-filter").value="";
+  const cached = loadCache();
+  if(cached.length && !forceSync) {
+    allOrders = cached;
+    renderAfterLoad();
+    const age = cacheAge();
+    const ageText = age!=null ? ` (ซิงค์ล่าสุด ${age<60?age+"วิ":Math.round(age/60)+"นาที"}ที่แล้ว)` : "";
+    toast("โหลดจาก cache"+ageText);
+    // sync background เงียบๆ
+    syncOrders(false);
   } else {
-    const existing = new Set(allOrders.map(o=>o.rowId));
-    allOrders = [...allOrders, ...res.data.filter(o=>!existing.has(o.rowId))];
+    await syncOrders(true);
   }
-  orderOffset = allOrders.length;
-  renderOrders(allOrders, res.hasMore);
+}
+
+function renderAfterLoad() {
+  renderOrders(allOrders);
   renderProgress(allOrders.filter(o=>o.status==="กำลังผลิต"));
   document.getElementById("badge-pending").textContent = allOrders.filter(o=>o.status==="กำลังผลิต").length;
 }
 
-// ค้นหาใน allOrders ที่โหลดมาแล้ว (เร็ว)
+// filter/search จาก allOrders ใน memory (ทันที)
 function filterOrdersLocal(q) {
-  if (isSearchMode) return; // ถ้าอยู่ใน search mode ไม่ filter local
-  const s=q.toLowerCase(), st=document.getElementById("status-filter").value;
-  let d=allOrders.filter(o=>(o.detail||"").toLowerCase().includes(s)||(o.customerLabel||o.customerId||"").toLowerCase().includes(s));
+  const s=q.toLowerCase().trim(), st=document.getElementById("status-filter").value;
+  let d=allOrders;
+  if(s) d=d.filter(o=>(o.customerLabel||o.customerId||"").toLowerCase().includes(s)||(o.detail||"").toLowerCase().includes(s)||(o.recipient||"").toLowerCase().includes(s)||(o.tracking||"").toLowerCase().includes(s));
   if(st) d=d.filter(o=>o.status===st);
   renderOrders(d);
 }
 
-// ค้นหาทุกรายการจาก server (กดปุ่มแว่นขยาย หรือกด Enter)
-async function searchOrdersServer() {
-  const q = document.getElementById("orders-search").value.trim();
-  const st = document.getElementById("status-filter").value;
-  if (!q && !st) { isSearchMode=false; loadOrders(true); return; }
-  isSearchMode = true;
-  document.getElementById("orders-wrap").innerHTML='<div class="loading-r"><span class="spin"></span>กำลังค้นหา...</div>';
-  const res = await api({action:"getOrders", limit:9999, offset:0, search:q, status:st});
-  if (!res||!res.success) return;
-  renderOrders(res.data, false);
+// กดปุ่มแว่น / Enter → search จาก allOrders ใน memory (ไม่ต้อง server แล้ว)
+function searchOrdersServer() {
+  filterOrdersLocal(document.getElementById("orders-search").value);
 }
 
-// กด Enter ใน search box → search server
 document.addEventListener("DOMContentLoaded",()=>{
   document.getElementById("orders-search")?.addEventListener("keydown", e=>{
-    if(e.key==="Enter") searchOrdersServer();
+    if(e.key==="Enter") filterOrdersLocal(e.target.value);
   });
 });
 function filterProgress(q) {
@@ -870,7 +897,7 @@ function groupDate(orders) {
   return g;
 }
 
-function renderOrders(data, hasMore=false) {
+function renderOrders(data) {
   const wrap=document.getElementById("orders-wrap");
   if(!data.length){wrap.innerHTML='<div class="empty"><div class="empty-ico">📋</div>ไม่มีข้อมูล</div>';return;}
   const isOwner=SESSION?.user.role==="owner";
@@ -883,7 +910,7 @@ function renderOrders(data, hasMore=false) {
     +'<th style="min-width:100px;resize:horizontal;overflow:auto">Tracking</th>'
     +'<th style="min-width:100px;resize:horizontal;overflow:auto">ผู้รับ</th>'
     +(isOwner?'<th style="width:80px">ราคา</th>':'')
-    +'<th style="width:120px"></th>'
+    +'<th style="width:50px"></th>'
     +'</tr></thead><tbody>';
   Object.entries(g).forEach(([date,rows])=>{
     const total=rows.reduce((s,r)=>s+(parseFloat(r.price)||0),0);
@@ -891,7 +918,6 @@ function renderOrders(data, hasMore=false) {
     rows.forEach(o=>{html+=oRow(o,false,isOwner);});
   });
   html+='</tbody></table>';
-  if(hasMore) html+=`<div style="text-align:center;padding:12px"><button class="btn btn-ghost btn-sm" onclick="loadOrders(false)">โหลดเพิ่ม 100 รายการ ↓</button></div>`;
   wrap.innerHTML=html;
 }
 
@@ -1116,7 +1142,8 @@ async function submitOrder(){
     customerRowId:c.rowId||"",
     detail,imgUrl:imageUrl,imgViewUrl:imgViewUrl,price:document.getElementById("o-price").value});
   if(pr&&pr.success){toast("PDF สำเร็จ ✓");window.open(pr.pdfUrl,"_blank");}
-  closeM("m-order");loadOrders();
+  closeM("m-order");
+  syncOrders(false); // sync cache เงียบๆ หลังสร้าง order
 }
 
 async function getAccessToken() {

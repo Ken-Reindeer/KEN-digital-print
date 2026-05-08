@@ -169,8 +169,8 @@ nav{padding:10px 8px;flex:1;}
 /* ── CARD / TABLE ── */
 .card{background:white;border:1px solid var(--border);border-radius:10px;
   overflow:hidden;box-shadow:var(--shadow);}
-  .table-scroll{width:100%;overflow-x:auto;}
-  .table-scroll table{border-collapse:collapse;table-layout:fixed;width:100%;min-width:800px;}
+  .table-scroll{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .table-scroll table{border-collapse:collapse;table-layout:auto;width:100%;min-width:700px;}
 table{width:100%;border-collapse:collapse;min-width:600px;}
 thead tr{background:#f8fafc;}
 th{padding:5px 8px;text-align:left;font-size:11px;font-family:var(--mono);
@@ -630,7 +630,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.38.0";
+const APP_VERSION = "v1.39.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -1087,10 +1087,11 @@ function enableColResize(table) {
     let startX,startW,rafId;
     div.addEventListener("mousedown",e=>{
       startX=e.pageX; startW=th.offsetWidth;
+      // switch to fixed layout during drag to prevent other columns from moving
       const ths=table.querySelectorAll("th");
       ths.forEach(t=>{t.style.width=t.offsetWidth+"px";});
+      table.style.tableLayout="fixed";
       table.style.width=table.offsetWidth+"px";
-      table.style.minWidth=table.offsetWidth+"px";
       th.style.willChange="width";
       let pendingX=startX;
       const onMove=e=>{
@@ -1104,6 +1105,9 @@ function enableColResize(table) {
       const onUp=()=>{
         if(rafId){cancelAnimationFrame(rafId);rafId=null;}
         th.style.willChange="auto";
+        // restore auto layout
+        table.style.tableLayout="auto";
+        table.style.width="100%";
         document.removeEventListener("mousemove",onMove);
         document.removeEventListener("mouseup",onUp);
         saveColWidths(table);

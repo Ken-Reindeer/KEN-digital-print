@@ -59,22 +59,24 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .sidebar.collapsed .nav-btn span:not(.nav-ico),.sidebar.collapsed .nav-badge,
 .sidebar.collapsed .nav-grp,.sidebar.collapsed .sb-uname,
 .sidebar.collapsed .sb-role,.sidebar.collapsed .btn-logout{display:none;}
-.sidebar.collapsed .sb-logo{padding:10px 6px;justify-content:center;gap:0;}
+.sidebar.collapsed .sb-logo{padding:10px 6px;justify-content:center;}
 .sidebar.collapsed .sb-logo img{width:28px;height:28px;}
-.sidebar.collapsed .sb-logo .sb-toggle{margin-left:0;}
+.sidebar.collapsed .sb-toggle-bar{justify-content:center;}
 .sidebar.collapsed nav{padding:6px 3px;}
 .sidebar.collapsed .nav-btn{padding:9px;justify-content:center;gap:0;}
 .sidebar.collapsed .nav-ico{width:auto;}
 .sidebar.collapsed .sb-user{padding:8px 4px;justify-content:center;}
 .sidebar.collapsed .sb-av{width:26px;height:26px;font-size:10px;}
-.sb-toggle{background:none;border:none;cursor:pointer;color:rgba(255,255,255,.5);
-  font-size:12px;padding:3px 5px;border-radius:5px;transition:color .1s;flex-shrink:0;margin-left:auto;}
-.sb-toggle:hover{color:white;}
-.sb-logo{padding:14px 14px 12px;border-bottom:1px solid rgba(255,255,255,.12);
+.sb-logo{padding:12px 14px 10px;border-bottom:none;
   display:flex;align-items:center;gap:10px;flex-shrink:0;overflow:hidden;}
-.sb-logo img{width:34px;height:34px;border-radius:50%;flex-shrink:0;object-fit:cover;}
-.sb-app-name{color:white;font-size:11px;font-weight:700;line-height:1.35;white-space:nowrap;}
+.sb-logo img{width:32px;height:32px;border-radius:50%;flex-shrink:0;object-fit:cover;}
+.sb-app-name{color:white;font-size:11px;font-weight:700;line-height:1.35;white-space:nowrap;overflow:hidden;}
 .sb-app-sub{color:rgba(255,255,255,.4);font-size:9px;font-family:var(--mono);text-transform:uppercase;white-space:nowrap;}
+.sb-toggle-bar{display:flex;align-items:center;padding:4px 8px 8px;border-bottom:1px solid rgba(255,255,255,.12);flex-shrink:0;}
+.sb-toggle{background:none;border:none;cursor:pointer;color:rgba(255,255,255,.4);
+  font-size:11px;padding:3px 8px;border-radius:4px;transition:color .1s;width:100%;text-align:left;}
+.sb-toggle:hover{color:white;background:rgba(255,255,255,.08);}
+.sidebar.collapsed .sb-toggle{text-align:center;}
 nav{padding:10px 8px;flex:1;}
 .nav-grp{font-size:9px;font-family:var(--mono);color:rgba(255,255,255,.28);
   text-transform:uppercase;letter-spacing:1px;padding:8px 12px 4px;}
@@ -168,10 +170,11 @@ nav{padding:10px 8px;flex:1;}
 .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
 table{width:100%;border-collapse:collapse;min-width:600px;}
 thead tr{background:#f8fafc;}
-th{padding:6px 8px;text-align:left;font-size:10px;font-family:var(--mono);
-  color:var(--text3);text-transform:uppercase;letter-spacing:.4px;
-  border-bottom:1px solid var(--border);font-weight:500;white-space:nowrap;}
-td{padding:3px 8px;border-bottom:1px solid #f1f5f9;font-size:12px;vertical-align:middle;}
+th{padding:5px 8px;text-align:left;font-size:11px;font-family:var(--mono);
+  color:var(--text2);text-transform:uppercase;letter-spacing:.3px;
+  border-bottom:1px solid var(--border);font-weight:600;white-space:nowrap;
+  position:sticky;top:0;background:white;z-index:2;}
+td{padding:2px 8px;border-bottom:1px solid #f1f5f9;font-size:12px;vertical-align:middle;}
 tbody tr:last-child td{border-bottom:none;}
 tbody tr:hover{background:#fafbfc;}
 .grp-hd{background:#f1f5f9;padding:7px 12px;font-size:11px;font-weight:600;
@@ -189,11 +192,9 @@ tbody tr:hover{background:#fafbfc;}
 .d-prod{background:var(--warning);}.d-done{background:var(--success);}
 
 /* ── THUMB ── */
-.thumb{width:64px;height:40px;object-fit:cover;border-radius:3px;
-  border:1px solid var(--border);cursor:pointer;display:block;}
-.no-thumb{width:64px;height:40px;background:#f1f5f9;border-radius:3px;
-  border:1px solid var(--border);display:flex;align-items:center;
-  justify-content:center;color:var(--text3);font-size:13px;}
+.thumb{width:56px;height:34px;object-fit:cover;border-radius:2px;cursor:pointer;display:block;}
+.no-thumb{width:56px;height:34px;background:#f8f9fa;border-radius:2px;
+  display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:11px;}
 
 /* ── EMPTY / LOADING ── */
 .empty{text-align:center;padding:40px;color:var(--text3);}
@@ -356,7 +357,9 @@ textarea.fc{resize:vertical;min-height:76px;}
         <div class="sb-app-name">Customer Database</div>
         <div class="sb-app-sub">KEN Digital Print</div>
       </div>
-      <button class="sb-toggle" onclick="toggleSidebar()" title="ย่อ/ขยาย sidebar">◀</button>
+    </div>
+    <div class="sb-toggle-bar">
+      <button class="sb-toggle" onclick="toggleSidebar()" title="ย่อ/ขยาย sidebar" id="sb-toggle-btn">◀ ย่อเมนู</button>
     </div>
     <nav>
       <div class="nav-grp">เมนูหลัก</div>
@@ -417,8 +420,8 @@ textarea.fc{resize:vertical;min-height:76px;}
         <!-- ORDERS -->
         <div class="tab-panel active" id="tab-orders">
           <div class="toolbar">
-            <div class="srch"><span>🔍</span><input type="text" id="orders-search" placeholder="ค้นหา..." oninput="filterOrdersLocal(this.value)">
-            <button class="btn btn-sm btn-ghost" onclick="searchOrdersServer()" title="ค้นหาในทุกรายการ (กด Enter หรือกดแว่น)">🔎</button></div>
+            <div class="srch"><span>🔍</span><input type="text" id="orders-search" placeholder="ค้นหา... (กด Enter)" onkeydown="if(event.key==='Enter')filterOrdersLocal(this.value)">
+            <button class="btn btn-sm btn-ghost" onclick="searchOrdersServer()" title="ค้นหา">🔎</button></div>
             <select class="fsel" id="status-filter" onchange="filterOrdersLocal(document.getElementById('orders-search').value)">
               <option value="">ทุกสถานะ</option>
               <option value="กำลังผลิต">กำลังผลิต</option>
@@ -623,7 +626,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.28.0";
+const APP_VERSION = "v1.30.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -822,14 +825,27 @@ function toggleSidebar() {
 }
 function toggleSidebar() {
   const sb = document.getElementById("sidebar");
-  const btn = sb.querySelector(".sb-toggle");
-  sb.classList.toggle("collapsed");
-  btn.textContent = sb.classList.contains("collapsed") ? "▶" : "◀";
+  const btn = document.getElementById("sb-toggle-btn");
+  const collapsed = sb.classList.toggle("collapsed");
+  btn.textContent = collapsed ? "▶" : "◀ ย่อเมนู";
+  try{localStorage.setItem("ken_sb_collapsed", collapsed?"1":"0");}catch(e){}
 }
 function closeSidebar() {
   document.getElementById("sidebar").classList.remove("open");
   document.getElementById("sb-overlay").classList.remove("open");
 }
+// restore sidebar state
+(function(){
+  try{
+    if(localStorage.getItem("ken_sb_collapsed")==="1"){
+      document.addEventListener("DOMContentLoaded",()=>{
+        const sb=document.getElementById("sidebar");
+        const btn=document.getElementById("sb-toggle-btn");
+        if(sb){sb.classList.add("collapsed");if(btn)btn.textContent="▶";}
+      });
+    }
+  }catch(e){}
+})();
 
 // ══════════════════════════════════════════════
 // TABS
@@ -1088,12 +1104,13 @@ function renderOrders(data) {
   let html='<table><thead><tr>'
     +'<th style="width:90px">สถานะ</th>'
     +'<th style="min-width:120px">รหัสลูกค้า</th>'
-    +'<th style="width:46px">รูป</th>'
+    +'<th style="width:60px">รูป</th>'
     +'<th style="min-width:160px">รายละเอียด</th>'
-    +'<th style="min-width:100px">Tracking</th>'
-    +'<th style="min-width:100px">ผู้รับ</th>'
+    +'<th style="min-width:90px">Tracking</th>'
+    +'<th style="min-width:80px">ผู้รับ</th>'
+    +'<th style="min-width:90px">เบอร์โทร</th>'
     +(isOwner?'<th style="width:80px">ราคา</th>':'')
-    +'<th style="width:50px"></th>'
+    +'<th style="width:40px"></th>'
     +'</tr></thead><tbody>';
   Object.entries(g).forEach(([date,rows])=>{
     const total=rows.reduce((s,r)=>s+(parseFloat(r.price)||0),0);
@@ -1133,17 +1150,19 @@ function oRow(o,compact,isOwner){
     ?`<a href="${o.pdfUrl}" target="_blank" class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none" title="เปิด PDF">📄</a>`
     :`<button class="btn btn-xs btn-ghost" onclick="printOrder('${o.rowId}')" title="พิมพ์ใบสั่งงาน">🖨️</button>`;
   const trackCol=!compact
-    ?`<td style="font-size:12px;color:var(--text2)">${o.tracking||"–"}</td>`:"";
+    ?`<td style="font-size:12px;color:var(--text2);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.tracking||"–"}</td>`:"";
   // double-click เพื่อแก้ tracking
   const addrCol=compact?`<td style="font-size:11px;color:var(--text2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(o.address||"–").substring(0,30)}</td>`:"";
   const priceCol=isOwner?`<td style="font-weight:600;color:${parseFloat(o.price)<0?"var(--danger)":"var(--success)"}">฿${(parseFloat(o.price)||0).toLocaleString()}</td>`:"";
+  const phoneCol=!compact?`<td style="font-size:12px;color:var(--text2)">${o.phone||"–"}</td>`:"";
   return `<tr>
     <td>${badge}</td>
     <td style="font-size:12px">${o.customerLabel||o.customerId||"–"}</td>
     <td>${thumb}</td>
-    <td style="max-width:180px;cursor:pointer" onclick="showDetail('${o.rowId}')">${det||"–"}</td>
+    <td style="max-width:180px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onclick="showDetail('${o.rowId}')">${det||"–"}</td>
     ${trackCol}
     <td style="font-size:12px">${o.recipient||"–"}</td>
+    ${phoneCol}
     ${addrCol}
     ${priceCol}
     <td>${pdfBtn}</td>

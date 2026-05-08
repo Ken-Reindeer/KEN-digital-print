@@ -1238,14 +1238,16 @@ function showCustProfile(customerId) {
     </div>`;
   openM("m-cust-profile");
 }
+
+async function genPDF(rowId) {
   const o=allOrders.find(x=>x.rowId===rowId); if(!o) return;
   const c=customers.find(x=>x.customerId===o.customerId)||{};
   toast("กำลังสร้าง PDF...");
   // แปลง lh3 imgUrl → viewUrl สำหรับ GAS HtmlService
-  const imgViewUrl = o.imageUrl ? o.imageUrl.replace("https://lh3.googleusercontent.com/d/","https://drive.google.com/file/d/").replace(/$/,"/view") : "";
+  const imgVUrl = o.imageUrl ? o.imageUrl.replace("https://lh3.googleusercontent.com/d/","https://drive.google.com/file/d/").replace(/$/,"/view") : "";
   const res=await api({action:"generatePDF",rowId,customerId:o.customerId,customerName:c.name||o.customerId,
     customerRowId:c.rowId||"",phone:o.phone||c.phone||"",address:o.address||c.address||"",
-    detail:o.detail||"",imgUrl:o.imageUrl||"",imgViewUrl,price:o.price||""});
+    detail:o.detail||"",imgUrl:o.imageUrl||"",imgViewUrl:imgVUrl,price:o.price||""});
   if(res&&res.success){toast("PDF สำเร็จ ✓");window.open(res.pdfUrl,"_blank");loadOrders();}
   else toast(res?.message||"สร้าง PDF ล้มเหลว","err");
 }

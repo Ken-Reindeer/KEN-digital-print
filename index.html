@@ -59,14 +59,14 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .sidebar.collapsed .nav-btn span:not(.nav-ico),.sidebar.collapsed .nav-badge,
 .sidebar.collapsed .nav-grp,.sidebar.collapsed .sb-uname,
 .sidebar.collapsed .sb-role,.sidebar.collapsed .btn-logout{display:none;}
-.sidebar.collapsed .sb-logo{padding:10px 0;justify-content:center;}
-.sidebar.collapsed .sb-logo img{width:28px;height:28px;}
-.sidebar.collapsed .sb-toggle-bar{justify-content:center;padding:4px 0 8px;}
+  .sidebar.collapsed .sb-logo{padding:10px 0;justify-content:center;width:100%;}
+  .sidebar.collapsed .sb-logo img{width:28px;height:28px;display:block;margin:0 auto;}
+  .sidebar.collapsed .sb-toggle-bar{justify-content:center;padding:4px 0 8px;width:100%;}
 .sidebar.collapsed nav{padding:6px 3px;}
 .sidebar.collapsed .nav-btn{padding:9px;justify-content:center;gap:0;}
 .sidebar.collapsed .nav-ico{width:auto;}
-.sidebar.collapsed .sb-user{padding:8px 0;justify-content:center;}
-.sidebar.collapsed .sb-av{width:26px;height:26px;font-size:10px;}
+  .sidebar.collapsed .sb-user{padding:8px 0;justify-content:center;width:100%;}
+  .sidebar.collapsed .sb-av{width:26px;height:26px;font-size:10px;margin:0 auto;}
 .sb-logo{padding:12px 14px 10px;border-bottom:none;
   display:flex;align-items:center;gap:10px;flex-shrink:0;overflow:hidden;}
 .sb-logo img{width:32px;height:32px;border-radius:50%;flex-shrink:0;object-fit:cover;}
@@ -168,12 +168,13 @@ nav{padding:10px 8px;flex:1;}
 .card{background:white;border:1px solid var(--border);border-radius:10px;
   overflow:hidden;box-shadow:var(--shadow);}
 .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.table-scroll table{border-collapse:collapse;width:100%;}
 table{width:100%;border-collapse:collapse;min-width:600px;}
 thead tr{background:#f8fafc;}
 th{padding:5px 8px;text-align:left;font-size:11px;font-family:var(--mono);
   color:var(--text2);text-transform:uppercase;letter-spacing:.3px;
-  border-bottom:1px solid var(--border);font-weight:600;white-space:nowrap;
-  position:sticky;top:0;background:white;z-index:2;}
+  border-bottom:2px solid var(--border);font-weight:600;white-space:nowrap;
+  position:sticky;top:0;background:white;z-index:10;box-shadow:0 1px 0 var(--border);}
 th.th-normal{text-transform:none;font-weight:500;letter-spacing:0;}
 td{padding:2px 8px;border-bottom:1px solid #f1f5f9;font-size:12px;vertical-align:middle;}
 tbody tr:last-child td{border-bottom:none;}
@@ -429,7 +430,7 @@ textarea.fc{resize:vertical;min-height:76px;}
               <option value="จัดส่งสำเร็จ">จัดส่งสำเร็จ</option>
             </select>
           </div>
-          <div class="card"><div class="table-scroll" id="orders-wrap">
+          <div class="card"><div class="table-scroll" id="orders-wrap" style="max-height:calc(100vh - 160px);overflow-y:auto;overflow-x:auto;">
             <div class="loading-r"><span class="spin"></span>กำลังโหลด...</div>
           </div></div>
         </div>
@@ -627,7 +628,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.31.0";
+const APP_VERSION = "v1.33.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -1116,7 +1117,8 @@ function renderOrders(data) {
     +'</tr></thead><tbody>';
   Object.entries(g).forEach(([date,rows])=>{
     const total=rows.reduce((s,r)=>s+(parseFloat(r.price)||0),0);
-    html+=`<tr><td colspan="8"><div class="grp-hd"><span>${date}</span>${isOwner?`<span class="grp-total">฿${total.toLocaleString()}</span>`:""}</div></td></tr>`;
+    const colCount = isOwner ? 10 : 9;
+    html+=`<tr><td colspan="${colCount}" style="padding:0"><div class="grp-hd"><span>${date}</span>${isOwner?`<span class="grp-total">฿${total.toLocaleString()}</span>`:""}</div></td></tr>`;
     rows.forEach(o=>{html+=oRow(o,false,isOwner);});
   });
   html+='</tbody></table>';

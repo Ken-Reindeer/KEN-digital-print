@@ -605,7 +605,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.20.0";
+const APP_VERSION = "v1.22.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -773,22 +773,22 @@ async function api(params) {
 
 // POST text/plain — GAS รับได้ ไม่มี CORS preflight
 // ใช้สำหรับ uploadImage ที่ payload ใหญ่เกิน URL limit
-// สำหรับ upload รูป — ส่ง imageData แยกผ่าน POST body, token+metadata ผ่าน GET param
 async function apiPost(params) {
   if (!SCRIPT_URL||!SESSION) return null;
   params.token = SESSION.token;
   try {
-    // ส่ง params ทั้งหมดเป็น GET URL (ยกเว้น imageData ที่ใหญ่)
+    // ใช้ FormData — browser จะไม่ set Content-Type เอง และ GAS รับได้
     const {imageData, ...meta} = params;
-    const metaEncoded = encodeURIComponent(JSON.stringify(meta));
-    const url = SCRIPT_URL + "?action=" + (params.action||"") + "&data=" + metaEncoded;
-    // ส่ง imageData เป็น POST body text/plain
-    const r = await fetch(url, {
-      method: "POST",
-      body: imageData||""
-    });
-    if (!r.ok) { toast("เชื่อมต่อล้มเหลว ("+r.status+")","err"); return null; }
-    return await r.json();
+    // ส่ง meta ผ่าน URL, imageData ผ่าน body โดยไม่มี Content-Type
+    const url = SCRIPT_URL + "?data=" + encodeURIComponent(JSON.stringify(meta));
+    const r = await fetch(url, {method:"POST", body: imageData||""});
+    const text = await r.text();
+    try { return JSON.parse(text); }
+    catch(e) {
+      // GAS อาจ redirect แล้วได้ HTML กลับมา — parse URL จาก redirect
+      console.error("apiPost parse error, response:", text.substring(0,200));
+      return null;
+    }
   } catch(e) {
     toast("อัพโหลดล้มเหลว: "+e.message,"err");
     return null;
@@ -1157,7 +1157,8 @@ async function submitEditOrder(rowId, c={}) {
   toast("กำลังบันทึก...");
 
   // อัพโหลดรูปใหม่ผ่าน GAS ถ้ามี
-  const imageUrl = await uploadImageViaGAS(cid, c, rowId);
+  const imgData = await uploadImageViaDrive(cid, c, rowId);
+  const imageUrl = imgData.imgUrl;
 
   const res=await api({action:"updateOrder",rowId,
     datetime:document.getElementById("o-datetime").value,
@@ -1336,26 +1337,48 @@ function processImg(f){
   };
   reader.readAsDataURL(f);
 }
-async function uploadImageViaGAS(cid, c, rowId) {
-  if (!imgBase64) return "";
-  toast("กำลังอัพโหลดรูป...");
-  const ext = (imgMime||"image/jpeg").split("/")[1]||"jpg";
-  const fileName = "img_"+(rowId||Date.now())+"."+ext;
-  const res = await apiPost({
-    action:"uploadImage",
-    customerId: cid,
-    customerName: c.name||"",
-    customerRowId: c.rowId||"",
-    imageData: imgBase64,
-    mimeType: imgMime||"image/jpeg",
-    fileName
-  });
-  if (res&&res.success) {
-    imgViewUrl = res.viewUrl||"";
-    return res.imgUrl||"";
+// upload รูปผ่าน Drive API จาก browser โดยตรง (GIS token)
+async function uploadImageViaDrive(cid, c, rowId) {
+  if (!imgBase64) return {imgUrl:"", imgBase64:""};
+  try {
+    const ok = await ensureSpreadsheetId();
+    if (!ok) throw new Error("ไม่ได้ spreadsheetId");
+    // ขอ folder ID จาก GAS
+    const folderRes = await api({action:"getUploadFolder", customerId:cid, customerName:c.name||"", customerRowId:c.rowId||""});
+    if (!folderRes||!folderRes.success) throw new Error(folderRes?.message||"หา folder ไม่ได้");
+
+    const token = await getGISToken();
+    const ext = (imgMime||"image/jpeg").split("/")[1]||"jpg";
+    const fileName = "img_"+(rowId||Date.now())+"."+ext;
+    const byteStr=atob(imgBase64), arr=new Uint8Array(byteStr.length);
+    for(let i=0;i<byteStr.length;i++) arr[i]=byteStr.charCodeAt(i);
+    const fileBlob=new Blob([arr],{type:imgMime||"image/jpeg"});
+
+    const meta=JSON.stringify({name:fileName, parents:[folderRes.folderId]});
+    const form=new FormData();
+    form.append("metadata", new Blob([meta],{type:"application/json"}));
+    form.append("file", fileBlob);
+
+    const upRes=await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",
+      {method:"POST", headers:{Authorization:"Bearer "+token}, body:form});
+    if(!upRes.ok) throw new Error("Drive upload HTTP "+upRes.status);
+    const upData=await upRes.json();
+    const fileId=upData.id;
+
+    // set sharing public
+    await fetch("https://www.googleapis.com/drive/v3/files/"+fileId+"/permissions",
+      {method:"POST", headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},
+      body:JSON.stringify({role:"reader",type:"anyone"})});
+
+    return {
+      imgUrl: "https://lh3.googleusercontent.com/d/"+fileId,
+      imgBase64: imgBase64,  // ส่ง base64 ไปด้วยเพื่อ embed ใน PDF
+      mimeType: imgMime||"image/jpeg"
+    };
+  } catch(e) {
+    toast("อัพโหลดรูปไม่สำเร็จ: "+e.message,"err");
+    return {imgUrl:"", imgBase64:""};
   }
-  toast("อัพโหลดรูปไม่สำเร็จ: "+(res?.message||""),"err");
-  return "";
 }
 
 async function submitOrder(){
@@ -1375,13 +1398,15 @@ async function submitOrder(){
   if(!or||!or.success)return toast("บันทึกล้มเหลว","err");
   toast("บันทึกสำเร็จ ✓");
   // upload รูปผ่าน GAS (owner ของไฟล์ = script owner → generatePDF access ได้)
-  const imageUrl = await uploadImageViaGAS(cid, c, or.rowId);
+  const imgData = await uploadImageViaDrive(cid, c, or.rowId);
+  const imageUrl = imgData.imgUrl;
   toast("กำลังสร้าง PDF...");
   const pr=await api({action:"generatePDF",rowId:or.rowId,customerId:cid,customerName:c.name||cid,
     phone:document.getElementById("o-phone").value||c.phone||"",
     address:document.getElementById("o-addr").value||c.address||"",
     customerRowId:c.rowId||"",
-    detail,imgUrl:imageUrl,price:document.getElementById("o-price").value});
+    detail,imgUrl:imageUrl,imgBase64:imgData.imgBase64||"",imgMimeType:imgData.mimeType||"image/jpeg",
+    price:document.getElementById("o-price").value});
   if(pr&&pr.success){toast("PDF สำเร็จ ✓");window.open(pr.pdfUrl,"_blank");}
   closeM("m-order");
   syncOrders(false);

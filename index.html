@@ -479,7 +479,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 <!-- ══ MODAL: NEW ORDER ══ -->
 <div class="overlay" id="m-order">
 <div class="modal">
-  <div class="modal-hd"><span class="modal-title">📝 เพิ่มออเดอร์ใหม่</span><button class="modal-x" onclick="closeM('m-order')">✕</button></div>
+  <div class="modal-hd"><span class="modal-title" id="m-order-title">🖨️ เพิ่มออเดอร์ใหม่</span><button class="modal-x" onclick="closeM('m-order');resetOrderForm()">✕</button></div>
   <div class="modal-body">
     <div class="fgrid">
       <div class="fg full" style="position:relative">
@@ -491,6 +491,8 @@ textarea.fc{resize:vertical;min-height:76px;}
       </div>
       <div class="fg"><label class="lbl">ชื่อลูกค้า</label>
         <input class="fc" id="o-cname" readonly placeholder="auto จากรหัสลูกค้า"></div>
+      <div class="fg"><label class="lbl">วันที่/เวลา</label>
+        <input class="fc" id="o-datetime" type="datetime-local"></div>
       <div class="fg"><label class="lbl">ชื่อผู้รับ</label><input class="fc" id="o-recip" placeholder="ชื่อผู้รับสินค้า"></div>
       <div class="fg"><label class="lbl">เบอร์โทร</label><input class="fc" id="o-phone" placeholder="0xx-xxx-xxxx" type="tel"></div>
       <div class="fg full"><label class="lbl">ที่อยู่จัดส่ง</label><textarea class="fc" id="o-addr" rows="2"></textarea></div>
@@ -518,8 +520,8 @@ textarea.fc{resize:vertical;min-height:76px;}
     </div>
   </div>
   <div class="modal-foot">
-    <button class="btn btn-ghost" onclick="closeM('m-order')">ยกเลิก</button>
-    <button class="btn btn-success" onclick="submitOrder()">💾 บันทึก + PDF</button>
+    <button class="btn btn-ghost" onclick="closeM('m-order');resetOrderForm()">ยกเลิก</button>
+    <button class="btn btn-success" id="o-submit-btn" onclick="submitOrder()">💾 บันทึก + PDF</button>
   </div>
 </div></div>
 
@@ -547,10 +549,23 @@ textarea.fc{resize:vertical;min-height:76px;}
 
 <!-- ══ MODAL: DETAIL ══ -->
 <div class="overlay" id="m-detail">
-<div class="modal">
+<div class="modal" style="max-width:560px">
   <div class="modal-hd"><span class="modal-title">รายละเอียดออเดอร์</span><button class="modal-x" onclick="closeM('m-detail')">✕</button></div>
   <div class="modal-body" id="detail-body"></div>
-  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeM('m-detail')">ปิด</button></div>
+  <div class="modal-foot" style="gap:6px">
+    <button class="btn btn-ghost" onclick="closeM('m-detail')">ปิด</button>
+    <button class="btn" style="background:#fef3c7;color:#92400e;border:none" onclick="editOrder(currentDetailRowId)">✏️ แก้ไข</button>
+    <button class="btn" style="background:#dbeafe;color:#1e40af;border:none" onclick="copyOrder(currentDetailRowId)">📋 Copy</button>
+    <button class="btn" style="background:#fee2e2;color:#dc2626;border:none" onclick="deleteOrder(currentDetailRowId)">🗑️ ลบ</button>
+  </div>
+</div></div>
+
+<!-- ══ MODAL: CUSTOMER PROFILE ══ -->
+<div class="overlay" id="m-cust-profile">
+<div class="modal" style="max-width:680px">
+  <div class="modal-hd"><span class="modal-title" id="cust-profile-title">ข้อมูลลูกค้า</span><button class="modal-x" onclick="closeM('m-cust-profile')">✕</button></div>
+  <div class="modal-body" id="cust-profile-body"></div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeM('m-cust-profile')">ปิด</button></div>
 </div></div>
 
 <!-- ══ MODAL: ADD/EDIT USER ══ -->
@@ -590,7 +605,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.14.0";
+const APP_VERSION = "v1.16.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -1078,14 +1093,17 @@ async function saveTrack(rowId,tracking) {
   const res=await api({action:"updateTracking",rowId,tracking});
   if(res&&res.success) toast("บันทึก Tracking ✓");
 }
+let currentDetailRowId = "";
 function showDetail(rowId) {
   const o=allOrders.find(x=>x.rowId===rowId); if(!o) return;
+  currentDetailRowId = rowId;
   const isOwner=SESSION?.user.role==="owner";
   const img=o.imageUrl?`<img src="${o.imageUrl}" style="max-width:100%;border-radius:8px;margin-top:10px;cursor:pointer" onclick="showLb('${o.imageUrl}')">`:"";
   const pdf=o.pdfUrl?`<a href="${o.pdfUrl}" target="_blank" style="color:var(--danger);font-size:12px;font-family:var(--mono)">📄 ดู PDF</a>`:"";
   document.getElementById("detail-body").innerHTML=`
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-      <div><div style="font-size:10px;font-family:var(--mono);color:var(--text3)">รหัสลูกค้า</div><strong>${o.customerId}</strong></div>
+      <div><div style="font-size:10px;font-family:var(--mono);color:var(--text3)">รหัสลูกค้า</div>
+        <strong style="cursor:pointer;color:var(--navy2);text-decoration:underline dotted" onclick="showCustProfile('${o.customerId}')">${o.customerLabel||o.customerId}</strong></div>
       <div><div style="font-size:10px;font-family:var(--mono);color:var(--text3)">วันที่</div>${o.date}</div>
       ${isOwner?`<div><div style="font-size:10px;font-family:var(--mono);color:var(--text3)">ราคารวม</div><strong style="color:var(--success);font-size:17px">฿${(parseFloat(o.price)||0).toLocaleString()}</strong></div>`:""}
       <div><div style="font-size:10px;font-family:var(--mono);color:var(--text3)">สถานะ</div>${o.status||"–"}</div>
@@ -1097,7 +1115,129 @@ function showDetail(rowId) {
     ${pdf}${img}`;
   openM("m-detail");
 }
-async function genPDF(rowId) {
+// ──── EDIT ORDER ────
+function editOrder(rowId) {
+  const o=allOrders.find(x=>x.rowId===rowId); if(!o) return;
+  const c=customers.find(x=>x.customerId===o.customerId)||{};
+  closeM("m-detail");
+  imgBase64="";imgMime="";imgFileName="";imgViewUrl="";
+  document.getElementById("img-prev").style.display="none";
+  document.getElementById("o-cid").value=o.customerId;
+  document.getElementById("o-cid-input").value=o.customerLabel||o.customerId;
+  document.getElementById("o-cname").value=c.name||"";
+  document.getElementById("o-recip").value=o.recipient||"";
+  document.getElementById("o-phone").value=o.phone||"";
+  document.getElementById("o-addr").value=o.address||"";
+  document.getElementById("o-detail").value=o.detail||"";
+  document.getElementById("o-price").value=o.price||"";
+  document.getElementById("o-track").value=o.tracking||"";
+  document.getElementById("o-link").value=o.link||"";
+  // แปลง "d/M/yyyy HH:mm" → datetime-local format
+  let dtVal = nowLocalISO();
+  if(o.date) {
+    try {
+      const m=o.date.match(/(\d+)\/(\d+)\/(\d+)\s+(\d+):(\d+)/);
+      if(m) dtVal=`${m[3]}-${String(m[2]).padStart(2,"0")}-${String(m[1]).padStart(2,"0")}T${String(m[4]).padStart(2,"0")}:${String(m[5]).padStart(2,"0")}`;
+    } catch(e){}
+  }
+  document.getElementById("o-datetime").value=dtVal;
+  document.getElementById("o-submit-btn").textContent="💾 บันทึกการแก้ไข";
+  document.getElementById("o-submit-btn").onclick=()=>submitEditOrder(rowId);
+  openM("m-order");
+}
+
+async function submitEditOrder(rowId) {
+  const cid=document.getElementById("o-cid").value.trim();
+  const detail=document.getElementById("o-detail").value.trim();
+  if(!cid) return toast("กรุณาเลือกลูกค้า","err");
+  if(!detail) return toast("กรุณากรอกรายละเอียด","err");
+  toast("กำลังบันทึก...");
+  const res=await api({action:"updateOrder",rowId,
+    datetime:document.getElementById("o-datetime").value,
+    detail,price:document.getElementById("o-price").value,
+    recipient:document.getElementById("o-recip").value,
+    address:document.getElementById("o-addr").value,
+    phone:document.getElementById("o-phone").value,
+    tracking:document.getElementById("o-track").value,
+    link:document.getElementById("o-link").value,
+    status:document.getElementById("o-status").value});
+  if(!res||!res.success) return toast("บันทึกล้มเหลว: "+(res?.message||""),"err");
+  toast("แก้ไขสำเร็จ ✓");
+  closeM("m-order");
+  resetOrderForm();
+  syncOrders(false);
+}
+
+function resetOrderForm() {
+  document.getElementById("m-order-title").textContent="🖨️ เพิ่มออเดอร์ใหม่";
+  document.getElementById("o-submit-btn").textContent="💾 บันทึก + PDF";
+  document.getElementById("o-submit-btn").onclick=submitOrder;
+}
+
+// ──── COPY ORDER ────
+function copyOrder(rowId) {
+  const o=allOrders.find(x=>x.rowId===rowId); if(!o) return;
+  closeM("m-detail");
+  imgBase64="";imgMime="";imgFileName="";imgViewUrl="";
+  document.getElementById("img-prev").style.display="none";
+  document.getElementById("o-cid").value=o.customerId;
+  document.getElementById("o-cid-input").value=o.customerLabel||o.customerId;
+  const c=customers.find(x=>x.customerId===o.customerId)||{};
+  document.getElementById("o-cname").value=c.name||"";
+  document.getElementById("o-recip").value=o.recipient||"";
+  document.getElementById("o-phone").value=o.phone||"";
+  document.getElementById("o-addr").value=o.address||"";
+  document.getElementById("o-detail").value=o.detail||"";
+  document.getElementById("o-price").value=o.price||"";
+  document.getElementById("o-track").value=""; // tracking ใหม่
+  document.getElementById("o-link").value=o.link||"";
+  document.getElementById("o-status").value="กำลังผลิต";
+  document.getElementById("o-datetime").value=nowLocalISO(); // วันที่ปัจจุบัน
+  document.getElementById("m-order-title").textContent="📋 Copy ออเดอร์ (ใหม่)";
+  resetOrderForm();
+  openM("m-order");
+}
+
+// ──── DELETE ORDER ────
+async function deleteOrder(rowId) {
+  if(!confirm("ต้องการลบออเดอร์นี้?")) return;
+  const res=await api({action:"deleteOrder",rowId});
+  if(!res||!res.success) return toast("ลบล้มเหลว: "+(res?.message||""),"err");
+  toast("ลบสำเร็จ ✓");
+  closeM("m-detail");
+  syncOrders(false);
+}
+
+// ──── CUSTOMER PROFILE ────
+function showCustProfile(customerId) {
+  const c=customers.find(x=>x.customerId===customerId);
+  if(!c){toast("ไม่พบข้อมูลลูกค้า","err");return;}
+  const orders=allOrders.filter(o=>o.customerId===customerId);
+  const total=orders.reduce((s,o)=>s+(parseFloat(o.price)||0),0);
+  const isOwner=SESSION?.user.role==="owner";
+  document.getElementById("cust-profile-title").textContent=c.customerId+" "+c.name;
+  const orderRows=orders.map(o=>`
+    <tr>
+      <td style="font-size:11px;color:var(--text3)">${o.date}</td>
+      <td><span class="badge ${o.status==='จัดส่งสำเร็จ'?'b-done':'b-prod'}" style="font-size:10px"><span class="sdot ${o.status==='จัดส่งสำเร็จ'?'d-done':'d-prod'}"></span>${o.status||"–"}</span></td>
+      <td style="font-size:12px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(o.detail||"").substring(0,40)}</td>
+      ${isOwner?`<td style="font-weight:600;color:var(--success);text-align:right">฿${(parseFloat(o.price)||0).toLocaleString()}</td>`:""}
+      <td><button class="btn btn-xs btn-ghost" onclick="closeM('m-cust-profile');showDetail('${o.rowId}')">ดู</button></td>
+    </tr>`).join("");
+  document.getElementById("cust-profile-body").innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;background:var(--bg);padding:12px;border-radius:8px">
+      <div><div style="font-size:10px;color:var(--text3)">ชื่อลูกค้า</div><strong>${c.name||"–"}</strong></div>
+      <div><div style="font-size:10px;color:var(--text3)">เบอร์โทร</div>${c.phone||"–"}</div>
+      <div style="grid-column:1/-1"><div style="font-size:10px;color:var(--text3)">ที่อยู่</div>${c.address||"–"}</div>
+      ${isOwner?`<div style="grid-column:1/-1"><div style="font-size:10px;color:var(--text3)">ยอดรวมทั้งหมด</div><strong style="color:var(--success);font-size:18px">฿${total.toLocaleString()}</strong></div>`:""}
+    </div>
+    <div style="font-weight:600;margin-bottom:8px">ประวัติการสั่งซื้อ (${orders.length} รายการ)</div>
+    <div style="max-height:320px;overflow-y:auto">
+    <table><thead><tr><th>วันที่</th><th>สถานะ</th><th>รายละเอียด</th>${isOwner?"<th>ราคา</th>":""}<th></th></tr></thead>
+    <tbody>${orderRows||'<tr><td colspan="5" style="text-align:center;color:var(--text3)">ไม่มีประวัติ</td></tr>'}</tbody></table>
+    </div>`;
+  openM("m-cust-profile");
+}
   const o=allOrders.find(x=>x.rowId===rowId); if(!o) return;
   const c=customers.find(x=>x.customerId===o.customerId)||{};
   toast("กำลังสร้าง PDF...");
@@ -1113,6 +1253,10 @@ async function genPDF(rowId) {
 // ══════════════════════════════════════════════
 // NEW ORDER
 // ══════════════════════════════════════════════
+function nowLocalISO() {
+  const d=new Date(), pad=n=>String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 function openNewOrder() {
   imgBase64="";imgMime="";imgFileName="";imgViewUrl="";
   document.getElementById("img-prev").style.display="none";
@@ -1122,7 +1266,8 @@ function openNewOrder() {
   document.getElementById("o-cid-input").value="";
   document.getElementById("cust-suggest").style.display="none";
   document.getElementById("o-status").value="กำลังผลิต";
-  populateCustSel();openM("m-order");
+  document.getElementById("o-datetime").value=nowLocalISO();
+  resetOrderForm();populateCustSel();openM("m-order");
 }
 function populateCustSel(){ /* autocomplete mode - no dropdown needed */ }
 
@@ -1228,7 +1373,9 @@ async function submitOrder(){
       imgViewUrl = "https://drive.google.com/file/d/"+fileId+"/view";
     } catch(e) { toast("อัพโหลดรูปไม่สำเร็จ: "+e.message+" — จะบันทึก order ต่อ","err"); }
   }
-  const or=await api({action:"addOrder",customerId:cid,detail,price:document.getElementById("o-price").value,
+  const or=await api({action:"addOrder",customerId:cid,detail,
+    datetime:document.getElementById("o-datetime").value,
+    price:document.getElementById("o-price").value,
     recipient:document.getElementById("o-recip").value,address:document.getElementById("o-addr").value,
     phone:document.getElementById("o-phone").value,tracking:document.getElementById("o-track").value,
     link:document.getElementById("o-link").value,status:document.getElementById("o-status").value,imageUrl,pdfUrl:""});
@@ -1266,22 +1413,25 @@ function renderCust(data){
   const tb=document.getElementById("cust-body");
   const isOwner=SESSION?.user.role==="owner";
   if(!data.length){tb.innerHTML='<tr><td colspan="8"><div class="empty"><div class="empty-ico">👤</div>ไม่มีข้อมูล</div></td></tr>';return;}
-  // sort ตามรหัสลูกค้า (ตัวเลข)
   const sorted=[...data].sort((a,b)=>{
     const na=parseInt((a.customerId||"").replace(/\D/g,""))||0;
     const nb=parseInt((b.customerId||"").replace(/\D/g,""))||0;
     return na-nb;
   });
-  tb.innerHTML=sorted.map(c=>`<tr>
-    <td style="font-family:var(--mono);font-size:11px;font-weight:600;color:var(--navy2)">${c.customerId}</td>
-    <td><strong>${c.name||"–"}</strong></td>
-    <td style="font-family:var(--mono);font-size:11px">${c.phone||"–"}</td>
-    <td style="font-size:12px">${c.recipient||"–"}</td>
-    <td style="font-size:11px;color:var(--text2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.address||"–"}</td>
-    ${isOwner?`<td style="font-weight:600;color:var(--success)">฿${(parseFloat(c.total)||0).toLocaleString()}</td>`:"<td>–</td>"}
-    <td>${c.sns?`<a href="${c.sns}" target="_blank" class="btn btn-xs btn-ghost">💬</a>`:"–"}</td>
-    <td><button class="btn btn-xs" style="background:#dbeafe;color:var(--navy2);border:none" onclick='editCust(${JSON.stringify(c)})'>✏️</button></td>
-  </tr>`).join("");
+  tb.innerHTML="";
+  sorted.forEach(c=>{
+    const orderTotal=allOrders.filter(o=>o.customerId===c.customerId).reduce((s,o)=>s+(parseFloat(o.price)||0),0);
+    tb.innerHTML+=`<tr>
+      <td style="font-family:var(--mono);font-size:11px;font-weight:600;color:var(--navy2)">${c.customerId}</td>
+      <td><strong style="cursor:pointer;color:var(--navy2)" onclick="showCustProfile('${c.customerId}')">${c.name||"–"}</strong></td>
+      <td style="font-family:var(--mono);font-size:11px">${c.phone||"–"}</td>
+      <td style="font-size:12px">${c.recipient||"–"}</td>
+      <td style="font-size:11px;color:var(--text2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.address||"–"}</td>
+      ${isOwner?`<td style="font-weight:600;color:var(--success)">฿${orderTotal.toLocaleString()}</td>`:"<td>–</td>"}
+      <td>${c.sns?`<a href="${c.sns}" target="_blank" class="btn btn-xs btn-ghost">💬</a>`:"–"}</td>
+      <td><button class="btn btn-xs" style="background:#dbeafe;color:var(--navy2);border:none" onclick='editCust(${JSON.stringify(c)})'>✏️</button></td>
+    </tr>`;
+  });
 }
 function openAddCust(){
   document.getElementById("cust-mtitle").textContent="เพิ่มลูกค้าใหม่";

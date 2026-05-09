@@ -169,9 +169,9 @@ nav{padding:10px 8px;flex:1;}
 /* ── CARD / TABLE ── */
 .card{background:white;border:1px solid var(--border);border-radius:10px;
   overflow:hidden;box-shadow:var(--shadow);}
-  .table-scroll{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  .table-scroll table{border-collapse:collapse;table-layout:auto;width:100%;min-width:700px;}
-table{width:100%;border-collapse:collapse;min-width:600px;}
+  .table-scroll{width:100%;overflow-x:auto;display:block;-webkit-overflow-scrolling:touch;}
+  .table-scroll table{border-collapse:collapse;table-layout:auto;width:100%;}
+  table{width:100%;border-collapse:collapse;}
 thead tr{background:#f8fafc;}
 th{padding:5px 8px;text-align:left;font-size:11px;font-family:var(--mono);
   color:var(--text2);text-transform:uppercase;letter-spacing:.3px;
@@ -181,6 +181,14 @@ th.th-normal{text-transform:none;font-weight:500;letter-spacing:0;}
   td{padding:2px 8px;border-bottom:1px solid #f1f5f9;font-size:12px;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 tbody tr:last-child td{border-bottom:none;}
 tbody tr:hover{background:#fafbfc;}
+/* คอลัมน์ขวาสุด (ปุ่มพิมพ์) — ห้ามบีบ */
+.table-scroll th:last-child,.table-scroll td:last-child{width:1%;white-space:nowrap;min-width:40px;}
+/* คอลัมน์ราคา */
+.table-scroll th:nth-last-child(2),.table-scroll td:nth-last-child(2){width:1%;white-space:nowrap;min-width:80px;}
+/* คอลัมน์สถานะ */
+.table-scroll th:first-child,.table-scroll td:first-child{min-width:85px;white-space:nowrap;}
+/* คอลัมน์รายละเอียด — ยืดหยุ่น */
+.table-scroll td:nth-child(4){min-width:160px;}
 .grp-hd{background:#f1f5f9;padding:7px 12px;font-size:11px;font-weight:600;
   color:var(--text2);font-family:var(--mono);border-bottom:1px solid var(--border);
   display:flex;justify-content:space-between;align-items:center;width:100%;box-sizing:border-box;}
@@ -630,7 +638,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.39.0";
+const APP_VERSION = "v1.40.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];

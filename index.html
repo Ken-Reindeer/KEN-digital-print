@@ -193,7 +193,6 @@ tbody tr:hover{background:#fafbfc;}
 .dt-row:hover{background:#fafbfc;}
 .dt-cell{padding:2px 8px;font-size:12px;overflow:hidden;text-overflow:ellipsis;
   white-space:nowrap;flex-shrink:0;display:flex;align-items:center;}
-.dt-cell.flex{flex:1;min-width:0;}
 .dt-grp{background:#f1f5f9;padding:7px 12px;font-size:11px;font-weight:600;
   color:var(--text2);font-family:var(--mono);border-bottom:1px solid var(--border);
   display:flex;justify-content:space-between;align-items:center;
@@ -659,7 +658,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.42.0";
+const APP_VERSION = "v1.43.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -1170,16 +1169,16 @@ function enableColResize(table) {
   });
 }
 
-// column definition: [key, label, width, flex(0/1), normal-case]
+// column definition: [key, label, width, normal-case]
 const ORDERS_COLS = [
-  ["status",    "สถานะ",         100, 0, false],
-  ["customer",  "รหัสลูกค้า",    160, 0, false],
-  ["thumb",     "รูป",            70, 0, false],
-  ["detail",    "รายละเอียด",    220, 1, false],
-  ["tracking",  "เลข tracking",  120, 0, true ],
-  ["recipient", "ผู้รับ",         110, 0, false],
-  ["phone",     "เบอร์โทร",      110, 0, false],
-  ["address",   "ที่อยู่จัดส่ง", 160, 0, false],
+  ["status",    "สถานะ",         100, false],
+  ["customer",  "รหัสลูกค้า",    160, false],
+  ["thumb",     "รูป",            70, false],
+  ["detail",    "รายละเอียด",    280, false],
+  ["tracking",  "เลข tracking",  120, true ],
+  ["recipient", "ผู้รับ",         110, false],
+  ["phone",     "เบอร์โทร",      110, false],
+  ["address",   "ที่อยู่จัดส่ง", 200, false],
 ];
 
 function getOrderColWidths() {
@@ -1203,16 +1202,15 @@ function renderOrders(data) {
   const g=groupDate(data);
   const savedW = getOrderColWidths();
   const cols = [...ORDERS_COLS];
-  if(isOwner) cols.push(["price","ราคา",90,0,false]);
-  cols.push(["action","",46,0,false]);
+  if(isOwner) cols.push(["price","ราคา",90,false]);
+  cols.push(["action","",46,false]);
 
   // header
   let head = '<div class="dt-head">';
   cols.forEach((c,i)=>{
     const w = savedW[c[0]] || c[2];
-    const flex = c[3] ? "flex" : "";
-    const cls = c[4] ? "normal" : "";
-    head += `<div class="dt-cell ${flex} ${cls}" data-col="${c[0]}" style="${flex?'flex:1;min-width:'+w+'px':'width:'+w+'px'}">${c[1]}</div>`;
+    const cls = c[3] ? "normal" : "";
+    head += `<div class="dt-cell ${cls}" data-col="${c[0]}" style="width:${w}px">${c[1]}</div>`;
     if(i<cols.length-1) head += `<div class="dt-resizer" data-resize="${c[0]}"></div>`;
   });
   head += '</div>';
@@ -1260,9 +1258,7 @@ function oRowDiv(o, cols, savedW, isOwner) {
   let html = '<div class="dt-row">';
   cols.forEach((c,i)=>{
     const w = savedW[c[0]] || c[2];
-    const flex = c[3] ? "flex" : "";
-    const styleW = c[3] ? `flex:1;min-width:${w}px` : `width:${w}px`;
-    html += `<div class="dt-cell ${flex}" style="${styleW}">${valueMap[c[0]]||""}</div>`;
+    html += `<div class="dt-cell" style="width:${w}px">${valueMap[c[0]]||""}</div>`;
     if(i<cols.length-1) html += `<div class="dt-resizer"></div>`;
   });
   html += '</div>';
@@ -1289,14 +1285,10 @@ function enableDtResize(container, cols, widths) {
         rafId = requestAnimationFrame(()=>{
           const newW = Math.max(40, startW + pendingX - startX);
           headCell.style.width = newW + "px";
-          if(headCell.classList.contains("flex")) headCell.style.minWidth = newW + "px";
           // sync ทุก row ที่ column เดียวกัน
           allRows.forEach(row=>{
             const cell = row.children[idx*2]; // *2 เพราะมี resizer คั่น
-            if(cell){
-              cell.style.width = newW + "px";
-              if(cell.classList.contains("flex")) cell.style.minWidth = newW + "px";
-            }
+            if(cell) cell.style.width = newW + "px";
           });
           rafId = null;
         });

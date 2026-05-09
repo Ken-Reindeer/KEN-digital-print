@@ -181,7 +181,28 @@ th.th-normal{text-transform:none;font-weight:500;letter-spacing:0;}
   td{padding:2px 8px;border-bottom:1px solid #f1f5f9;font-size:12px;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 tbody tr:last-child td{border-bottom:none;}
 tbody tr:hover{background:#fafbfc;}
-/* คอลัมน์ขวาสุด (ปุ่มพิมพ์) — ห้ามบีบ */
+/* ── DIV TABLE (flexbox) ── */
+.dt{display:flex;flex-direction:column;width:100%;min-width:max-content;}
+.dt-head{display:flex;background:white;border-bottom:2px solid var(--border);
+  position:sticky;top:0;z-index:10;font-family:var(--mono);font-size:11px;
+  color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.3px;
+  box-shadow:0 1px 0 var(--border);}
+.dt-head .dt-cell{padding:6px 8px;white-space:nowrap;}
+.dt-head .dt-cell.normal{text-transform:none;font-weight:500;letter-spacing:0;}
+.dt-row{display:flex;border-bottom:1px solid #f1f5f9;align-items:center;}
+.dt-row:hover{background:#fafbfc;}
+.dt-cell{padding:2px 8px;font-size:12px;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;flex-shrink:0;display:flex;align-items:center;}
+.dt-cell.flex{flex:1;min-width:0;}
+.dt-grp{background:#f1f5f9;padding:7px 12px;font-size:11px;font-weight:600;
+  color:var(--text2);font-family:var(--mono);border-bottom:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;
+  position:sticky;left:0;width:100%;box-sizing:border-box;}
+.dt-grp .dt-grp-total{color:var(--navy2);}
+.dt-resizer{width:5px;cursor:col-resize;flex-shrink:0;user-select:none;
+  background:transparent;transition:background .15s;align-self:stretch;}
+.dt-resizer:hover{background:var(--border2);}
+.dt-wrap{overflow-x:auto;width:100%;-webkit-overflow-scrolling:touch;}
 .table-scroll th:last-child,.table-scroll td:last-child{width:1%;white-space:nowrap;min-width:40px;}
 /* คอลัมน์ราคา */
 .table-scroll th:nth-last-child(2),.table-scroll td:nth-last-child(2){width:1%;white-space:nowrap;min-width:80px;}
@@ -638,7 +659,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.40.0";
+const APP_VERSION = "v1.42.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -892,8 +913,21 @@ function switchTab(t) {
 // GOOGLE IDENTITY SERVICES — token สำหรับ Sheets API
 // ══════════════════════════════════════════════
 const GIS_CLIENT_ID = "223704026014-vtd60jd53asfi4eldbhmbehjv5dg0vfp.apps.googleusercontent.com";
-const SHEETS_SCOPE  = "https://www.googleapis.com/auth/spreadsheets.readonly";
+const SHEETS_SCOPE  = "https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive";
 let gisToken = null, gisTokenExpiry = 0, gisClient = null;
+
+// โหลด token จาก localStorage ตอน start
+try {
+  const saved = JSON.parse(localStorage.getItem("ken_gis_token")||"null");
+  if (saved && saved.expiry > Date.now()) {
+    gisToken = saved.token;
+    gisTokenExpiry = saved.expiry;
+  }
+} catch(e) {}
+
+function saveGISToken() {
+  try { localStorage.setItem("ken_gis_token", JSON.stringify({token:gisToken, expiry:gisTokenExpiry})); } catch(e) {}
+}
 
 function initGIS() {
   if (!window.google?.accounts?.oauth2) return;
@@ -904,6 +938,7 @@ function initGIS() {
       if (resp.error) { console.error("GIS error:", resp.error); return; }
       gisToken = resp.access_token;
       gisTokenExpiry = Date.now() + (parseInt(resp.expires_in)||3600) * 1000 - 60000;
+      saveGISToken();
     }
   });
 }
@@ -918,9 +953,11 @@ function getGISToken() {
       if (resp.error) { reject(new Error(resp.error)); return; }
       gisToken = resp.access_token;
       gisTokenExpiry = Date.now() + (parseInt(resp.expires_in)||3600)*1000 - 60000;
+      saveGISToken();
       resolve(gisToken);
     };
-    gisClient.requestAccessToken({prompt:"consent"});
+    // ใช้ "" แทน "consent" — ไม่ popup ถ้า user grant แล้ว
+    gisClient.requestAccessToken({prompt: gisToken ? "" : ""});
   });
 }
 
@@ -1089,33 +1126,39 @@ function enableColResize(table) {
     if(th.querySelector(".col-resizer")) return;
     const div=document.createElement("div");
     div.className="col-resizer";
-    div.style.cssText="position:absolute;right:0;top:0;bottom:0;width:5px;cursor:col-resize;z-index:1;";
+    div.style.cssText="position:absolute;right:0;top:0;bottom:0;width:5px;cursor:col-resize;z-index:1;user-select:none;";
     th.style.position="relative";
     th.appendChild(div);
     let startX,startW,rafId;
     div.addEventListener("mousedown",e=>{
       startX=e.pageX; startW=th.offsetWidth;
-      // switch to fixed layout during drag to prevent other columns from moving
+      // lock all columns to current px width
       const ths=table.querySelectorAll("th");
       ths.forEach(t=>{t.style.width=t.offsetWidth+"px";});
       table.style.tableLayout="fixed";
       table.style.width=table.offsetWidth+"px";
       th.style.willChange="width";
+      document.body.style.cursor="col-resize";
+      document.body.style.userSelect="none";
       let pendingX=startX;
       const onMove=e=>{
         pendingX=e.pageX;
         if(rafId) return;
         rafId=requestAnimationFrame(()=>{
-          th.style.width=Math.max(40,startW+pendingX-startX)+"px";
+          const newW=Math.max(40,startW+pendingX-startX);
+          const diff=newW-th.offsetWidth;
+          th.style.width=newW+"px";
+          // ปรับ table width ให้รองรับการเปลี่ยนแปลง
+          table.style.width=(table.offsetWidth+diff)+"px";
           rafId=null;
         });
       };
       const onUp=()=>{
         if(rafId){cancelAnimationFrame(rafId);rafId=null;}
         th.style.willChange="auto";
-        // restore auto layout
-        table.style.tableLayout="auto";
-        table.style.width="100%";
+        document.body.style.cursor="";
+        document.body.style.userSelect="";
+        // **ไม่** reset tableLayout กลับเป็น auto — คงเป็น fixed ไว้
         document.removeEventListener("mousemove",onMove);
         document.removeEventListener("mouseup",onUp);
         saveColWidths(table);
@@ -1127,32 +1170,152 @@ function enableColResize(table) {
   });
 }
 
+// column definition: [key, label, width, flex(0/1), normal-case]
+const ORDERS_COLS = [
+  ["status",    "สถานะ",         100, 0, false],
+  ["customer",  "รหัสลูกค้า",    160, 0, false],
+  ["thumb",     "รูป",            70, 0, false],
+  ["detail",    "รายละเอียด",    220, 1, false],
+  ["tracking",  "เลข tracking",  120, 0, true ],
+  ["recipient", "ผู้รับ",         110, 0, false],
+  ["phone",     "เบอร์โทร",      110, 0, false],
+  ["address",   "ที่อยู่จัดส่ง", 160, 0, false],
+];
+
+function getOrderColWidths() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("ken_dt_widths")||"{}");
+    return saved.orders || {};
+  } catch(e){ return {}; }
+}
+function saveOrderColWidths(widths) {
+  try {
+    const saved = JSON.parse(localStorage.getItem("ken_dt_widths")||"{}");
+    saved.orders = widths;
+    localStorage.setItem("ken_dt_widths", JSON.stringify(saved));
+  } catch(e){}
+}
+
 function renderOrders(data) {
   const wrap=document.getElementById("orders-wrap");
   if(!data.length){wrap.innerHTML='<div class="empty"><div class="empty-ico">📋</div>ไม่มีข้อมูล</div>';return;}
   const isOwner=SESSION?.user.role==="owner";
   const g=groupDate(data);
-  let html='<table><thead><tr>'
-    +'<th style="width:90px">สถานะ</th>'
-    +'<th style="min-width:120px">รหัสลูกค้า</th>'
-    +'<th style="width:60px">รูป</th>'
-    +'<th style="min-width:160px">รายละเอียด</th>'
-    +'<th class="th-normal" style="min-width:90px">เลข tracking</th>'
-    +'<th style="min-width:80px">ผู้รับ</th>'
-    +'<th style="min-width:90px">เบอร์โทร</th>'
-    +'<th style="min-width:100px">ที่อยู่จัดส่ง</th>'
-    +(isOwner?'<th style="width:80px">ราคา</th>':'')
-    +'<th style="width:40px"></th>'
-    +'</tr></thead><tbody>';
+  const savedW = getOrderColWidths();
+  const cols = [...ORDERS_COLS];
+  if(isOwner) cols.push(["price","ราคา",90,0,false]);
+  cols.push(["action","",46,0,false]);
+
+  // header
+  let head = '<div class="dt-head">';
+  cols.forEach((c,i)=>{
+    const w = savedW[c[0]] || c[2];
+    const flex = c[3] ? "flex" : "";
+    const cls = c[4] ? "normal" : "";
+    head += `<div class="dt-cell ${flex} ${cls}" data-col="${c[0]}" style="${flex?'flex:1;min-width:'+w+'px':'width:'+w+'px'}">${c[1]}</div>`;
+    if(i<cols.length-1) head += `<div class="dt-resizer" data-resize="${c[0]}"></div>`;
+  });
+  head += '</div>';
+
+  // body
+  let body = '';
   Object.entries(g).forEach(([date,rows])=>{
     const total=rows.reduce((s,r)=>s+(parseFloat(r.price)||0),0);
-    const colCount = isOwner ? 10 : 9;
-    html+=`<tr><td colspan="${colCount}" style="padding:0"><div class="grp-hd"><span>${date}</span>${isOwner?`<span class="grp-total">฿${total.toLocaleString()}</span>`:""}</div></td></tr>`;
-    rows.forEach(o=>{html+=oRow(o,false,isOwner);});
+    body += `<div class="dt-grp"><span>${date}</span>${isOwner?`<span class="dt-grp-total">฿${total.toLocaleString()}</span>`:""}</div>`;
+    rows.forEach(o=>{ body += oRowDiv(o, cols, savedW, isOwner); });
   });
-  html+='</tbody></table>';
-  wrap.innerHTML=html;
-  enableColResize(wrap.querySelector("table"));
+
+  wrap.innerHTML = `<div class="dt-wrap"><div class="dt">${head}${body}</div></div>`;
+  enableDtResize(wrap, cols, savedW);
+}
+
+function oRowDiv(o, cols, savedW, isOwner) {
+  const badge = o.status==="กำลังผลิต"
+    ? `<span class="badge b-prod" style="cursor:pointer" onclick="toggleStatus('${o.rowId}','${o.status}')"><span class="sdot d-prod"></span>กำลังผลิต</span>`
+    : o.status==="จัดส่งสำเร็จ"
+    ? `<span class="badge b-done" style="cursor:pointer" onclick="toggleStatus('${o.rowId}','${o.status}')"><span class="sdot d-done"></span>สำเร็จ</span>`
+    : `<span class="badge b-other">${o.status||"–"}</span>`;
+  const thumb = o.imageUrl
+    ? `<img class="thumb" src="${o.imageUrl}" onclick="showLb('${o.imageUrl}')" loading="lazy">`
+    : '<div class="no-thumb">🖼️</div>';
+  const det = (o.detail||"").replace(/\n/g," ").substring(0,60)+((o.detail||"").length>60?"…":"");
+  const pdfBtn = o.pdfUrl
+    ? `<a href="${o.pdfUrl}" target="_blank" class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none" title="เปิด PDF">📄</a>`
+    : `<button class="btn btn-xs btn-ghost" onclick="printOrder('${o.rowId}')" title="พิมพ์">🖨️</button>`;
+  const priceVal = isOwner ? `<span style="font-weight:600;color:${parseFloat(o.price)<0?"var(--danger)":"var(--success)"}">฿${(parseFloat(o.price)||0).toLocaleString()}</span>` : "";
+
+  const valueMap = {
+    status:    badge,
+    customer:  o.customerLabel||o.customerId||"–",
+    thumb:     thumb,
+    detail:    `<span style="cursor:pointer" onclick="showDetail('${o.rowId}')">${det||"–"}</span>`,
+    tracking:  o.tracking||"–",
+    recipient: o.recipient||"–",
+    phone:     o.phone||"–",
+    address:   o.address||"–",
+    price:     priceVal,
+    action:    pdfBtn,
+  };
+
+  let html = '<div class="dt-row">';
+  cols.forEach((c,i)=>{
+    const w = savedW[c[0]] || c[2];
+    const flex = c[3] ? "flex" : "";
+    const styleW = c[3] ? `flex:1;min-width:${w}px` : `width:${w}px`;
+    html += `<div class="dt-cell ${flex}" style="${styleW}">${valueMap[c[0]]||""}</div>`;
+    if(i<cols.length-1) html += `<div class="dt-resizer"></div>`;
+  });
+  html += '</div>';
+  return html;
+}
+
+function enableDtResize(container, cols, widths) {
+  const resizers = container.querySelectorAll(".dt-head .dt-resizer");
+  resizers.forEach((rz, idx)=>{
+    const colKey = cols[idx][0];
+    let startX, startW, headCell, allRows, rafId;
+    rz.addEventListener("mousedown", e=>{
+      startX = e.pageX;
+      headCell = rz.previousElementSibling;
+      startW = headCell.offsetWidth;
+      allRows = container.querySelectorAll(".dt-row");
+      headCell.style.willChange = "width";
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+      let pendingX = startX;
+      const onMove = e=>{
+        pendingX = e.pageX;
+        if(rafId) return;
+        rafId = requestAnimationFrame(()=>{
+          const newW = Math.max(40, startW + pendingX - startX);
+          headCell.style.width = newW + "px";
+          if(headCell.classList.contains("flex")) headCell.style.minWidth = newW + "px";
+          // sync ทุก row ที่ column เดียวกัน
+          allRows.forEach(row=>{
+            const cell = row.children[idx*2]; // *2 เพราะมี resizer คั่น
+            if(cell){
+              cell.style.width = newW + "px";
+              if(cell.classList.contains("flex")) cell.style.minWidth = newW + "px";
+            }
+          });
+          rafId = null;
+        });
+      };
+      const onUp = ()=>{
+        if(rafId){cancelAnimationFrame(rafId);rafId=null;}
+        headCell.style.willChange = "auto";
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        widths[colKey] = headCell.offsetWidth;
+        saveOrderColWidths(widths);
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+      };
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+      e.preventDefault(); e.stopPropagation();
+    });
+  });
 }
 
 function renderProgress(data) {
@@ -1615,7 +1778,17 @@ async function loadCustomers(){
   customers=res.data; renderCust(customers); populateCustSel();
 }
 let cTimer;
-function searchCust(q){ clearTimeout(cTimer);cTimer=setTimeout(async()=>{const r=await api({action:"getCustomers",search:q});if(r&&r.success)renderCust(r.data);},300);}
+function searchCust(q){
+  q=(q||"").toLowerCase().trim();
+  if(!q){renderCust(customers);return;}
+  const filtered=customers.filter(c=>
+    (c.customerId||"").toLowerCase().includes(q)||
+    (c.name||"").toLowerCase().includes(q)||
+    (c.phone||"").toLowerCase().includes(q)||
+    (c.recipient||"").toLowerCase().includes(q)
+  );
+  renderCust(filtered);
+}
 function renderCust(data){
   const tb=document.getElementById("cust-body");
   const isOwner=SESSION?.user.role==="owner";

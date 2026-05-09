@@ -22,7 +22,9 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;overflow-x:hidden;}
-body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14px;}
+body{font-family:'Roboto','Tahoma',sans-serif;background:var(--bg);color:var(--text);font-size:14px;}
+button,input,select,textarea{font-family:'Roboto','Tahoma',sans-serif;}
+.page-title,.page-sub,.nav-btn,.btn,.modal-title,.stat-val,.toast{font-family:'Roboto','Tahoma',sans-serif;}
 
 /* ── LOGIN ── */
 .login-page{min-height:100vh;display:flex;align-items:center;justify-content:center;
@@ -187,7 +189,7 @@ tbody tr:hover{background:#fafbfc;}
   position:sticky;top:0;z-index:10;font-family:var(--mono);font-size:11px;
   color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.3px;
   box-shadow:0 1px 0 var(--border);}
-.dt-head .dt-cell{padding:6px 8px;white-space:nowrap;}
+.dt-head .dt-cell{padding:6px 8px;white-space:nowrap;border-right:1px solid var(--border);}
 .dt-head .dt-cell.normal{text-transform:none;font-weight:500;letter-spacing:0;}
 .dt-row{display:flex;border-bottom:1px solid #f1f5f9;align-items:center;}
 .dt-row:hover{background:#fafbfc;}
@@ -219,9 +221,10 @@ tbody tr:hover{background:#fafbfc;}
   border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;}
 .b-prod{background:#fef3c7;color:var(--warning);}
 .b-done{background:#dcfce7;color:var(--success);}
+.b-wait{background:#ede9fe;color:#7c3aed;}
 .b-other{background:#f1f5f9;color:var(--text2);}
 .sdot{width:5px;height:5px;border-radius:50%;display:inline-block;flex-shrink:0;}
-.d-prod{background:var(--warning);}.d-done{background:var(--success);}
+.d-prod{background:var(--warning);}.d-done{background:var(--success);}.d-wait{background:#7c3aed;}
 
 /* ── THUMB ── */
 .thumb{width:56px;height:34px;object-fit:cover;border-radius:2px;cursor:pointer;display:block;}
@@ -457,6 +460,7 @@ textarea.fc{resize:vertical;min-height:76px;}
             <select class="fsel" id="status-filter" onchange="filterOrdersLocal(document.getElementById('orders-search').value)">
               <option value="">ทุกสถานะ</option>
               <option value="กำลังผลิต">กำลังผลิต</option>
+              <option value="รอชำระเงิน">รอชำระเงิน</option>
               <option value="จัดส่งสำเร็จ">จัดส่งสำเร็จ</option>
             </select>
           </div>
@@ -481,13 +485,8 @@ textarea.fc{resize:vertical;min-height:76px;}
             <div class="srch"><span>🔍</span><input type="text" placeholder="ค้นหารหัส, ชื่อ, เบอร์..." oninput="searchCust(this.value)"></div>
             <button class="btn btn-primary btn-sm" onclick="openAddCust()" id="btn-add-cust">+ ลูกค้า</button>
           </div>
-          <div class="card"><div class="table-scroll">
-            <table><thead><tr>
-              <th>รหัส</th><th>ชื่อลูกค้า</th><th>เบอร์โทร</th><th>ชื่อผู้รับ</th>
-              <th>ที่อยู่</th><th>ยอดรวม</th><th>SNS</th><th></th>
-            </tr></thead>
-            <tbody id="cust-body"><tr><td colspan="8" class="loading-r"><span class="spin"></span>กำลังโหลด...</td></tr></tbody>
-            </table>
+          <div class="card"><div class="table-scroll" id="cust-wrap">
+            <div class="loading-r"><span class="spin"></span>กำลังโหลด...</div>
           </div></div>
         </div>
 
@@ -555,6 +554,7 @@ textarea.fc{resize:vertical;min-height:76px;}
       <div class="fg"><label class="lbl">สถานะ</label>
         <select class="fc" id="o-status">
           <option value="กำลังผลิต">⏳ กำลังผลิต</option>
+          <option value="รอชำระเงิน">💜 รอชำระเงิน</option>
           <option value="จัดส่งสำเร็จ">✅ จัดส่งสำเร็จ</option>
         </select></div>
       <div class="fg"><label class="lbl">Tracking</label><input class="fc" id="o-track" placeholder="เลข tracking"></div>
@@ -647,6 +647,23 @@ textarea.fc{resize:vertical;min-height:76px;}
   </div>
 </div></div>
 
+<!-- ══ MODAL: STATUS PICKER ══ -->
+<div class="overlay" id="m-status">
+<div class="modal" style="max-width:320px">
+  <div class="modal-hd"><span class="modal-title">เปลี่ยนสถานะ</span><button class="modal-x" onclick="closeM('m-status')">✕</button></div>
+  <div class="modal-body" style="padding:12px 16px;display:flex;flex-direction:column;gap:8px">
+    <button class="btn" style="justify-content:flex-start;gap:10px;background:#fef3c7;color:var(--warning);border:none;padding:12px 16px" onclick="applyStatus('กำลังผลิต')">
+      <span class="sdot d-prod"></span> กำลังผลิต
+    </button>
+    <button class="btn" style="justify-content:flex-start;gap:10px;background:#ede9fe;color:#7c3aed;border:none;padding:12px 16px" onclick="applyStatus('รอชำระเงิน')">
+      <span class="sdot d-wait"></span> รอชำระเงิน
+    </button>
+    <button class="btn" style="justify-content:flex-start;gap:10px;background:#dcfce7;color:var(--success);border:none;padding:12px 16px" onclick="applyStatus('จัดส่งสำเร็จ')">
+      <span class="sdot d-done"></span> จัดส่งสำเร็จ
+    </button>
+  </div>
+</div></div>
+
 <!-- LIGHTBOX -->
 <div class="lightbox" id="lightbox" onclick="this.classList.remove('open')">
   <button class="lb-x">✕</button>
@@ -658,7 +675,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.43.0";
+const APP_VERSION = "v1.44.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -1071,8 +1088,9 @@ async function loadOrders(forceSync=false) {
 
 function renderAfterLoad() {
   renderOrders(allOrders);
-  renderProgress(allOrders.filter(o=>o.status==="กำลังผลิต"));
-  document.getElementById("badge-pending").textContent = allOrders.filter(o=>o.status==="กำลังผลิต").length;
+  const inProgress = allOrders.filter(o=>o.status==="กำลังผลิต"||o.status==="รอชำระเงิน");
+  renderProgress(inProgress);
+  document.getElementById("badge-pending").textContent = inProgress.length;
 }
 
 // filter/search จาก allOrders ใน memory (ทันที)
@@ -1096,7 +1114,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 });
 function filterProgress(q) {
   const s=q.toLowerCase();
-  renderProgress(allOrders.filter(o=>o.status==="กำลังผลิต"&&((o.detail||"").toLowerCase().includes(s)||(o.customerId||"").toLowerCase().includes(s))));
+  const base=allOrders.filter(o=>o.status==="กำลังผลิต"||o.status==="รอชำระเงิน");
+  renderProgress(base.filter(o=>(o.detail||"").toLowerCase().includes(s)||(o.customerId||"").toLowerCase().includes(s)));
 }
 function groupDate(orders) {
   const g={};
@@ -1175,7 +1194,7 @@ const ORDERS_COLS = [
   ["customer",  "รหัสลูกค้า",    160, false],
   ["thumb",     "รูป",            70, false],
   ["detail",    "รายละเอียด",    280, false],
-  ["tracking",  "เลข tracking",  120, true ],
+  ["tracking",  "Tracking number", 120, true ],
   ["recipient", "ผู้รับ",         110, false],
   ["phone",     "เบอร์โทร",      110, false],
   ["address",   "ที่อยู่จัดส่ง", 200, false],
@@ -1229,9 +1248,11 @@ function renderOrders(data) {
 
 function oRowDiv(o, cols, savedW, isOwner) {
   const badge = o.status==="กำลังผลิต"
-    ? `<span class="badge b-prod" style="cursor:pointer" onclick="toggleStatus('${o.rowId}','${o.status}')"><span class="sdot d-prod"></span>กำลังผลิต</span>`
+    ? `<span class="badge b-prod" style="cursor:pointer" onclick="openStatusPicker('${o.rowId}','${o.status}')"><span class="sdot d-prod"></span>กำลังผลิต</span>`
     : o.status==="จัดส่งสำเร็จ"
-    ? `<span class="badge b-done" style="cursor:pointer" onclick="toggleStatus('${o.rowId}','${o.status}')"><span class="sdot d-done"></span>สำเร็จ</span>`
+    ? `<span class="badge b-done" style="cursor:pointer" onclick="openStatusPicker('${o.rowId}','${o.status}')"><span class="sdot d-done"></span>สำเร็จ</span>`
+    : o.status==="รอชำระเงิน"
+    ? `<span class="badge b-wait" style="cursor:pointer" onclick="openStatusPicker('${o.rowId}','${o.status}')"><span class="sdot d-wait"></span>รอชำระเงิน</span>`
     : `<span class="badge b-other">${o.status||"–"}</span>`;
   const thumb = o.imageUrl
     ? `<img class="thumb" src="${o.imageUrl}" onclick="showLb('${o.imageUrl}')" loading="lazy">`
@@ -1310,26 +1331,145 @@ function enableDtResize(container, cols, widths) {
   });
 }
 
+const PROGRESS_COLS = [
+  ["status",    "สถานะ",         100, false],
+  ["customer",  "รหัสลูกค้า",    160, false],
+  ["thumb",     "รูป",            70, false],
+  ["detail",    "รายละเอียด",    280, false],
+  ["recipient", "ผู้รับ",         110, false],
+  ["phone",     "เบอร์โทร",      110, false],
+  ["address",   "ที่อยู่จัดส่ง", 200, false],
+  ["action",    "",               46, false],
+];
+
+function getProgressColWidths() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("ken_dt_widths")||"{}");
+    return saved.progress || {};
+  } catch(e){ return {}; }
+}
+function saveProgressColWidths(widths) {
+  try {
+    const saved = JSON.parse(localStorage.getItem("ken_dt_widths")||"{}");
+    saved.progress = widths;
+    localStorage.setItem("ken_dt_widths", JSON.stringify(saved));
+  } catch(e){}
+}
+
 function renderProgress(data) {
   const wrap=document.getElementById("progress-wrap");
   if(!data.length){wrap.innerHTML='<div class="empty"><div class="empty-ico">⏳</div>ไม่มีงานค้างผลิต</div>';return;}
-  const isOwner=SESSION?.user.role==="owner";
   const g=groupDate(data);
-  let html='<table><thead><tr><th>สถานะ</th><th>รหัสลูกค้า</th><th>รูป</th><th>รายละเอียด</th><th>ผู้รับ</th><th>ที่อยู่</th>'+
-    (isOwner?'<th>ราคา</th>':'')+ '<th></th></tr></thead><tbody>';
-  Object.entries(g).forEach(([date,rows])=>{
-    html+=`<tr><td colspan="8"><div class="grp-hd"><span>${date}</span></div></td></tr>`;
-    rows.forEach(o=>{html+=oRow(o,true,isOwner);});
+  const savedW = getProgressColWidths();
+  const cols = PROGRESS_COLS;
+
+  let head = '<div class="dt-head">';
+  cols.forEach((c,i)=>{
+    const w = savedW[c[0]] || c[2];
+    const cls = c[3] ? "normal" : "";
+    head += `<div class="dt-cell ${cls}" data-col="${c[0]}" style="width:${w}px">${c[1]}</div>`;
+    if(i<cols.length-1) head += `<div class="dt-resizer" data-resize="${c[0]}"></div>`;
   });
-  html+='</tbody></table>';
-  wrap.innerHTML=html;
+  head += '</div>';
+
+  let body = '';
+  Object.entries(g).forEach(([date,rows])=>{
+    body += `<div class="dt-grp"><span>${date}</span></div>`;
+    rows.forEach(o=>{ body += oProgressRowDiv(o, cols, savedW); });
+  });
+
+  wrap.innerHTML = `<div class="dt-wrap"><div class="dt">${head}${body}</div></div>`;
+  enableProgressDtResize(wrap, cols, savedW);
+}
+
+function oProgressRowDiv(o, cols, savedW) {
+  const badge = o.status==="กำลังผลิต"
+    ? `<span class="badge b-prod" style="cursor:pointer" onclick="openStatusPicker('${o.rowId}','${o.status}')"><span class="sdot d-prod"></span>กำลังผลิต</span>`
+    : o.status==="จัดส่งสำเร็จ"
+    ? `<span class="badge b-done" style="cursor:pointer" onclick="openStatusPicker('${o.rowId}','${o.status}')"><span class="sdot d-done"></span>สำเร็จ</span>`
+    : o.status==="รอชำระเงิน"
+    ? `<span class="badge b-wait" style="cursor:pointer" onclick="openStatusPicker('${o.rowId}','${o.status}')"><span class="sdot d-wait"></span>รอชำระเงิน</span>`
+    : `<span class="badge b-other">${o.status||"–"}</span>`;
+  const thumb = o.imageUrl
+    ? `<img class="thumb" src="${o.imageUrl}" onclick="showLb('${o.imageUrl}')" loading="lazy">`
+    : '<div class="no-thumb">🖼️</div>';
+  const det = (o.detail||"").replace(/\n/g," ").substring(0,60)+((o.detail||"").length>60?"…":"");
+  const pdfBtn = o.pdfUrl
+    ? `<a href="${o.pdfUrl}" target="_blank" class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none" title="เปิด PDF">📄</a>`
+    : `<button class="btn btn-xs btn-ghost" onclick="printOrder('${o.rowId}')" title="พิมพ์">🖨️</button>`;
+
+  const valueMap = {
+    status:    badge,
+    customer:  o.customerLabel||o.customerId||"–",
+    thumb:     thumb,
+    detail:    `<span style="cursor:pointer" onclick="showDetail('${o.rowId}')">${det||"–"}</span>`,
+    recipient: o.recipient||"–",
+    phone:     o.phone||"–",
+    address:   o.address||"–",
+    action:    pdfBtn,
+  };
+
+  let html = '<div class="dt-row">';
+  cols.forEach((c,i)=>{
+    const w = savedW[c[0]] || c[2];
+    html += `<div class="dt-cell" style="width:${w}px">${valueMap[c[0]]||""}</div>`;
+    if(i<cols.length-1) html += `<div class="dt-resizer"></div>`;
+  });
+  html += '</div>';
+  return html;
+}
+
+function enableProgressDtResize(container, cols, widths) {
+  const resizers = container.querySelectorAll(".dt-head .dt-resizer");
+  resizers.forEach((rz, idx)=>{
+    const colKey = cols[idx][0];
+    let startX, startW, headCell, allRows, rafId;
+    rz.addEventListener("mousedown", e=>{
+      startX = e.pageX;
+      headCell = rz.previousElementSibling;
+      startW = headCell.offsetWidth;
+      allRows = container.querySelectorAll(".dt-row");
+      headCell.style.willChange = "width";
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+      let pendingX = startX;
+      const onMove = e=>{
+        pendingX = e.pageX;
+        if(rafId) return;
+        rafId = requestAnimationFrame(()=>{
+          const newW = Math.max(40, startW + pendingX - startX);
+          headCell.style.width = newW + "px";
+          allRows.forEach(row=>{
+            const cell = row.children[idx*2];
+            if(cell) cell.style.width = newW + "px";
+          });
+          rafId = null;
+        });
+      };
+      const onUp = ()=>{
+        if(rafId){cancelAnimationFrame(rafId);rafId=null;}
+        headCell.style.willChange = "auto";
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        widths[colKey] = headCell.offsetWidth;
+        saveProgressColWidths(widths);
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+      };
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+      e.preventDefault(); e.stopPropagation();
+    });
+  });
 }
 
 function oRow(o,compact,isOwner){
   const badge=o.status==="กำลังผลิต"
-    ?`<span class="badge b-prod" style="cursor:pointer" onclick="toggleStatus('${o.rowId}','${o.status}')" title="คลิกเพื่อเปลี่ยนเป็นจัดส่งสำเร็จ"><span class="sdot d-prod"></span>กำลังผลิต</span>`
+    ?`<span class="badge b-prod" style="cursor:pointer" onclick="openStatusPicker('${o.rowId}','${o.status}')" title="คลิกเพื่อเปลี่ยนสถานะ"><span class="sdot d-prod"></span>กำลังผลิต</span>`
     :o.status==="จัดส่งสำเร็จ"
-    ?`<span class="badge b-done" style="cursor:pointer" onclick="toggleStatus('${o.rowId}','${o.status}')" title="คลิกเพื่อเปลี่ยนเป็นกำลังผลิต"><span class="sdot d-done"></span>สำเร็จ</span>`
+    ?`<span class="badge b-done" style="cursor:pointer" onclick="openStatusPicker('${o.rowId}','${o.status}')" title="คลิกเพื่อเปลี่ยนสถานะ"><span class="sdot d-done"></span>สำเร็จ</span>`
+    :o.status==="รอชำระเงิน"
+    ?`<span class="badge b-wait" style="cursor:pointer" onclick="openStatusPicker('${o.rowId}','${o.status}')" title="คลิกเพื่อเปลี่ยนสถานะ"><span class="sdot d-wait"></span>รอชำระเงิน</span>`
     :`<span class="badge b-other">${o.status||"–"}</span>`;
   const thumb=o.imageUrl?`<img class="thumb" src="${o.imageUrl}" onclick="showLb('${o.imageUrl}')" loading="lazy">`
     :'<div class="no-thumb">🖼️</div>';
@@ -1362,6 +1502,16 @@ function oRow(o,compact,isOwner){
 async function changeStatus(rowId,status) {
   const res=await api({action:"updateOrderStatus",rowId,status});
   if(res&&res.success){toast("อัพเดทสถานะ ✓");loadOrders();}
+}
+let _statusPickerRowId = "";
+function openStatusPicker(rowId, currentStatus) {
+  _statusPickerRowId = rowId;
+  openM("m-status");
+}
+async function applyStatus(newStatus) {
+  closeM("m-status");
+  const res=await api({action:"updateOrderStatus",rowId:_statusPickerRowId,status:newStatus});
+  if(res&&res.success){toast("สถานะ: "+newStatus+" ✓");loadOrders();}
 }
 async function toggleStatus(rowId,currentStatus) {
   const newStatus = currentStatus==="กำลังผลิต" ? "จัดส่งสำเร็จ" : "กำลังผลิต";
@@ -1564,7 +1714,7 @@ hr{border:none;border-top:1.5px solid #333;margin:10px 0;}
 .sec{font-weight:700;font-size:15px;color:#b91c1c;margin-bottom:8px;}
 .detail{white-space:pre-wrap;line-height:1.9;font-size:14px;padding-left:8px;}
 .img-box{margin-top:16px;text-align:center;}
-.img-box img{max-width:100%;max-height:260px;object-fit:contain;border:1px solid #ddd;border-radius:4px;padding:6px;}
+.img-box img{max-width:100%;max-height:420px;object-fit:contain;}
 </style></head><body>
 <div class="hdr">
   <div class="hdr-left">
@@ -1580,7 +1730,6 @@ hr{border:none;border-top:1.5px solid #333;margin:10px 0;}
   <div class="row"><span class="lbl">เบอร์โทร</span><span class="val">${o.phone||c.phone||"–"}</span></div>
   <div class="row"><span class="lbl">ผู้รับ</span><span class="val">${o.recipient||"–"}</span></div>
   <div class="row full"><span class="lbl">ที่อยู่จัดส่ง</span><span class="val">${o.address||"–"}</span></div>
-  ${isOwner?`<div class="row"><span class="lbl">ราคารวม</span><span class="val price">฿${(parseFloat(o.price)||0).toLocaleString()}</span></div>`:""}
 </div>
 <div class="cbs">
   <div class="cb"><div class="box"></div>รับหน้าร้าน</div>
@@ -1781,29 +1930,120 @@ function searchCust(q){
   );
   renderCust(filtered);
 }
+const CUST_COLS_BASE = [
+  ["custId",    "รหัส",          80,  false],
+  ["name",      "ชื่อลูกค้า",   160, false],
+  ["phone",     "เบอร์โทร",     110, false],
+  ["recipient", "ชื่อผู้รับ",   130, false],
+  ["address",   "ที่อยู่",       200, false],
+  ["sns",       "SNS",            60, false],
+  ["action",    "",               50, false],
+];
+
+function getCustColWidths() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("ken_dt_widths")||"{}");
+    return saved.cust || {};
+  } catch(e){ return {}; }
+}
+function saveCustColWidths(widths) {
+  try {
+    const saved = JSON.parse(localStorage.getItem("ken_dt_widths")||"{}");
+    saved.cust = widths;
+    localStorage.setItem("ken_dt_widths", JSON.stringify(saved));
+  } catch(e){}
+}
+
 function renderCust(data){
-  const tb=document.getElementById("cust-body");
+  const wrap=document.getElementById("cust-wrap");
   const isOwner=SESSION?.user.role==="owner";
-  if(!data.length){tb.innerHTML='<tr><td colspan="8"><div class="empty"><div class="empty-ico">👤</div>ไม่มีข้อมูล</div></td></tr>';return;}
+  if(!data.length){wrap.innerHTML='<div class="empty"><div class="empty-ico">👤</div>ไม่มีข้อมูล</div>';return;}
   const sorted=[...data].sort((a,b)=>{
     const na=parseInt((a.customerId||"").replace(/\D/g,""))||0;
     const nb=parseInt((b.customerId||"").replace(/\D/g,""))||0;
     return na-nb;
   });
-  tb.innerHTML="";
+  const savedW = getCustColWidths();
+  const cols = [...CUST_COLS_BASE];
+  if(isOwner) cols.splice(5, 0, ["total","ยอดรวม",100,false]);
+
+  let head = '<div class="dt-head">';
+  cols.forEach((c,i)=>{
+    const w = savedW[c[0]] || c[2];
+    const cls = c[3] ? "normal" : "";
+    head += `<div class="dt-cell ${cls}" data-col="${c[0]}" style="width:${w}px">${c[1]}</div>`;
+    if(i<cols.length-1) head += `<div class="dt-resizer" data-resize="${c[0]}"></div>`;
+  });
+  head += '</div>';
+
+  let body = '';
   sorted.forEach(c=>{
-    // fix: o.customerId เก็บ Row ID ของ Sheet ลูกค้า → ต้อง match กับ c.rowId
     const orderTotal=allOrders.filter(o=>o.customerId===c.rowId).reduce((s,o)=>s+(parseFloat(o.price)||0),0);
-    tb.innerHTML+=`<tr>
-      <td style="font-size:12px">${c.customerId}</td>
-      <td style="font-size:12px;cursor:pointer;color:var(--navy2)" onclick="showCustProfile('${c.rowId||c.customerId}')">${c.name||"–"}</td>
-      <td style="font-size:12px">${c.phone||"–"}</td>
-      <td style="font-size:12px">${c.recipient||"–"}</td>
-      <td style="font-size:12px;color:var(--text2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.address||"–"}</td>
-      ${isOwner?`<td style="font-weight:600;color:var(--success)">฿${orderTotal.toLocaleString()}</td>`:"<td>–</td>"}
-      <td>${c.sns?`<a href="${c.sns}" target="_blank" class="btn btn-xs btn-ghost">💬</a>`:"–"}</td>
-      <td><button class="btn btn-xs" style="background:#dbeafe;color:var(--navy2);border:none" onclick='editCust(${JSON.stringify(c)})'>✏️</button></td>
-    </tr>`;
+    const valueMap = {
+      custId:    c.customerId||"–",
+      name:      `<span style="cursor:pointer;color:var(--navy2)" onclick="showCustProfile('${c.rowId||c.customerId}')">${c.name||"–"}</span>`,
+      phone:     c.phone||"–",
+      recipient: c.recipient||"–",
+      address:   c.address||"–",
+      total:     isOwner?`<span style="font-weight:600;color:var(--success)">฿${orderTotal.toLocaleString()}</span>`:"–",
+      sns:       c.sns?`<a href="${c.sns}" target="_blank" class="btn btn-xs btn-ghost">💬</a>`:"–",
+      action:    `<button class="btn btn-xs" style="background:#dbeafe;color:var(--navy2);border:none" onclick='editCust(${JSON.stringify(c).replace(/'/g,"&#39;")})'>✏️</button>`,
+    };
+    let row = '<div class="dt-row">';
+    cols.forEach((col,i)=>{
+      const w = savedW[col[0]] || col[2];
+      row += `<div class="dt-cell" style="width:${w}px">${valueMap[col[0]]||""}</div>`;
+      if(i<cols.length-1) row += `<div class="dt-resizer"></div>`;
+    });
+    row += '</div>';
+    body += row;
+  });
+
+  wrap.innerHTML = `<div class="dt-wrap"><div class="dt">${head}${body}</div></div>`;
+  enableCustDtResize(wrap, cols, savedW);
+}
+
+function enableCustDtResize(container, cols, widths) {
+  const resizers = container.querySelectorAll(".dt-head .dt-resizer");
+  resizers.forEach((rz, idx)=>{
+    const colKey = cols[idx][0];
+    let startX, startW, headCell, allRows, rafId;
+    rz.addEventListener("mousedown", e=>{
+      startX = e.pageX;
+      headCell = rz.previousElementSibling;
+      startW = headCell.offsetWidth;
+      allRows = container.querySelectorAll(".dt-row");
+      headCell.style.willChange = "width";
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+      let pendingX = startX;
+      const onMove = e=>{
+        pendingX = e.pageX;
+        if(rafId) return;
+        rafId = requestAnimationFrame(()=>{
+          const newW = Math.max(40, startW + pendingX - startX);
+          headCell.style.width = newW + "px";
+          allRows.forEach(row=>{
+            const cell = row.children[idx*2];
+            if(cell) cell.style.width = newW + "px";
+          });
+          rafId = null;
+        });
+      };
+      const onUp = ()=>{
+        if(rafId){cancelAnimationFrame(rafId);rafId=null;}
+        headCell.style.willChange = "auto";
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        widths[colKey] = headCell.offsetWidth;
+        saveCustColWidths(widths);
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+      };
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+      e.preventDefault(); e.stopPropagation();
+    });
   });
 }
 function openAddCust(){
@@ -1959,6 +2199,8 @@ function toast(msg,type="ok"){
 
 // expose new functions
 window.toggleStatus = toggleStatus;
+window.openStatusPicker = openStatusPicker;
+window.applyStatus = applyStatus;
 window.filterCustSuggest = filterCustSuggest;
 window.selectCust = selectCust;
 window.hideSuggest = hideSuggest;

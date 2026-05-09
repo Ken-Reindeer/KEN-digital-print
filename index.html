@@ -580,10 +580,10 @@ textarea.fc{resize:vertical;min-height:76px;}
 <!-- ══ MODAL: CUSTOMER ══ -->
 <div class="overlay" id="m-cust">
 <div class="modal">
-  <div class="modal-hd"><span class="modal-title" id="cust-mtitle">เพิ่มลูกค้าใหม่</span><button class="modal-x" onclick="closeM('m-cust')">✕</button></div>
+  <div class="modal-hd"><span class="modal-title" id="cust-mtitle">เพิ่มลูกค้าใหม่</span><button class="modal-x" onclick="closeM('m-cust');const e=document.getElementById('cid-dup-err');if(e)e.remove();document.getElementById('c-id').style.borderColor='';document.getElementById('c-id').style.background=''">✕</button></div>
   <div class="modal-body">
     <div class="fgrid">
-      <div class="fg"><label class="lbl">รหัสลูกค้า *</label><input class="fc" id="c-id" placeholder="000xxx"></div>
+      <div class="fg"><label class="lbl">รหัสลูกค้า *</label><input class="fc" id="c-id" placeholder="000xxx" oninput="this.style.borderColor='';this.style.background='';const e=document.getElementById('cid-dup-err');if(e)e.remove()"></div>
       <div class="fg"><label class="lbl">ชื่อลูกค้า *</label><input class="fc" id="c-name"></div>
       <div class="fg"><label class="lbl">เบอร์โทร</label><input class="fc" id="c-phone" type="tel"></div>
       <div class="fg"><label class="lbl">ชื่อผู้รับ</label><input class="fc" id="c-recip"></div>
@@ -675,7 +675,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.44.0";
+const APP_VERSION = "v1.45.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -1059,7 +1059,8 @@ async function syncOrders(showLoading=true) {
         detail:fv(row,"รายละเอียด"),price:fv(row,"ราคารวม"),recipient:fv(row,"ชื่อผู้รับ"),
         address:fv(row,"ที่อยู่จัดส่ง"),phone:fv(row,"เบอร์โทรศัพท์"),link:fv(row,"ลิ้งค์ลูกค้า"),
         customerId:cid,customerLabel:custMap[cid]||cid,
-        tracking:fv(row,"Tracking number"),imageUrl:fv(row,"Image URL"),pdfUrl:fv(row,"PDF URL")});
+        tracking:fv(row,"Tracking number"),imageUrl:fv(row,"Image URL"),pdfUrl:fv(row,"PDF URL"),
+        createdBy:fv(row,"บันทึกโดย")});
     }
     allOrders=data; saveCache(allOrders); renderAfterLoad();
   } catch(e) {
@@ -1190,14 +1191,15 @@ function enableColResize(table) {
 
 // column definition: [key, label, width, normal-case]
 const ORDERS_COLS = [
-  ["status",    "สถานะ",         100, false],
-  ["customer",  "รหัสลูกค้า",    160, false],
-  ["thumb",     "รูป",            70, false],
-  ["detail",    "รายละเอียด",    280, false],
-  ["tracking",  "Tracking number", 120, true ],
-  ["recipient", "ผู้รับ",         110, false],
-  ["phone",     "เบอร์โทร",      110, false],
-  ["address",   "ที่อยู่จัดส่ง", 200, false],
+  ["status",     "สถานะ",         100, false],
+  ["customer",   "รหัสลูกค้า",    160, false],
+  ["thumb",      "รูป",            70, false],
+  ["detail",     "รายละเอียด",    280, false],
+  ["tracking",   "Tracking number",120, true ],
+  ["recipient",  "ผู้รับ",         110, false],
+  ["phone",      "เบอร์โทร",      110, false],
+  ["address",    "ที่อยู่จัดส่ง", 200, false],
+  ["createdBy",  "บันทึกโดย",      100, false],
 ];
 
 function getOrderColWidths() {
@@ -1257,7 +1259,7 @@ function oRowDiv(o, cols, savedW, isOwner) {
   const thumb = o.imageUrl
     ? `<img class="thumb" src="${o.imageUrl}" onclick="showLb('${o.imageUrl}')" loading="lazy">`
     : '<div class="no-thumb">🖼️</div>';
-  const det = (o.detail||"").replace(/\n/g," ").substring(0,60)+((o.detail||"").length>60?"…":"");
+  const det = (o.detail||"").replace(/\n/g," ");
   const pdfBtn = o.pdfUrl
     ? `<a href="${o.pdfUrl}" target="_blank" class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none" title="เปิด PDF">📄</a>`
     : `<button class="btn btn-xs btn-ghost" onclick="printOrder('${o.rowId}')" title="พิมพ์">🖨️</button>`;
@@ -1267,12 +1269,13 @@ function oRowDiv(o, cols, savedW, isOwner) {
     status:    badge,
     customer:  o.customerLabel||o.customerId||"–",
     thumb:     thumb,
-    detail:    `<span style="cursor:pointer" onclick="showDetail('${o.rowId}')">${det||"–"}</span>`,
+    detail:    `<span style="cursor:pointer;display:block;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onclick="showDetail('${o.rowId}')">${det||"–"}</span>`,
     tracking:  o.tracking||"–",
     recipient: o.recipient||"–",
     phone:     o.phone||"–",
     address:   o.address||"–",
     price:     priceVal,
+    createdBy: o.createdBy ? `<span style="color:var(--text2)">${o.createdBy}</span>` : `<span style="color:var(--text3)">–</span>`,
     action:    pdfBtn,
   };
 
@@ -1393,7 +1396,7 @@ function oProgressRowDiv(o, cols, savedW) {
   const thumb = o.imageUrl
     ? `<img class="thumb" src="${o.imageUrl}" onclick="showLb('${o.imageUrl}')" loading="lazy">`
     : '<div class="no-thumb">🖼️</div>';
-  const det = (o.detail||"").replace(/\n/g," ").substring(0,60)+((o.detail||"").length>60?"…":"");
+  const det = (o.detail||"").replace(/\n/g," ");
   const pdfBtn = o.pdfUrl
     ? `<a href="${o.pdfUrl}" target="_blank" class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none" title="เปิด PDF">📄</a>`
     : `<button class="btn btn-xs btn-ghost" onclick="printOrder('${o.rowId}')" title="พิมพ์">🖨️</button>`;
@@ -1402,7 +1405,7 @@ function oProgressRowDiv(o, cols, savedW) {
     status:    badge,
     customer:  o.customerLabel||o.customerId||"–",
     thumb:     thumb,
-    detail:    `<span style="cursor:pointer" onclick="showDetail('${o.rowId}')">${det||"–"}</span>`,
+    detail:    `<span style="cursor:pointer;display:block;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onclick="showDetail('${o.rowId}')">${det||"–"}</span>`,
     recipient: o.recipient||"–",
     phone:     o.phone||"–",
     address:   o.address||"–",
@@ -1730,6 +1733,7 @@ hr{border:none;border-top:1.5px solid #333;margin:10px 0;}
   <div class="row"><span class="lbl">เบอร์โทร</span><span class="val">${o.phone||c.phone||"–"}</span></div>
   <div class="row"><span class="lbl">ผู้รับ</span><span class="val">${o.recipient||"–"}</span></div>
   <div class="row full"><span class="lbl">ที่อยู่จัดส่ง</span><span class="val">${o.address||"–"}</span></div>
+  <div class="row"><span class="lbl">บันทึกโดย</span><span class="val" style="color:#555">${o.createdBy||"–"}</span></div>
 </div>
 <div class="cbs">
   <div class="cb"><div class="box"></div>รับหน้าร้าน</div>
@@ -1890,6 +1894,7 @@ async function submitOrder(){
     recipient:document.getElementById("o-recip").value,address:document.getElementById("o-addr").value,
     phone:document.getElementById("o-phone").value,tracking:document.getElementById("o-track").value,
     link:document.getElementById("o-link").value,status:document.getElementById("o-status").value,
+    createdBy:SESSION?.user?.fullname||SESSION?.user?.username||"",
     imageUrl:"",pdfUrl:""});
   if(!or||!or.success)return toast("บันทึกล้มเหลว","err");
   toast("บันทึกสำเร็จ ✓");
@@ -2051,6 +2056,18 @@ function openAddCust(){
   document.getElementById("c-mode").value="add";
   ["c-id","c-name","c-phone","c-recip","c-addr","c-tax","c-sns"].forEach(id=>document.getElementById(id).value="");
   document.getElementById("c-id").readOnly=false;
+  document.getElementById("c-id").style.borderColor="";
+  document.getElementById("c-id").style.background="";
+  const errEl=document.getElementById("cid-dup-err");if(errEl)errEl.remove();
+  // หาเลขรหัสล่าสุดแล้วแนะนำเลขถัดไป
+  if(customers.length){
+    const nums=customers.map(c=>parseInt((c.customerId||"").replace(/\D/g,""))||0);
+    const maxNum=Math.max(...nums);
+    const nextId=String(maxNum+1).padStart(6,"0");
+    document.getElementById("c-id").placeholder=`แนะนำ: ${nextId}`;
+  } else {
+    document.getElementById("c-id").placeholder="000001";
+  }
   openM("m-cust");
 }
 function editCust(c){
@@ -2067,6 +2084,36 @@ async function saveCust(){
   const cid=document.getElementById("c-id").value.trim();
   const name=document.getElementById("c-name").value.trim();
   if(!cid||!name)return toast("กรุณากรอกรหัสและชื่อ","err");
+
+  // เช็ครหัสซ้ำเฉพาะตอน add
+  if(mode==="add"){
+    // sync ข้อมูลล่าสุดจาก server ก่อนเช็ค
+    const freshRes = await api({action:"getCustomers"});
+    if(freshRes&&freshRes.success) customers = freshRes.data;
+    const dup = customers.find(c=>(c.customerId||"").trim()===cid);
+    if(dup){
+      const inp = document.getElementById("c-id");
+      inp.style.borderColor = "var(--danger)";
+      inp.style.background = "#fff5f5";
+      // แสดง error ใต้ช่อง
+      let errEl = document.getElementById("cid-dup-err");
+      if(!errEl){
+        errEl = document.createElement("div");
+        errEl.id = "cid-dup-err";
+        errEl.style.cssText = "color:var(--danger);font-size:11px;margin-top:4px;font-family:var(--mono)";
+        inp.parentNode.appendChild(errEl);
+      }
+      errEl.textContent = `❌ รหัส ${cid} มีในระบบแล้ว (${dup.name})`;
+      inp.focus();
+      return;
+    }
+  }
+  // ล้าง error ถ้าผ่าน
+  const inp = document.getElementById("c-id");
+  inp.style.borderColor = ""; inp.style.background = "";
+  const errEl = document.getElementById("cid-dup-err");
+  if(errEl) errEl.remove();
+
   const res=await api({action:mode==="add"?"addCustomer":"updateCustomer",customerId:cid,name,
     phone:document.getElementById("c-phone").value,recipient:document.getElementById("c-recip").value,
     address:document.getElementById("c-addr").value,taxInfo:document.getElementById("c-tax").value,

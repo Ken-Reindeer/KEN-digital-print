@@ -347,7 +347,10 @@ textarea.fc{resize:vertical;min-height:76px;}
 }
 
 /* ══ DYCUT CSS ══ */
-#tab-dycut *, #tab-dycut *::before, #tab-dycut *::after{margin:0;padding:0;box-sizing:border-box;}
+
+#tab-dycut { padding: 0 !important; }
+#tab-dycut.active { display: flex !important; flex-direction: column; }
+#tab-dycut .dc-app { display: flex; flex-direction: column; flex: 1; min-height: 0; height: 100%; }
 #tab-dycut html, #tab-dycut /* ── TOPBAR ── */
 .dc-topbar{background:var(--navy);border-bottom:1px solid rgba(255,255,255,.1);box-shadow:0 2px 8px rgba(13,36,97,.25);flex-shrink:0;z-index:50;}
 #tab-dycut .dc-tb-inner{display:flex;align-items:center;padding:0 16px;height:50px;gap:10px;overflow:hidden;min-width:0;}
@@ -640,8 +643,6 @@ textarea.fc{resize:vertical;min-height:76px;}
 
         <div class="tab-panel" id="tab-dycut">
           <div class="dc-app">
-
-
 <!-- TOPBAR -->
 <div class="dc-topbar">
   <div class="dc-tb-inner">
@@ -674,7 +675,7 @@ textarea.fc{resize:vertical;min-height:76px;}
       <h3>✏ แก้ไข Preset วัสดุ</h3>
       <button class="dc-modal-x" onclick="dc_closePresetModal()">✕</button>
     </div>
-    <div class="dc-modal-body">
+    <div class="modal-body">
       <div class="dc-preset-grid" id="dc-pe-grid"></div>
       <div class="dc-pe-form" id="dc-pe-form">
         <label>ชื่อ Preset</label>
@@ -761,420 +762,6 @@ textarea.fc{resize:vertical;min-height:76px;}
     </div>
   </div>
 </div>
-
-<script>
-// ── dc_UNIT ──────────────────────────────────────────
-let dc_UNIT = 'cm';
-const dc_TO_CM   = {cm:1, mm:0.1, in:2.54};
-const dc_FROM_CM = {cm:1, mm:10,  in:1/2.54};
-const dc_STEP    = {cm:'0.1', mm:'1', in:'0.001'};
-const dc_PREC    = {cm:2, mm:1, in:3};
-function dc_toCm(v)  { return v * dc_TO_CM[dc_UNIT]; }
-function dc_fromCm(v){ return +(v * dc_FROM_CM[dc_UNIT]).toFixed(dc_PREC[dc_UNIT]); }
-function u()      { return dc_UNIT; }
-
-function dc_changeUnit(nu){
-  const cwCm  = dc_toCm(parseFloat(document.getElementById('dc-cw').value)||0);
-  const chCm  = dc_toCm(parseFloat(document.getElementById('dc-ch').value)||0);
-  const gapCm = dc_toCm(parseFloat(document.getElementById('dc-gap').value)||0);
-  dc_UNIT = nu;
-  document.getElementById('dc-unit').value = nu;
-  document.getElementById('dc-gunit').textContent = nu;
-  const s = dc_STEP[nu];
-  document.getElementById('dc-cw').step  = s; document.getElementById('dc-cw').value  = dc_fromCm(cwCm);
-  document.getElementById('dc-ch').step  = s; document.getElementById('dc-ch').value  = dc_fromCm(chCm);
-  document.getElementById('dc-gap').step = s; document.getElementById('dc-gap').value = dc_fromCm(gapCm);
-  // update modal inputs if open
-  document.getElementById('dc-pe-w').step = s;
-  document.getElementById('dc-pe-h').step = s;
-  if(dc_editingIdx >= 0){
-    document.getElementById('dc-pe-w').value = dc_fromCm(dc_PRESETS[dc_editingIdx].w);
-    document.getElementById('dc-pe-h').value = dc_fromCm(dc_PRESETS[dc_editingIdx].h);
-  }
-  dc_renderMatProfiles();
-  dc_rerender();
-}
-
-// ── dc_PRESETS ───────────────────────────────────────
-const dc_DEFAULT_PRESETS = [
-  { name:"STK 13x19''",  w:30.8, h:42.8 },
-  { name:"Paper 13x19''",w:31.8, h:46.0 },
-  { name:"PVC 127 cm",   w:124,  h:80.0 },
-  { name:"A3",           w:29.7, h:42.0 },
-  { name:"A4",           w:21.0, h:29.7 },
-  { name:"A5",           w:14.8, h:21.0 },
-];
-
-// load from localStorage or use defaults (all in cm)
-let dc_PRESETS = JSON.parse(localStorage.getItem('kdpcut_presets') || 'null') || dc_DEFAULT_PRESETS.map(p=>({...p}));
-let dc_activeMat = 0;
-let dc_matW_cm = dc_PRESETS[0].w, dc_matH_cm = dc_PRESETS[0].h;
-let dc_editingIdx = 0;
-
-function dc_savePresetsToStorage(){
-  localStorage.setItem('kdpcut_presets', JSON.stringify(dc_PRESETS));
-}
-
-function dc_renderMatProfiles(){
-  document.getElementById('dc-mat-profiles').innerHTML = dc_PRESETS.map((p,i)=>`
-    <button class="mp-btn${i===dc_activeMat?' active':''}" onclick="dc_selectPreset(${i})">
-      <div class="dc-mpname">${dc_esc(p.name)}</div>
-      <div class="dc-mpsize">${dc_fromCm(p.w)}×${dc_fromCm(p.h)}</div>
-    </button>`).join('');
-}
-
-function dc_selectPreset(idx){
-  dc_activeMat = idx;
-  dc_matW_cm = dc_PRESETS[idx].w;
-  dc_matH_cm = dc_PRESETS[idx].h;
-  dc_renderMatProfiles();
-  dc_rerender();
-}
-
-// ── PRESET EDIT MODAL ────────────────────────────
-function dc_openPresetModal(){
-  dc_editingIdx = dc_activeMat; // open on currently active
-  dc_renderPeGrid();
-  dc_loadPeForm(dc_editingIdx);
-  document.getElementById('dc-preset-overlay').classList.add('open');
-}
-function dc_closePresetModal(){
-  document.getElementById('dc-preset-overlay').classList.remove('open');
-}
-function dc_renderPeGrid(){
-  document.getElementById('dc-pe-grid').innerHTML = dc_PRESETS.map((p,i)=>`
-    <button class="pe-btn${i===dc_editingIdx?' active':''}" onclick="dc_pickPePreset(${i})">
-      <div class="dc-pen">${dc_esc(p.name)}</div>
-      <div class="dc-pes">${dc_fromCm(p.w)}×${dc_fromCm(p.h)} ${u()}</div>
-    </button>`).join('');
-}
-function dc_pickPePreset(idx){
-  dc_editingIdx = idx;
-  dc_renderPeGrid();
-  dc_loadPeForm(idx);
-}
-function dc_loadPeForm(idx){
-  const p = dc_PRESETS[idx];
-  document.getElementById('dc-pe-name').value = p.name;
-  document.getElementById('dc-pe-w').step = dc_STEP[dc_UNIT];
-  document.getElementById('dc-pe-h').step = dc_STEP[dc_UNIT];
-  document.getElementById('dc-pe-w').value = dc_fromCm(p.w);
-  document.getElementById('dc-pe-h').value = dc_fromCm(p.h);
-}
-function dc_savePreset(){
-  if(dc_editingIdx < 0) return;
-  const name = document.getElementById('dc-pe-name').value.trim();
-  const wv   = parseFloat(document.getElementById('dc-pe-w').value)||0;
-  const hv   = parseFloat(document.getElementById('dc-pe-h').value)||0;
-  if(!name || wv<=0 || hv<=0){ alert('กรุณากรอกข้อมูลให้ครบ'); return; }
-  dc_PRESETS[dc_editingIdx] = { name, w: dc_toCm(wv), h: dc_toCm(hv) };
-  dc_savePresetsToStorage();
-  dc_renderPeGrid();
-  dc_renderMatProfiles();
-  // if editing the active preset, update material
-  if(dc_editingIdx === dc_activeMat){
-    dc_matW_cm = dc_PRESETS[dc_editingIdx].w;
-    dc_matH_cm = dc_PRESETS[dc_editingIdx].h;
-    dc_rerender();
-  }
-  // feedback
-  const btn = document.querySelector('.pe-save');
-  btn.textContent = '✅ บันทึกแล้ว!';
-  setTimeout(()=>{ btn.textContent = '💾 บันทึก Preset นี้'; }, 1200);
-}
-
-// ── LAYOUT CALC ───────────────────────────────────
-let dc_selLayout = 0;
-let dc_projects  = JSON.parse(localStorage.getItem('kdpcut_v1')||'[]');
-let dc_activePid = null;
-
-function dc_fitCount(sw,sh,iw,ih,gap){
-  if(iw<=0||ih<=0||sw<=0||sh<=0) return {cols:0,rows:0,n:0};
-  const cols=Math.max(0,Math.floor((sw+gap)/(iw+gap)));
-  const rows=Math.max(0,Math.floor((sh+gap)/(ih+gap)));
-  return {cols,rows,n:cols*rows};
-}
-
-function dc_calcLayouts(sw,sh,cw,ch,gap){
-  // L1: portrait full grid
-  const l1=dc_fitCount(sw,sh,cw,ch,gap);
-  // L2: landscape full grid
-  const l2=dc_fitCount(sw,sh,ch,cw,gap);
-
-  // winner orientation for L3/L4
-  const winPortrait = l1.n >= l2.n; // true=portrait wins, use portrait as main
-
-  // ── L3: main grid (winner) + bottom horizontal strip (opposite orientation) ──
-  // Main orientation dimensions
-  const mw3=winPortrait?cw:ch, mh3=winPortrait?ch:cw;
-  // Opposite orientation dimensions
-  const bw3=winPortrait?ch:cw, bh3=winPortrait?cw:ch;
-  let l3={n:0,mainCols:0,mainRows:0,botCols:0,botRows:0,botY:0,win:winPortrait};
-  {
-    const fullRows=Math.max(0,Math.floor((sh+gap)/(mh3+gap)));
-    for(let mr=fullRows;mr>=1;mr--){
-      const usedH=mr*(mh3+gap)-gap;
-      const remH=sh-usedH-gap;
-      if(remH<bh3) continue; // not enough for even 1 row of opposite
-      const mc=Math.max(0,Math.floor((sw+gap)/(mw3+gap)));
-      const bc=Math.max(0,Math.floor((sw+gap)/(bw3+gap)));
-      const br=Math.max(0,Math.floor((remH+gap)/(bh3+gap)));
-      if(br<1) continue;
-      const total=mc*mr+bc*br;
-      l3={n:total,mainCols:mc,mainRows:mr,botCols:bc,botRows:br,botY:usedH+gap,win:winPortrait};
-      break; // take the first (largest main) that fits
-    }
-    // fallback: no bottom strip possible, just main
-    if(l3.n===0){
-      const mc=Math.max(0,Math.floor((sw+gap)/(mw3+gap)));
-      const mr=Math.max(0,Math.floor((sh+gap)/(mh3+gap)));
-      l3={n:mc*mr,mainCols:mc,mainRows:mr,botCols:0,botRows:0,botY:0,win:winPortrait};
-    }
-  }
-
-  // ── L4: main grid (winner) + right vertical strip (opposite orientation) ──
-  const mw4=winPortrait?cw:ch, mh4=winPortrait?ch:cw;
-  const rw4=winPortrait?ch:cw, rh4=winPortrait?cw:ch;
-  let l4={n:0,mainCols:0,mainRows:0,rightCols:0,rightRows:0,rightX:0,win:winPortrait};
-  {
-    const fullCols=Math.max(0,Math.floor((sw+gap)/(mw4+gap)));
-    for(let mc=fullCols;mc>=1;mc--){
-      const usedW=mc*(mw4+gap)-gap;
-      const remW=sw-usedW-gap;
-      if(remW<rw4) continue;
-      const mr=Math.max(0,Math.floor((sh+gap)/(mh4+gap)));
-      const rc=Math.max(0,Math.floor((remW+gap)/(rw4+gap)));
-      const rr=Math.max(0,Math.floor((sh+gap)/(rh4+gap)));
-      if(rc<1||rr<1) continue;
-      const total=mc*mr+rc*rr;
-      l4={n:total,mainCols:mc,mainRows:mr,rightCols:rc,rightRows:rr,rightX:usedW+gap,win:winPortrait};
-      break;
-    }
-    if(l4.n===0){
-      const mc=Math.max(0,Math.floor((sw+gap)/(mw4+gap)));
-      const mr=Math.max(0,Math.floor((sh+gap)/(mh4+gap)));
-      l4={n:mc*mr,mainCols:mc,mainRows:mr,rightCols:0,rightRows:0,rightX:0,win:winPortrait};
-    }
-  }
-
-  return [
-    {...l1, id:0, label:'Layout 1', desc:'แนวตั้ง', mixed:false, rotated:false},
-    {...l2, id:1, label:'Layout 2', desc:'แนวนอน', mixed:false, rotated:true},
-    {...l3, id:2, label:'Layout 3', desc:'ล่าง', mixed:true, kind:'bottom'},
-    {...l4, id:3, label:'Layout 4', desc:'ขวา',  mixed:true, kind:'right'},
-  ];
-}
-
-function dc_buildRects(sw,sh,cw,ch,gap,idx){
-  const rects=[];
-  const L=dc_calcLayouts(sw,sh,cw,ch,gap)[idx];
-  function grid(ox,oy,iw,ih,cols,rows,rot){
-    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++)
-      rects.push({x:ox+c*(iw+gap),y:oy+r*(ih+gap),w:iw,h:ih,rot});
-  }
-  if(!L.mixed){
-    const iw=L.rotated?ch:cw, ih=L.rotated?cw:ch;
-    grid(0,0,iw,ih,L.cols,L.rows,L.rotated);
-    return rects;
-  }
-  // main orientation dims
-  const mw=L.win?cw:ch, mh=L.win?ch:cw;
-  // opposite orientation dims
-  const ow=L.win?ch:cw, oh=L.win?cw:ch;
-  if(L.kind==='bottom'){
-    grid(0,0,mw,mh,L.mainCols,L.mainRows,!L.win);
-    if(L.botRows>0) grid(0,L.botY,ow,oh,L.botCols,L.botRows,L.win);
-  } else {
-    grid(0,0,mw,mh,L.mainCols,L.mainRows,!L.win);
-    if(L.rightCols>0) grid(L.rightX,0,ow,oh,L.rightCols,L.rightRows,L.win);
-  }
-  return rects;
-}
-
-// ── LAYOUT ICONS ─────────────────────────────────
-function dc_makeIcon(idx,active){
-  const W=36,H=26,sc=active?'var(--blue2)':'#b0b6c4';
-  if(idx===0){
-    const c1=(W-2)/3+1,c2=(W-2)*2/3+1,r1=(H-2)/2+1;
-    return `<svg width="${W}" height="${H}" fill="none"><rect x="1" y="1" width="${W-2}" height="${H-2}" stroke="${sc}" stroke-width="1.2" rx="1"/>
-      <line x1="${c1}" y1="1" x2="${c1}" y2="${H-1}" stroke="${sc}" stroke-width=".6"/>
-      <line x1="${c2}" y1="1" x2="${c2}" y2="${H-1}" stroke="${sc}" stroke-width=".6"/>
-      <line x1="1" y1="${r1}" x2="${W-1}" y2="${r1}" stroke="${sc}" stroke-width=".6"/></svg>`;
-  }
-  if(idx===1){
-    const c1=(W-2)/2+1,r1=(H-2)/3+1,r2=(H-2)*2/3+1;
-    return `<svg width="${W}" height="${H}" fill="none"><rect x="1" y="1" width="${W-2}" height="${H-2}" stroke="${sc}" stroke-width="1.2" rx="1"/>
-      <line x1="${c1}" y1="1" x2="${c1}" y2="${H-1}" stroke="${sc}" stroke-width=".6"/>
-      <line x1="1" y1="${r1}" x2="${W-1}" y2="${r1}" stroke="${sc}" stroke-width=".6"/>
-      <line x1="1" y1="${r2}" x2="${W-1}" y2="${r2}" stroke="${sc}" stroke-width=".6"/></svg>`;
-  }
-  if(idx===2){
-    const sp=Math.round((W-2)*.62)+1,c1=(sp-1)/2+1,r1=(H-2)/2+1;
-    return `<svg width="${W}" height="${H}" fill="none"><rect x="1" y="1" width="${W-2}" height="${H-2}" stroke="${sc}" stroke-width="1.2" rx="1"/>
-      <line x1="${sp}" y1="1" x2="${sp}" y2="${H-1}" stroke="${sc}" stroke-width=".9"/>
-      <line x1="${c1}" y1="1" x2="${c1}" y2="${H-1}" stroke="${sc}" stroke-width=".5"/>
-      <line x1="1" y1="${r1}" x2="${sp}" y2="${r1}" stroke="${sc}" stroke-width=".5"/>
-      <line x1="${sp}" y1="${r1}" x2="${W-1}" y2="${r1}" stroke="${sc}" stroke-width=".5" stroke-dasharray="2 2"/></svg>`;
-  }
-  const sp=Math.round((W-2)*.55)+1,r1=(H-2)/3+1,r2=(H-2)*2/3+1,mr=(H-2)/2+1;
-  return `<svg width="${W}" height="${H}" fill="none"><rect x="1" y="1" width="${W-2}" height="${H-2}" stroke="${sc}" stroke-width="1.2" rx="1"/>
-    <line x1="${sp}" y1="1" x2="${sp}" y2="${H-1}" stroke="${sc}" stroke-width=".9"/>
-    <line x1="1" y1="${r1}" x2="${sp}" y2="${r1}" stroke="${sc}" stroke-width=".5"/>
-    <line x1="1" y1="${r2}" x2="${sp}" y2="${r2}" stroke="${sc}" stroke-width=".5"/>
-    <line x1="${sp}" y1="${mr}" x2="${W-1}" y2="${mr}" stroke="${sc}" stroke-width=".5" stroke-dasharray="2 2"/></svg>`;
-}
-function dc_renderTabs(layouts){
-  document.getElementById('dc-layout-tabs').innerHTML = layouts.map((L,i)=>`
-    <button class="lbtn${i===dc_selLayout?' active':''}" onclick="dc_selLayout=${i};dc_rerender()">
-      <div class="dc-licon">${dc_makeIcon(i,i===dc_selLayout)}</div>
-      <div class="dc-lcount">${L.n}</div>
-      <div class="dc-lname">${L.label}<br><span style="font-size:8px;color:var(--tx3)">${L.desc}</span></div>
-    </button>`).join('');
-}
-
-// ── MAIN RENDER ───────────────────────────────────
-function dc_rerender(){
-  const sw  = dc_matW_cm, sh = dc_matH_cm;
-  const cw  = dc_toCm(parseFloat(document.getElementById('dc-cw').value)||0);
-  const ch  = dc_toCm(parseFloat(document.getElementById('dc-ch').value)||0);
-  const gap = dc_toCm(parseFloat(document.getElementById('dc-gap').value)||0);
-  const layouts = dc_calcLayouts(sw,sh,cw,ch,gap);
-  dc_renderTabs(layouts);
-  const L = layouts[dc_selLayout];
-  const rects = dc_buildRects(sw,sh,cw,ch,gap,dc_selLayout);
-
-  const ca = document.getElementById('dc-canvas-area');
-  const PAD_W=48, PAD_H=60; // canvas-wrap padding × 2 + label space
-  const aW = Math.max(ca.clientWidth - PAD_W, 80);
-  const aH = Math.max(ca.clientHeight - PAD_H, 80);
-  let scale = 10;
-  if(sw>0 && sh>0){
-    scale = Math.min(aW/sw, aH/sh);
-  } else if(sw>0){ scale=aW/sw; }
-  else if(sh>0){ scale=aH/sh; }
-  if(scale<3) scale=3;
-
-  const sheet=document.getElementById('dc-sheet');
-  sheet.style.width=(sw*scale)+'px'; sheet.style.height=(sh*scale)+'px';
-
-  const swR=dc_fromCm(dc_matW_cm), shR=dc_fromCm(dc_matH_cm);
-  const cwR=document.getElementById('dc-cw').value, chR=document.getElementById('dc-ch').value;
-  const gR=document.getElementById('dc-gap').value;
-  document.getElementById('dc-sheet-lbl').textContent=`${swR} × ${shR} ${u()}`;
-
-  document.getElementById('dc-placed').innerHTML = rects.map(r=>{
-    const x=r.x*scale,y=r.y*scale,w=r.w*scale,h=r.h*scale;
-    return `<div class="pi${r.rot?' rot':''}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"></div>`;
-  }).join('');
-  document.getElementById('dc-count-big').textContent=L.n||'';
-
-  document.getElementById('dc-st-n').textContent=L.n;
-  document.getElementById('dc-st-l').textContent=L.label;
-  document.getElementById('dc-st-sw').textContent=`${swR}×${shR}`;
-  document.getElementById('dc-st-cw').textContent=`${cwR}×${chR}`;
-  document.getElementById('dc-st-g').textContent=`${gR} ${u()}`;
-  if(!L.mixed){
-    document.getElementById('dc-st-c').textContent=(L.cols||0)+' ช่อง';
-    document.getElementById('dc-st-r').textContent=(L.rows||0)+' แถว';
-  } else if(L.kind==='bottom'){
-    document.getElementById('dc-st-c').textContent=(L.mainCols||0)+' / '+(L.botCols||0)+' ช่อง';
-    document.getElementById('dc-st-r').textContent=(L.mainRows||0)+' / '+(L.botRows||0)+' แถว';
-  } else {
-    document.getElementById('dc-st-c').textContent=(L.mainCols||0)+' / '+(L.rightCols||0)+' ช่อง';
-    document.getElementById('dc-st-r').textContent=(L.mainRows||0)+' / '+(L.rightRows||0)+' แถว';
-  }
-  const util=sw>0&&sh>0&&cw>0&&ch>0?Math.min(100,Math.round(L.n*cw*ch/(sw*sh)*100)):0;
-  document.getElementById('dc-st-u').textContent=util+'%';
-  const uf=document.getElementById('dc-ufill');
-  uf.style.width=util+'%';
-  uf.style.background=util>=80?'var(--green)':util>=50?'var(--amber)':'var(--blue3)';
-}
-
-// ── SAVE / LOAD ───────────────────────────────────
-function dc_saveProject(){
-  const cwCm=dc_toCm(parseFloat(document.getElementById('dc-cw').value)||0);
-  const chCm=dc_toCm(parseFloat(document.getElementById('dc-ch').value)||0);
-  const gapCm=dc_toCm(parseFloat(document.getElementById('dc-gap').value)||0);
-  const layouts=dc_calcLayouts(dc_matW_cm,dc_matH_cm,cwCm,chCm,gapCm);
-  const n=layouts[dc_selLayout].n;
-  const p={
-    id:Date.now(), swCm:dc_matW_cm, shCm:dc_matH_cm, cwCm, chCm, gapCm,
-    cwR:document.getElementById('dc-cw').value,
-    chR:document.getElementById('dc-ch').value,
-    gapR:document.getElementById('dc-gap').value,
-    swR:dc_fromCm(dc_matW_cm), shR:dc_fromCm(dc_matH_cm),
-    unit:dc_UNIT, layout:dc_selLayout, label:layouts[dc_selLayout].label, n
-  };
-  dc_projects.unshift(p);
-  localStorage.setItem('kdpcut_v1',JSON.stringify(dc_projects));
-  dc_activePid=p.id; dc_renderProjects();
-  const btn=document.getElementById('dc-btn-save');
-  btn.textContent='✅ Saved!';
-  setTimeout(()=>{ btn.innerHTML='💾 Save Project'; },1400);
-}
-function dc_loadProject(id){
-  const p=dc_projects.find(x=>x.id===id); if(!p) return;
-  dc_activePid=id;
-  if(p.unit!==dc_UNIT){ dc_UNIT=p.unit; document.getElementById('dc-unit').value=p.unit; document.getElementById('dc-gunit').textContent=p.unit; }
-  dc_matW_cm=p.swCm; dc_matH_cm=p.shCm;
-  dc_activeMat=dc_PRESETS.findIndex(m=>Math.abs(m.w-dc_matW_cm)<0.01&&Math.abs(m.h-dc_matH_cm)<0.01);
-  document.getElementById('dc-cw').value=dc_fromCm(p.cwCm);
-  document.getElementById('dc-ch').value=dc_fromCm(p.chCm);
-  document.getElementById('dc-gap').value=dc_fromCm(p.gapCm);
-  dc_selLayout=p.layout; dc_renderMatProfiles(); dc_renderProjects(); dc_rerender();
-}
-function dc_deleteProject(id,e){
-  e.stopPropagation();
-  dc_projects=dc_projects.filter(x=>x.id!==id);
-  localStorage.setItem('kdpcut_v1',JSON.stringify(dc_projects));
-  if(dc_activePid===id) dc_activePid=null;
-  dc_renderProjects();
-}
-function dc_renderProjects(){
-  const el=document.getElementById('dc-proj-list');
-  if(!dc_projects.length){ el.innerHTML='<div class="dc-empty-proj"><div class="dc-ico">📁</div>ยังไม่มี project</div>'; return; }
-  el.innerHTML=dc_projects.map(p=>`
-    <div class="pcard${p.id===dc_activePid?' active':''}" onclick="dc_loadProject(${p.id})">
-      <div class="dc-pcard-info">
-        <div class="dc-pname">${p.cwR}×${p.chR} ${p.unit}</div>
-        <div class="dc-pmeta">${p.swR}×${p.shR} gap ${p.gapR}</div>
-      </div>
-      <div class="dc-pbadge">${p.n}</div>
-      <button class="dc-pdel" onclick="dc_deleteProject(${p.id},event)">✕</button>
-    </div>`).join('');
-}
-
-function dc_esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-// ── RIGHT PANEL TOGGLE ────────────────────────────
-let dc_rpOpen = true;
-function dc_toggleRpanel(){
-  dc_rpOpen = !dc_rpOpen;
-  const rp = document.getElementById('dc-rpanel');
-  const arr = document.getElementById('dc-rp-arrow');
-  const btn = document.getElementById('dc-rp-toggle');
-  if(dc_rpOpen){
-    rp.classList.remove('collapsed');
-    arr.textContent = '◀';
-    btn.style.right = '0';
-  } else {
-    rp.classList.add('collapsed');
-    arr.textContent = '▶';
-    btn.style.right = '0';
-  }
-  setTimeout(dc_rerender, 220);
-}
-
-// ── RESIZE ────────────────────────────────────────
-let dc_rTimer;
-window.addEventListener('resize',()=>{ clearTimeout(dc_rTimer); dc_rTimer=setTimeout(dc_rerender,80); });
-
-// ── INIT ──────────────────────────────────────────
-dc_renderMatProfiles();
-dc_renderProjects();
-dc_rerender();
-</script>
-
           </div>
         </div>
         <div class="tab-panel" id="tab-users">
@@ -1346,7 +933,7 @@ dc_rerender();
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.46.0";
+const APP_VERSION = "v1.47.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -1591,7 +1178,7 @@ function switchTab(t) {
   document.getElementById("page-title").textContent = tabMeta[t][0];
   document.getElementById("page-sub").textContent   = tabMeta[t][1];
   if (t==="users") renderUsersTab();
-  if (t==="dycut") { if(typeof initDycut==="function") initDycut(); }
+  if (t==="dycut" && typeof initDycut==="function") initDycut();
   closeSidebar();
 }
 
@@ -2926,9 +2513,9 @@ window.selectCust = selectCust;
 window.hideSuggest = hideSuggest;
 window.loadOrders = loadOrders;
 
-// ══ DYCUT Layout Planner JS ══════════════════════════════════
+// ══ DYCUT Layout Planner ═══════════════════════
 (function() {
-"use strict";
+'use strict';
 
 // ── dc_UNIT ──────────────────────────────────────────
 let dc_UNIT = 'cm';
@@ -3045,7 +2632,7 @@ function dc_savePreset(){
     dc_rerender();
   }
   // feedback
-  const btn = document.querySelector('.dc-pe-save');
+  const btn = document.querySelector('.pe-save');
   btn.textContent = '✅ บันทึกแล้ว!';
   setTimeout(()=>{ btn.textContent = '💾 บันทึก Preset นี้'; }, 1200);
 }
@@ -3341,7 +2928,6 @@ dc_renderMatProfiles();
 dc_renderProjects();
 dc_rerender();
 
-// Init on tab show
 window.initDycut = function() {
   dc_renderMatProfiles();
   dc_rerender();

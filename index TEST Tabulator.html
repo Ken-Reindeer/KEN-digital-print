@@ -713,7 +713,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.56.0";
+const APP_VERSION = "v1.57.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -962,6 +962,12 @@ function switchTab(t) {
     const fr = document.getElementById("dycut-frame");
     if (fr && !fr.src.includes("KDPcut")) fr.src = "KDPcut.html";
   }
+  // Tabulator redraw — ต้องเรียกหลัง tab visible เพื่อให้ virtualDom คำนวณ height ถูกต้อง
+  requestAnimationFrame(()=>{
+    if (t==="orders"   && tabulatorOrders)   { tabulatorOrders.redraw(true);   }
+    if (t==="progress" && tabulatorProgress) { tabulatorProgress.redraw(true); }
+    if (t==="customers"&& tabulatorCust)     { tabulatorCust.redraw(true);     }
+  });
   closeSidebar();
 }
 
@@ -2341,7 +2347,8 @@ function renderOrders(data){
   if(isOwner) cols.push({title:'ราคา',field:'price',width:_tabW('o_price',90),formatter:_fmtPrice,resizable:true});
   cols.push({title:'',field:'action',width:46,formatter:_fmtPdf,resizable:false,headerSort:false});
   if(tabulatorOrders){tabulatorOrders.setData(rows);return;}
-  tabulatorOrders=new Tabulator('#orders-wrap',{columnDefaults:{vertAlign:'middle'},data:rows,layout:'fitDataFill',virtualDom:true,virtualDomBuffer:400,height:'100%',columns:cols,groupBy:'_date',
+  tabulatorOrders=new Tabulator('#orders-wrap',{columnDefaults:{vertAlign:'middle'},data:rows,layout:'fitDataFill',virtualDom:true,virtualDomBuffer:600,height:'500px',columns:cols,groupBy:'_date',
+    tableBuilt(){_attachTabResizeObserver('orders-wrap',()=>tabulatorOrders);},
     groupHeader:(v,cnt,data)=>{
       const sum=data.reduce((s,r)=>s+(r.price||0),0);
       const priceStr=sum?` <span style="font-weight:700;color:var(--navy2);margin-left:12px;">฿${sum.toLocaleString()}</span>`:'';
@@ -2362,7 +2369,7 @@ function renderProgress(data){
     {title:'',field:'action',width:46,formatter:_fmtPdf,resizable:false,headerSort:false},
   ];
   if(tabulatorProgress){tabulatorProgress.setData(rows);return;}
-  tabulatorProgress=new Tabulator('#progress-wrap',{columnDefaults:{vertAlign:'middle'},data:rows,layout:'fitDataFill',virtualDom:true,virtualDomBuffer:400,height:'100%',columns:cols,columnResized(col){_saveTabW('p_'+col.getField(),col.getWidth());}});
+  tabulatorProgress=new Tabulator('#progress-wrap',{columnDefaults:{vertAlign:'middle'},data:rows,layout:'fitDataFill',virtualDom:true,virtualDomBuffer:600,height:'500px',columns:cols,tableBuilt(){_attachTabResizeObserver('progress-wrap',()=>tabulatorProgress);},columnResized(col){_saveTabW('p_'+col.getField(),col.getWidth());}});
 }
 
 function renderCust(data){
@@ -2380,7 +2387,24 @@ function renderCust(data){
   if(isOwner) cols.push({title:'ยอดรวม',field:'total',width:_tabW('c_total',100),formatter:_fmtTotal,resizable:true});
   cols.push({title:'',field:'action',width:50,formatter:_fmtCustEdit,resizable:false,headerSort:false});
   if(tabulatorCust){tabulatorCust.setData(rows);return;}
-  tabulatorCust=new Tabulator('#cust-wrap',{columnDefaults:{vertAlign:'middle'},data:rows,layout:'fitDataFill',virtualDom:true,virtualDomBuffer:400,height:'100%',columns:cols,columnResized(col){_saveTabW('c_'+col.getField(),col.getWidth());}});
+  tabulatorCust=new Tabulator('#cust-wrap',{columnDefaults:{vertAlign:'middle'},data:rows,layout:'fitDataFill',virtualDom:true,virtualDomBuffer:600,height:'500px',columns:cols,tableBuilt(){_attachTabResizeObserver('cust-wrap',()=>tabulatorCust);},columnResized(col){_saveTabW('c_'+col.getField(),col.getWidth());}});
+}
+
+
+// ── Tabulator ResizeObserver — set pixel height เพื่อให้ virtualDom ทำงาน ──
+function _attachTabResizeObserver(wrapperId, getTable) {
+  const el = document.getElementById(wrapperId);
+  if (!el || !window.ResizeObserver) return;
+  const obs = new ResizeObserver(entries => {
+    const h = entries[0].contentRect.height;
+    if (h > 50) {
+      const t = getTable();
+      if (t) t.setHeight(h);
+    }
+  });
+  // observe parent card (ที่มีความสูงจริง)
+  const card = el.closest('.card') || el.parentElement;
+  if (card) obs.observe(card);
 }
 
 </script>

@@ -346,16 +346,23 @@ textarea.fc{resize:vertical;min-height:76px;}
   .login-box{padding:28px 22px;}
 }
 
-/* ══ DYCUT CSS ══ */
+/* ══════════════════════════════════════════════════════ */
+/* DYCUT Layout Planner CSS — scoped under #tab-dycut       */
+/* ══════════════════════════════════════════════════════ */
 
+/* DyCut tab layout structure */
 #tab-dycut { padding: 0 !important; }
 #tab-dycut.active { display: flex !important; flex-direction: column; }
-#tab-dycut .dc-app { display: flex; flex-direction: column; flex: 1; min-height: 0; height: 100%; }
+#tab-dycut .dc-app { display: flex; flex-direction: column; flex: 1; min-height: 0; height: 100%; overflow: hidden; }
+
+
+
 #tab-dycut html, #tab-dycut /* ── TOPBAR ── */
 .dc-topbar{background:var(--navy);border-bottom:1px solid rgba(255,255,255,.1);box-shadow:0 2px 8px rgba(13,36,97,.25);flex-shrink:0;z-index:50;}
 #tab-dycut .dc-tb-inner{display:flex;align-items:center;padding:0 16px;height:50px;gap:10px;overflow:hidden;min-width:0;}
 #tab-dycut .dc-logo{display:flex;align-items:center;font-family:'Roboto',sans-serif;color:#fff;letter-spacing:-.3px;white-space:nowrap;flex-shrink:0;}
 #tab-dycut .dc-tb-sep{width:1px;height:22px;background:rgba(255,255,255,.2);flex-shrink:0;margin:0 2px;}
+
 #tab-dycut /* profile buttons */
 .dc-mat-profiles{display:contents;}
 #tab-dycut .dc-mp-btn{padding:5px 10px;border-radius:7px;border:1.5px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);
@@ -368,12 +375,15 @@ textarea.fc{resize:vertical;min-height:76px;}
 #tab-dycut .dc-mp-edit{padding:5px 10px;border-radius:7px;border:1.5px dashed rgba(255,255,255,.3);background:transparent;
   font-size:11px;font-family:var(--sans);color:rgba(255,255,255,.55);cursor:pointer;transition:all .15s;white-space:nowrap;}
 #tab-dycut .dc-mp-edit:hover{border-color:rgba(255,255,255,.7);color:#fff;}
+
 #tab-dycut .dc-tb-unit{display:flex;align-items:center;gap:5px;flex-shrink:0;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:7px;padding:4px 8px;}
 #tab-dycut .dc-tb-unit label{font-size:11px;color:rgba(255,255,255,.6);font-weight:500;}
 #tab-dycut .dc-tb-unit select{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:5px;padding:3px 6px;font-family:var(--sans);font-size:12px;color:#fff;outline:none;cursor:pointer;}
 #tab-dycut .dc-tb-unit select option{background:var(--navy);color:#fff;}
+
 #tab-dycut .dc-top-stat{font-family:var(--sans);font-size:12px;color:rgba(255,255,255,.55);white-space:nowrap;flex-shrink:0;margin-left:auto;}
 #tab-dycut .dc-top-stat b{color:#fff;font-weight:700;}
+
 #tab-dycut /* ── MODAL BASE ── */
 .dc-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:200;align-items:center;justify-content:center;}
 #tab-dycut .dc-modal-overlay.open{display:flex;}
@@ -404,12 +414,15 @@ textarea.fc{resize:vertical;min-height:76px;}
 #tab-dycut .dc-pe-cross{font-size:14px;color:var(--tx3);padding-bottom:8px;text-align:center;}
 #tab-dycut .dc-pe-save{width:100%;margin-top:12px;padding:9px;border-radius:8px;background:var(--blue2);color:#fff;border:none;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;}
 #tab-dycut .dc-pe-save:hover{background:var(--blue);}
+
 #tab-dycut /* ── WORKSPACE ── */
 .dc-workspace{display:flex;flex:1;overflow:hidden;min-height:0;}
+
 #tab-dycut /* ── LEFT PANEL ── */
 .dc-panel{width:222px;flex-shrink:0;background:var(--white);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
 #tab-dycut .dc-psec{padding:10px 12px;border-bottom:1px solid var(--border);flex-shrink:0;}
 #tab-dycut .dc-stitle{font-size:9px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:7px;}
+
 #tab-dycut /* die-cut inputs */
 .dc-dc-row{display:grid;grid-template-columns:1fr auto 1fr;gap:4px;align-items:end;margin-bottom:6px;}
 #tab-dycut .dc-dc-row label{font-size:10px;color:var(--tx2);display:block;margin-bottom:3px;font-weight:500;}
@@ -423,6 +436,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 #tab-dycut .dc-gap-row input:focus{border-color:var(--blue2);background:var(--white);}
 #tab-dycut .dc-gap-row input::-webkit-inner-spin-button{display:none;}
 #tab-dycut .dc-gap-row .dc-gunit{font-size:10px;color:var(--tx3);white-space:nowrap;}
+
 #tab-dycut /* layout tabs — compact */
 .dc-layout-tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;}
 #tab-dycut .dc-lbtn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;border-radius:7px;border:2px solid var(--border);background:var(--s2);cursor:pointer;transition:all .15s;text-align:center;}
@@ -433,10 +447,12 @@ textarea.fc{resize:vertical;min-height:76px;}
 #tab-dycut .dc-lname{font-size:9px;color:var(--tx2);font-weight:500;line-height:1.3;}
 #tab-dycut .dc-licon{width:36px;height:26px;border:1.5px solid var(--tx3);border-radius:2px;overflow:hidden;flex-shrink:0;}
 #tab-dycut .dc-lbtn.active .dc-licon{border-color:var(--blue2);}
+
 #tab-dycut /* save btn — smaller */
 .dc-btn-save{width:100%;padding:7px;border-radius:7px;background:var(--blue2);color:#fff;border:none;font-family:var(--sans);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px;}
 #tab-dycut .dc-btn-save:hover{background:var(--blue);}
 #tab-dycut .dc-btn-save:active{transform:scale(.98);}
+
 #tab-dycut /* project list — compact */
 .dc-proj-list{flex:1;overflow-y:auto;padding:6px 9px;display:flex;flex-direction:column;gap:3px;}
 #tab-dycut .dc-pcard{background:var(--s2);border:1.5px solid var(--border);border-radius:7px;padding:6px 9px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:7px;}
@@ -450,6 +466,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 #tab-dycut .dc-pdel:hover{color:var(--blue);}
 #tab-dycut .dc-empty-proj{text-align:center;padding:14px;color:var(--tx3);font-size:11px;}
 #tab-dycut .dc-empty-proj .dc-ico{font-size:20px;margin-bottom:4px;}
+
 #tab-dycut /* ── CANVAS ── */
 .dc-canvas-area{flex:1;overflow:auto;background:var(--bg);background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:20px 20px;}
 #tab-dycut .dc-canvas-wrap{min-width:100%;min-height:100%;display:flex;align-items:center;justify-content:center;padding:24px 20px;}
@@ -461,6 +478,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 #tab-dycut .dc-pi.rot{background:rgba(37,99,235,.10);border-style:dashed;}
 #tab-dycut .dc-count-ov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;}
 #tab-dycut .dc-count-big{font-size:clamp(32px,10vw,96px);font-weight:700;color:rgba(26,63,170,.12);font-family:var(--sans);user-select:none;}
+
 #tab-dycut /* ── RIGHT PANEL ── */
 .dc-rpanel{width:155px;flex-shrink:0;background:var(--white);border-left:1px solid var(--border);padding:11px 11px;display:flex;flex-direction:column;gap:11px;overflow-y:auto;transition:width .2s,padding .2s;}
 #tab-dycut .dc-rpanel.collapsed{width:0;padding:0;overflow:hidden;}
@@ -473,10 +491,12 @@ textarea.fc{resize:vertical;min-height:76px;}
 #tab-dycut .dc-sval.hi{color:var(--blue2);font-size:18px;font-weight:700;}
 #tab-dycut .dc-ubar{height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:3px;}
 #tab-dycut .dc-ufill{height:100%;border-radius:3px;background:var(--green);transition:width .4s;}
+
 #tab-dycut ::-webkit-scrollbar{width:5px;height:5px;}
 #tab-dycut ::-webkit-scrollbar-track{background:transparent;}
 #tab-dycut ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
-/* ══ /DYCUT ══ */
+
+/* ══════ /DYCUT CSS ══════════════════════════════════ */
 </style>
 </head>
 <body>
@@ -541,7 +561,7 @@ textarea.fc{resize:vertical;min-height:76px;}
         <span class="nav-ico">📊</span><span>Business Insight</span></button>
       <div class="nav-grp" id="nav-grp-mgmt" style="display:none">จัดการระบบ</div>
       <button class="nav-btn" onclick="switchTab('dycut')" id="nav-dycut">
-        <span class="nav-ico">📐</span><span>Layout Planner</span></button>
+        <span class="nav-ico">📏</span><span>Layout Planner</span></button>
       <button class="nav-btn" onclick="switchTab('users')" id="nav-users" style="display:none">
         <span class="nav-ico">🔑</span><span>จัดการผู้ใช้</span></button>
       <button class="nav-btn" onclick="switchTab('changepass')" id="nav-changepass">
@@ -933,7 +953,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.47.0";
+const APP_VERSION = "v1.48.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -1178,7 +1198,7 @@ function switchTab(t) {
   document.getElementById("page-title").textContent = tabMeta[t][0];
   document.getElementById("page-sub").textContent   = tabMeta[t][1];
   if (t==="users") renderUsersTab();
-  if (t==="dycut" && typeof initDycut==="function") initDycut();
+  if (t==="dycut" && typeof initDycut === "function") initDycut();
   closeSidebar();
 }
 
@@ -2513,9 +2533,13 @@ window.selectCust = selectCust;
 window.hideSuggest = hideSuggest;
 window.loadOrders = loadOrders;
 
-// ══ DYCUT Layout Planner ═══════════════════════
+// ══════════════════════════════════════════════════════════════
+// DYCUT Layout Planner (merged from dycut.html)
+// All globals prefixed dc_, all CSS classes/IDs prefixed dc-
+// ══════════════════════════════════════════════════════════════
 (function() {
 'use strict';
+
 
 // ── dc_UNIT ──────────────────────────────────────────
 let dc_UNIT = 'cm';
@@ -2928,11 +2952,14 @@ dc_renderMatProfiles();
 dc_renderProjects();
 dc_rerender();
 
+
+// Expose init for switchTab to call when entering the tab
 window.initDycut = function() {
-  dc_renderMatProfiles();
-  dc_rerender();
-  dc_renderProjects();
+  if (typeof dc_renderMatProfiles === 'function') dc_renderMatProfiles();
+  if (typeof dc_renderProjects === 'function') dc_renderProjects();
+  if (typeof dc_rerender === 'function') dc_rerender();
 };
+
 })();
 
 </script>

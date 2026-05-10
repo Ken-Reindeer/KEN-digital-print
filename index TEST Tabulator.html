@@ -375,6 +375,12 @@ textarea.fc{resize:vertical;min-height:76px;}
 
 /* hide footer */
 .tabulator .tabulator-footer{display:none;}
+
+/* ── Tabulator Force Overrides ── */
+.tabulator-cell { font-size: 11px !important; }
+.tabulator-col-title { font-size: 11px !important; font-weight: 700 !important; }
+.tabulator-row.tabulator-group { background: #dbeafe !important; border-bottom: 1px solid #bfdbfe !important; border-top: 1px solid #bfdbfe !important; font-size: 11px !important; color: var(--navy2) !important; }
+.tabulator-row.tabulator-group:hover { background: #bfdbfe !important; }
 </style>
   <link href="https://unpkg.com/tabulator-tables@6.3.0/dist/css/tabulator_simple.min.css" rel="stylesheet">
   <script src="https://unpkg.com/tabulator-tables@6.3.0/dist/js/tabulator.min.js"></script>
@@ -707,7 +713,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.55.0";
+const APP_VERSION = "v1.56.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -2335,7 +2341,7 @@ function renderOrders(data){
   if(isOwner) cols.push({title:'ราคา',field:'price',width:_tabW('o_price',90),formatter:_fmtPrice,resizable:true});
   cols.push({title:'',field:'action',width:46,formatter:_fmtPdf,resizable:false,headerSort:false});
   if(tabulatorOrders){tabulatorOrders.setData(rows);return;}
-  tabulatorOrders=new Tabulator('#orders-wrap',{data:rows,layout:'fitDataFill',virtualDom:true,virtualDomBuffer:400,height:'100%',columns:cols,groupBy:'_date',
+  tabulatorOrders=new Tabulator('#orders-wrap',{columnDefaults:{hozAlign:'center'},data:rows,layout:'fitDataFill',virtualDom:true,virtualDomBuffer:400,height:'100%',columns:cols,groupBy:'_date',
     groupHeader:(v,cnt,data)=>{
       const sum=data.reduce((s,r)=>s+(r.price||0),0);
       const priceStr=sum?` <span style="font-weight:700;color:var(--navy2);margin-left:12px;">฿${sum.toLocaleString()}</span>`:'';
@@ -2356,7 +2362,7 @@ function renderProgress(data){
     {title:'',field:'action',width:46,formatter:_fmtPdf,resizable:false,headerSort:false},
   ];
   if(tabulatorProgress){tabulatorProgress.setData(rows);return;}
-  tabulatorProgress=new Tabulator('#progress-wrap',{data:rows,layout:'fitDataFill',virtualDom:true,virtualDomBuffer:400,height:'100%',columns:cols,columnResized(col){_saveTabW('p_'+col.getField(),col.getWidth());}});
+  tabulatorProgress=new Tabulator('#progress-wrap',{columnDefaults:{hozAlign:'center'},data:rows,layout:'fitDataFill',virtualDom:true,virtualDomBuffer:400,height:'100%',columns:cols,columnResized(col){_saveTabW('p_'+col.getField(),col.getWidth());}});
 }
 
 function renderCust(data){
@@ -2374,7 +2380,7 @@ function renderCust(data){
   if(isOwner) cols.push({title:'ยอดรวม',field:'total',width:_tabW('c_total',100),formatter:_fmtTotal,resizable:true});
   cols.push({title:'',field:'action',width:50,formatter:_fmtCustEdit,resizable:false,headerSort:false});
   if(tabulatorCust){tabulatorCust.setData(rows);return;}
-  tabulatorCust=new Tabulator('#cust-wrap',{data:rows,layout:'fitDataFill',virtualDom:true,virtualDomBuffer:400,height:'100%',columns:cols,columnResized(col){_saveTabW('c_'+col.getField(),col.getWidth());}});
+  tabulatorCust=new Tabulator('#cust-wrap',{columnDefaults:{hozAlign:'center'},data:rows,layout:'fitDataFill',virtualDom:true,virtualDomBuffer:400,height:'100%',columns:cols,columnResized(col){_saveTabW('c_'+col.getField(),col.getWidth());}});
 }
 
 </script>

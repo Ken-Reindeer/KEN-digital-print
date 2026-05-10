@@ -130,9 +130,9 @@ nav{padding:10px 8px;flex:1;}
 
 /* ── SCROLL AREA ── */
 .scroll-area{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;position:relative;}
-.content{padding:16px 20px;min-height:100%;}
+.content{padding:16px 20px;display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;}
 .tab-panel{display:none;}
-.tab-panel.active{display:block;}
+.tab-panel.active{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;}
 /* orders-wrap scrolls x independently */
   
 
@@ -148,7 +148,7 @@ nav{padding:10px 8px;flex:1;}
 .stat-val{font-size:18px;font-weight:700;}
 
 /* ── TOOLBAR ── */
-.toolbar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+.toolbar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;flex-shrink:0;}
 .srch{display:flex;align-items:center;background:white;border:1px solid var(--border);
   border-radius:8px;padding:8px 12px;gap:7px;flex:1;max-width:280px;}
 .srch input{background:none;border:none;outline:none;font-family:var(--sans);
@@ -171,7 +171,7 @@ nav{padding:10px 8px;flex:1;}
 .btn-sm{padding:6px 11px;font-size:12px;} .btn-xs{padding:3px 8px;font-size:11px;}
 
 /* ── CARD / TABLE ── */
-.card{background:white;border:1px solid var(--border);border-radius:10px;
+.card{background:white;border:1px solid var(--border);border-radius:10px;display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;
   overflow:hidden;box-shadow:var(--shadow);}
   .table-scroll{width:100%;overflow-x:auto;display:block;-webkit-overflow-scrolling:touch;}
   .table-scroll table{border-collapse:collapse;table-layout:auto;width:100%;}
@@ -349,17 +349,32 @@ textarea.fc{resize:vertical;min-height:76px;}
 }
 
 /* ── Tabulator Theme ── */
-.tabulator{border:none;background:transparent;font-family:'Roboto','Tahoma',sans-serif;font-size:12px;}
-.tabulator .tabulator-header{background:#fff;border-bottom:2px solid var(--border);}
-.tabulator .tabulator-header .tabulator-col{background:#fff;border-right:1px solid var(--border);color:var(--text2);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+.tabulator{border:none;background:transparent;font-family:'Roboto','Tahoma',sans-serif;font-size:13px;height:100%!important;}
+.tabulator .tabulator-tableholder{flex:1;min-height:0;}
+
+/* header */
+.tabulator .tabulator-header{background:#fff;border-bottom:2px solid var(--border);flex-shrink:0;}
+.tabulator .tabulator-header .tabulator-col{background:#fff;border-right:1px solid var(--border);color:var(--navy);font-size:12px;font-weight:700;letter-spacing:.3px;}
+.tabulator .tabulator-header .tabulator-col:last-child{border-right:none;}
 .tabulator .tabulator-header .tabulator-col.tabulator-sortable:hover{background:var(--s2);}
-.tabulator-row{border-bottom:1px solid #f1f5f9;}
-.tabulator-row:hover{background:#fafbfc!important;}
-.tabulator-row .tabulator-cell{padding:4px 8px;border-right:none;overflow:hidden;color:var(--text);}
+.tabulator .tabulator-header .tabulator-col .tabulator-col-content{padding:8px 10px;}
+
+/* rows — no vertical dividers, only bottom border */
+.tabulator-row{border-bottom:1px solid #f1f5f9;align-items:center;}
+.tabulator-row:hover{background:#f8faff!important;}
+.tabulator-row .tabulator-cell{padding:6px 10px;border-right:none!important;overflow:hidden;color:var(--text);display:flex;align-items:center;}
 .tabulator-row .tabulator-cell:focus{outline:none;}
+
+/* group header */
+.tabulator-row.tabulator-group{background:linear-gradient(90deg,#e8edf8 0%,#f1f5f9 100%);border-bottom:1px solid #d1d9e6;border-top:2px solid #c5cfe8;padding:6px 14px;font-size:12px;font-weight:700;color:var(--navy2);cursor:pointer;display:flex;align-items:center;gap:8px;}
+.tabulator-row.tabulator-group span.tabulator-group-toggle{font-size:10px;opacity:.5;}
+
+/* resize handle — subtle */
+.tabulator .tabulator-col-resize-handle{width:4px;background:transparent;}
+.tabulator .tabulator-col-resize-handle:hover{background:var(--blue2);}
+
+/* hide footer */
 .tabulator .tabulator-footer{display:none;}
-.tabulator-row.tabulator-group{background:var(--s2);border-bottom:1px solid var(--border);padding:4px 12px;font-size:11px;font-weight:700;color:var(--text2);cursor:pointer;}
-.tabulator .tabulator-col-resize-handle{width:5px;}
 </style>
   <link href="https://unpkg.com/tabulator-tables@6.3.0/dist/css/tabulator_simple.min.css" rel="stylesheet">
   <script src="https://unpkg.com/tabulator-tables@6.3.0/dist/js/tabulator.min.js"></script>
@@ -692,7 +707,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.53.0";
+const APP_VERSION = "v1.54.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -2320,7 +2335,13 @@ function renderOrders(data){
   if(isOwner) cols.push({title:'ราคา',field:'price',width:_tabW('o_price',90),formatter:_fmtPrice,resizable:true});
   cols.push({title:'',field:'action',width:46,formatter:_fmtPdf,resizable:false,headerSort:false});
   if(tabulatorOrders){tabulatorOrders.setData(rows);return;}
-  tabulatorOrders=new Tabulator('#orders-wrap',{data:rows,layout:'fitDataFill',virtualDom:true,virtualDomBuffer:400,height:'calc(100vh - 190px)',columns:cols,groupBy:'_date',groupHeader:(v,cnt)=>`${v} <span style="font-size:10px;color:var(--text3)">(${cnt})</span>`,columnResized(col){_saveTabW('o_'+col.getField(),col.getWidth());}});
+  tabulatorOrders=new Tabulator('#orders-wrap',{data:rows,layout:'fitDataFill',virtualDom:true,virtualDomBuffer:400,height:'100%',columns:cols,groupBy:'_date',
+    groupHeader:(v,cnt,data)=>{
+      const sum=data.reduce((s,r)=>s+(r.price||0),0);
+      const isOwner=SESSION?.user.role==='owner';
+      const priceStr=isOwner&&sum?` <span style="font-weight:700;color:var(--navy2)">฿${sum.toLocaleString()}</span>`:'';
+      return `<span style="color:var(--navy)">${v}</span> <span style="font-size:11px;font-weight:400;color:var(--text2)">${cnt} รายการ</span>${priceStr}`;
+    },columnResized(col){_saveTabW('o_'+col.getField(),col.getWidth());}});
 }
 
 function renderProgress(data){
@@ -2336,7 +2357,7 @@ function renderProgress(data){
     {title:'',field:'action',width:46,formatter:_fmtPdf,resizable:false,headerSort:false},
   ];
   if(tabulatorProgress){tabulatorProgress.setData(rows);return;}
-  tabulatorProgress=new Tabulator('#progress-wrap',{data:rows,layout:'fitDataFill',virtualDom:true,virtualDomBuffer:400,height:'calc(100vh - 190px)',columns:cols,columnResized(col){_saveTabW('p_'+col.getField(),col.getWidth());}});
+  tabulatorProgress=new Tabulator('#progress-wrap',{data:rows,layout:'fitDataFill',virtualDom:true,virtualDomBuffer:400,height:'100%',columns:cols,columnResized(col){_saveTabW('p_'+col.getField(),col.getWidth());}});
 }
 
 function renderCust(data){
@@ -2354,7 +2375,7 @@ function renderCust(data){
   if(isOwner) cols.push({title:'ยอดรวม',field:'total',width:_tabW('c_total',100),formatter:_fmtTotal,resizable:true});
   cols.push({title:'',field:'action',width:50,formatter:_fmtCustEdit,resizable:false,headerSort:false});
   if(tabulatorCust){tabulatorCust.setData(rows);return;}
-  tabulatorCust=new Tabulator('#cust-wrap',{data:rows,layout:'fitDataFill',virtualDom:true,virtualDomBuffer:400,height:'calc(100vh - 190px)',columns:cols,columnResized(col){_saveTabW('c_'+col.getField(),col.getWidth());}});
+  tabulatorCust=new Tabulator('#cust-wrap',{data:rows,layout:'fitDataFill',virtualDom:true,virtualDomBuffer:400,height:'100%',columns:cols,columnResized(col){_saveTabW('c_'+col.getField(),col.getWidth());}});
 }
 
 </script>

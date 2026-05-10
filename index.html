@@ -55,10 +55,11 @@ button,input,select,textarea{font-family:'Roboto','Tahoma',sans-serif;}
 
 /* ── SIDEBAR ── */
 .sidebar{width:var(--sb);background:var(--navy);display:flex;flex-direction:column;
-  flex-shrink:0;height:100vh;overflow-y:auto;transition:width .1s ease,transform .25s ease;z-index:200;}
+  flex-shrink:0;height:100vh;overflow-y:auto;transition:width .22s cubic-bezier(.4,0,.2,1);will-change:width;z-index:200;}
 .sidebar.collapsed{width:48px;}
   .sidebar.collapsed .sb-app-name,.sidebar.collapsed .sb-app-sub,.sidebar.collapsed .sb-logo div,
-.sidebar.collapsed .nav-btn span:not(.nav-ico),.sidebar.collapsed .nav-badge,
+.sidebar.collapsed .nav-btn span:not(.nav-ico),.sidebar.collapsed .nav-badge{
+  max-width:0;opacity:0;overflow:hidden;margin:0;padding:0;}
 .sidebar.collapsed .nav-grp,.sidebar.collapsed .sb-uname,
 .sidebar.collapsed .sb-role,.sidebar.collapsed .btn-logout{display:none;}
   .sidebar.collapsed .sb-logo{padding:8px 0;display:flex;flex-direction:column;align-items:center;gap:0;width:48px;}
@@ -82,12 +83,13 @@ button,input,select,textarea{font-family:'Roboto','Tahoma',sans-serif;}
 nav{padding:10px 8px;flex:1;}
 .nav-grp{font-size:9px;font-family:var(--mono);color:rgba(255,255,255,.28);
   text-transform:uppercase;letter-spacing:1px;padding:8px 12px 4px;}
-.nav-btn{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:none;
+.nav-btn{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:none;overflow:hidden;
   background:none;color:rgba(255,255,255,.62);font-family:var(--sans);font-size:13px;
   font-weight:500;border-radius:7px;cursor:pointer;text-align:left;transition:all .15s;margin-bottom:1px;}
 .nav-btn:hover{background:rgba(255,255,255,.1);color:white;}
 .nav-btn.active{background:rgba(255,255,255,.18);color:white;}
 .nav-ico{font-size:15px;width:20px;text-align:center;flex-shrink:0;}
+.nav-btn span:not(.nav-ico){max-width:200px;opacity:1;transition:max-width .2s cubic-bezier(.4,0,.2,1),opacity .15s ease;overflow:hidden;white-space:nowrap;}
 .nav-badge{margin-left:auto;background:#f59e0b;color:white;font-size:9px;
   font-family:var(--mono);padding:1px 6px;border-radius:10px;font-weight:700;}
 .sb-user{padding:12px 14px;border-top:1px solid rgba(255,255,255,.1);
@@ -681,7 +683,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.49.0";
+const APP_VERSION = "v1.52.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -1255,7 +1257,14 @@ function renderOrders(data) {
     rows.forEach(o=>{ body += oRowDiv(o, cols, savedW, isOwner); });
   });
 
-  wrap.innerHTML = `<div class="dt-wrap"><div class="dt">${head}${body}</div></div>`;
+  const dtEl = document.createElement('div');
+  dtEl.className = 'dt-wrap';
+  dtEl.innerHTML = `<div class="dt">${head}${body}</div>`;
+  // Set CSS vars for column widths
+  const dtInner = dtEl.querySelector('.dt');
+  cols.forEach(col=>{ const w=savedW[col[0]]||col[2]; dtInner.style.setProperty('--col-'+col[0]+'-w', w+'px'); });
+  wrap.innerHTML = '';
+  wrap.appendChild(dtEl);
   enableDtResize(wrap, cols, savedW);
 }
 
@@ -1293,7 +1302,7 @@ function oRowDiv(o, cols, savedW, isOwner) {
   let html = '<div class="dt-row">';
   cols.forEach((c,i)=>{
     const w = savedW[c[0]] || c[2];
-    html += `<div class="dt-cell" style="width:${w}px">${valueMap[c[0]]||""}</div>`;
+    html += `<div class="dt-cell" style="width:var(--col-${c[0]}-w,${w}px)">${valueMap[c[0]]||""}</div>`;
     if(i<cols.length-1) html += `<div class="dt-resizer"></div>`;
   });
   html += '</div>';
@@ -1309,7 +1318,6 @@ function enableDtResize(container, cols, widths) {
       startX = e.pageX;
       headCell = rz.previousElementSibling;
       startW = headCell.offsetWidth;
-      allRows = container.querySelectorAll(".dt-row");
       headCell.style.willChange = "width";
       document.body.style.cursor = "col-resize";
       document.body.style.userSelect = "none";
@@ -1320,11 +1328,8 @@ function enableDtResize(container, cols, widths) {
         rafId = requestAnimationFrame(()=>{
           const newW = Math.max(40, startW + pendingX - startX);
           headCell.style.width = newW + "px";
-          // sync ทุก row ที่ column เดียวกัน
-          allRows.forEach(row=>{
-            const cell = row.children[idx*2]; // *2 เพราะมี resizer คั่น
-            if(cell) cell.style.width = newW + "px";
-          });
+          // update CSS var → all rows update automatically (no loop)
+          container.querySelector('.dt')?.style.setProperty('--col-'+colKey+'-w', newW+'px');
           rafId = null;
         });
       };
@@ -1392,7 +1397,13 @@ function renderProgress(data) {
     rows.forEach(o=>{ body += oProgressRowDiv(o, cols, savedW); });
   });
 
-  wrap.innerHTML = `<div class="dt-wrap"><div class="dt">${head}${body}</div></div>`;
+  const dtEl2 = document.createElement('div');
+  dtEl2.className = 'dt-wrap';
+  dtEl2.innerHTML = `<div class="dt">${head}${body}</div>`;
+  const dtInner2 = dtEl2.querySelector('.dt');
+  cols.forEach(col=>{ const w=savedW[col[0]]||col[2]; dtInner2.style.setProperty('--col-'+col[0]+'-w', w+'px'); });
+  wrap.innerHTML = '';
+  wrap.appendChild(dtEl2);
   enableProgressDtResize(wrap, cols, savedW);
 }
 
@@ -1426,7 +1437,7 @@ function oProgressRowDiv(o, cols, savedW) {
   let html = '<div class="dt-row">';
   cols.forEach((c,i)=>{
     const w = savedW[c[0]] || c[2];
-    html += `<div class="dt-cell" style="width:${w}px">${valueMap[c[0]]||""}</div>`;
+    html += `<div class="dt-cell" style="width:var(--col-${c[0]}-w,${w}px)">${valueMap[c[0]]||""}</div>`;
     if(i<cols.length-1) html += `<div class="dt-resizer"></div>`;
   });
   html += '</div>';
@@ -1453,10 +1464,7 @@ function enableProgressDtResize(container, cols, widths) {
         rafId = requestAnimationFrame(()=>{
           const newW = Math.max(40, startW + pendingX - startX);
           headCell.style.width = newW + "px";
-          allRows.forEach(row=>{
-            const cell = row.children[idx*2];
-            if(cell) cell.style.width = newW + "px";
-          });
+          container.querySelector('.dt')?.style.setProperty('--col-'+colKey+'-w', newW+'px');
           rafId = null;
         });
       };
@@ -2039,10 +2047,7 @@ function enableCustDtResize(container, cols, widths) {
         rafId = requestAnimationFrame(()=>{
           const newW = Math.max(40, startW + pendingX - startX);
           headCell.style.width = newW + "px";
-          allRows.forEach(row=>{
-            const cell = row.children[idx*2];
-            if(cell) cell.style.width = newW + "px";
-          });
+          container.querySelector('.dt')?.style.setProperty('--col-'+colKey+'-w', newW+'px');
           rafId = null;
         });
       };

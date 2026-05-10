@@ -928,7 +928,7 @@ function switchTab(t) {
   if (t==="users") renderUsersTab();
   if (t==="dycut") {
     const fr = document.getElementById("dycut-frame");
-    if (fr && !fr.src) fr.src = "KDPcut.html";
+    if (fr && !fr.src.includes("KDPcut")) fr.src = "KDPcut.html";
   }
   closeSidebar();
 }

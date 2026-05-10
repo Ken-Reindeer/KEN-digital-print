@@ -349,7 +349,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 }
 
 /* ── Tabulator Theme ── */
-.tabulator{border:none;background:transparent;font-family:'Roboto','Tahoma',sans-serif;font-size:13px;height:100%!important;}
+.tabulator{border:none;background:transparent;font-family:'Roboto','Tahoma',sans-serif;font-size:12px;height:100%!important;}
 .tabulator .tabulator-tableholder{flex:1;min-height:0;}
 
 /* header */
@@ -360,13 +360,13 @@ textarea.fc{resize:vertical;min-height:76px;}
 .tabulator .tabulator-header .tabulator-col .tabulator-col-content{padding:8px 10px;}
 
 /* rows — no vertical dividers, only bottom border */
-.tabulator-row{border-bottom:1px solid #f1f5f9;align-items:center;}
+.tabulator-row{border-bottom:1px solid #f1f5f9;display:flex;align-items:stretch;min-height:40px;}
 .tabulator-row:hover{background:#f8faff!important;}
-.tabulator-row .tabulator-cell{padding:6px 10px;border-right:none!important;overflow:hidden;color:var(--text);display:flex;align-items:center;}
+.tabulator-row .tabulator-cell{padding:4px 10px;border-right:none!important;overflow:hidden;color:var(--text);display:flex;align-items:center;min-height:40px;}
 .tabulator-row .tabulator-cell:focus{outline:none;}
 
 /* group header */
-.tabulator-row.tabulator-group{background:linear-gradient(90deg,#e8edf8 0%,#f1f5f9 100%);border-bottom:1px solid #d1d9e6;border-top:2px solid #c5cfe8;padding:6px 14px;font-size:12px;font-weight:700;color:var(--navy2);cursor:pointer;display:flex;align-items:center;gap:8px;}
+.tabulator-row.tabulator-group{background:#dbeafe;border-bottom:1px solid #bfdbfe;border-top:1px solid #bfdbfe;padding:6px 14px;font-size:12px;font-weight:700;color:var(--navy2);cursor:pointer;display:flex;align-items:center;gap:8px;}
 .tabulator-row.tabulator-group span.tabulator-group-toggle{font-size:10px;opacity:.5;}
 
 /* resize handle — subtle */
@@ -707,7 +707,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.54.0";
+const APP_VERSION = "v1.55.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -2338,9 +2338,8 @@ function renderOrders(data){
   tabulatorOrders=new Tabulator('#orders-wrap',{data:rows,layout:'fitDataFill',virtualDom:true,virtualDomBuffer:400,height:'100%',columns:cols,groupBy:'_date',
     groupHeader:(v,cnt,data)=>{
       const sum=data.reduce((s,r)=>s+(r.price||0),0);
-      const isOwner=SESSION?.user.role==='owner';
-      const priceStr=isOwner&&sum?` <span style="font-weight:700;color:var(--navy2)">฿${sum.toLocaleString()}</span>`:'';
-      return `<span style="color:var(--navy)">${v}</span> <span style="font-size:11px;font-weight:400;color:var(--text2)">${cnt} รายการ</span>${priceStr}`;
+      const priceStr=sum?` <span style="font-weight:700;color:var(--navy2);margin-left:12px;">฿${sum.toLocaleString()}</span>`:'';
+      return `<span style="color:var(--navy);font-weight:700;">${v}</span>${priceStr}`;
     },columnResized(col){_saveTabW('o_'+col.getField(),col.getWidth());}});
 }
 

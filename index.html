@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Customer Database — KEN Digital Print</title>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --navy:#0d2461;--navy2:#1a3faa;--navy3:#2563eb;
@@ -17,7 +17,7 @@
   --text:#0f172a;--text2:#475569;--text3:#94a3b8;
   --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
   --shadow-md:0 4px 20px rgba(0,0,0,.13);
-  --sans:'Roboto','Tahoma',sans-serif;--mono:'IBM Plex Mono',monospace;
+  --sans:'Roboto','Tahoma',sans-serif;--mono:'Roboto','Tahoma',sans-serif;
   --sb:220px;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -53,55 +53,74 @@ button,input,select,textarea{font-family:'Roboto','Tahoma',sans-serif;}
 .app{display:none;height:100vh;overflow:hidden;flex-direction:row;}
 .app.show{display:flex;}
 
-/* ── SIDEBAR ── */
+/* ── SIDEBAR (modernized) ── */
 .sidebar{width:var(--sb);background:var(--navy);display:flex;flex-direction:column;
-  flex-shrink:0;height:100vh;overflow-y:auto;transition:width .22s cubic-bezier(.4,0,.2,1);will-change:width;z-index:200;}
-.sidebar.collapsed{width:48px;}
-  .sidebar.collapsed .sb-app-name,.sidebar.collapsed .sb-app-sub,.sidebar.collapsed .sb-logo div,
-.sidebar.collapsed .nav-btn span:not(.nav-ico),.sidebar.collapsed .nav-badge{
-  max-width:0;opacity:0;overflow:hidden;margin:0;padding:0;}
-.sidebar.collapsed .nav-grp,.sidebar.collapsed .sb-uname,
-.sidebar.collapsed .sb-role,.sidebar.collapsed .btn-logout{display:none;}
-  .sidebar.collapsed .sb-logo{padding:8px 0;display:flex;flex-direction:column;align-items:center;gap:0;width:48px;}
-  .sidebar.collapsed .sb-logo img{width:28px;height:28px;display:block;margin:0 auto;}
-  .sidebar.collapsed .sb-toggle-bar{justify-content:center;padding:4px 0 8px;width:48px;}
-.sidebar.collapsed nav{padding:6px 3px;}
-.sidebar.collapsed .nav-btn{padding:9px;justify-content:center;gap:0;}
-.sidebar.collapsed .nav-ico{width:auto;}
-  .sidebar.collapsed .sb-user{padding:8px 0;display:flex;flex-direction:column;align-items:center;gap:0;width:48px;}
-  .sidebar.collapsed .sb-av{width:26px;height:26px;font-size:10px;margin:0 auto;}
-  .sb-logo{padding:12px 14px 10px;border-bottom:none;
-  display:flex;align-items:center;gap:10px;flex-shrink:0;overflow:hidden;}
+  flex-shrink:0;height:100vh;overflow-y:auto;overflow-x:hidden;
+  transition:width .25s cubic-bezier(.4,0,.2,1);will-change:width;z-index:200;}
+.sidebar.collapsed{width:64px;}
+
+/* Logo block — icon stays put, text fades */
+.sb-logo{padding:14px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0;
+  border-bottom:1px solid rgba(255,255,255,.08);overflow:hidden;
+  transition:padding .25s cubic-bezier(.4,0,.2,1);}
 .sb-logo img{width:32px;height:32px;border-radius:50%;flex-shrink:0;object-fit:cover;}
-.sb-app-name{color:white;font-size:11px;font-weight:700;line-height:1.35;white-space:nowrap;overflow:hidden;}
-.sb-app-sub{color:rgba(255,255,255,.4);font-size:9px;font-family:var(--mono);text-transform:uppercase;white-space:nowrap;}
-.sb-toggle-bar{display:flex;align-items:center;padding:4px 8px 8px;border-bottom:1px solid rgba(255,255,255,.12);flex-shrink:0;}
-.sb-toggle{background:none;border:none;cursor:pointer;color:rgba(255,255,255,.4);
-  font-size:11px;padding:3px 8px;border-radius:4px;transition:color .1s;width:100%;text-align:left;}
-.sb-toggle:hover{color:white;background:rgba(255,255,255,.08);}
-.sidebar.collapsed .sb-toggle{text-align:center;}
-nav{padding:10px 8px;flex:1;}
-.nav-grp{font-size:9px;font-family:var(--mono);color:rgba(255,255,255,.28);
-  text-transform:uppercase;letter-spacing:1px;padding:8px 12px 4px;}
-.nav-btn{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:none;overflow:hidden;
-  background:none;color:rgba(255,255,255,.62);font-family:var(--sans);font-size:13px;
-  font-weight:500;border-radius:7px;cursor:pointer;text-align:left;transition:all .15s;margin-bottom:1px;}
-.nav-btn:hover{background:rgba(255,255,255,.1);color:white;}
-.nav-btn.active{background:rgba(255,255,255,.18);color:white;}
-.nav-ico{font-size:15px;width:20px;text-align:center;flex-shrink:0;}
-.nav-btn span:not(.nav-ico){max-width:200px;opacity:1;transition:max-width .2s cubic-bezier(.4,0,.2,1),opacity .15s ease;overflow:hidden;white-space:nowrap;}
+.sb-logo > div{flex:1;min-width:0;overflow:hidden;
+  transition:opacity .18s ease,width .25s cubic-bezier(.4,0,.2,1);}
+.sb-app-name{color:white;font-size:12px;font-weight:700;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sb-app-sub{color:rgba(255,255,255,.45);font-size:9px;text-transform:uppercase;letter-spacing:.6px;white-space:nowrap;}
+.sidebar.collapsed .sb-logo{padding:14px 16px;}
+.sidebar.collapsed .sb-logo > div{opacity:0;width:0;}
+
+/* Toggle bar */
+.sb-toggle-bar{padding:6px 8px 10px;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0;}
+.sb-toggle{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);
+  cursor:pointer;color:rgba(255,255,255,.6);font-size:11px;
+  padding:7px 12px;border-radius:6px;transition:all .15s;
+  width:100%;text-align:left;font-family:var(--sans);
+  display:flex;align-items:center;gap:8px;white-space:nowrap;overflow:hidden;}
+.sb-toggle:hover{color:white;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.15);}
+.sb-toggle-ico{flex-shrink:0;width:14px;text-align:center;}
+.sb-toggle-label{transition:opacity .18s ease,width .25s cubic-bezier(.4,0,.2,1);overflow:hidden;}
+.sidebar.collapsed .sb-toggle{justify-content:center;padding:7px;}
+.sidebar.collapsed .sb-toggle-label{opacity:0;width:0;}
+
+/* Nav */
+nav{padding:8px;flex:1;overflow-y:auto;overflow-x:hidden;}
+.nav-grp{font-size:9px;color:rgba(255,255,255,.32);text-transform:uppercase;
+  letter-spacing:1.2px;padding:12px 14px 6px;font-weight:600;white-space:nowrap;overflow:hidden;}
+.sidebar.collapsed .nav-grp{display:none;}
+.nav-btn{display:flex;align-items:center;gap:12px;width:100%;padding:10px 14px;border:none;overflow:hidden;
+  background:none;color:rgba(255,255,255,.7);font-family:var(--sans);font-size:13px;
+  font-weight:500;border-radius:7px;cursor:pointer;text-align:left;
+  transition:background .15s,color .15s;margin-bottom:2px;white-space:nowrap;}
+.nav-btn:hover{background:rgba(255,255,255,.08);color:white;}
+.nav-btn.active{background:rgba(255,255,255,.16);color:white;}
+.nav-ico{font-size:16px;width:24px;min-width:24px;text-align:center;flex-shrink:0;line-height:1;}
+.nav-btn span:not(.nav-ico){flex:1;overflow:hidden;
+  transition:opacity .18s ease,width .25s cubic-bezier(.4,0,.2,1),margin .25s;}
+.sidebar.collapsed .nav-btn span:not(.nav-ico){opacity:0;width:0;margin:0;}
 .nav-badge{margin-left:auto;background:#f59e0b;color:white;font-size:9px;
-  font-family:var(--mono);padding:1px 6px;border-radius:10px;font-weight:700;}
+  padding:1px 7px;border-radius:10px;font-weight:700;flex-shrink:0;
+  transition:opacity .18s ease,width .25s,margin .25s,padding .25s;}
+.sidebar.collapsed .nav-badge{opacity:0;width:0;margin:0;padding:0;}
+
+/* User section */
 .sb-user{padding:12px 14px;border-top:1px solid rgba(255,255,255,.1);
-  display:flex;align-items:center;gap:10px;flex-shrink:0;}
+  display:flex;align-items:center;gap:12px;flex-shrink:0;overflow:hidden;}
 .sb-av{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.18);
   display:flex;align-items:center;justify-content:center;font-size:13px;
   font-weight:700;color:white;flex-shrink:0;}
-.sb-uname{color:white;font-size:12px;font-weight:600;line-height:1.3;}
-.sb-role{color:rgba(255,255,255,.45);font-size:10px;font-family:var(--mono);}
+.sb-user > div:not(.sb-av){flex:1;min-width:0;overflow:hidden;
+  transition:opacity .18s ease,width .25s cubic-bezier(.4,0,.2,1);}
+.sb-uname{color:white;font-size:12px;font-weight:600;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sb-role{color:rgba(255,255,255,.5);font-size:10px;text-transform:uppercase;letter-spacing:.4px;}
 .btn-logout{margin-left:auto;background:none;border:none;cursor:pointer;
-  color:rgba(255,255,255,.35);font-size:16px;padding:4px;border-radius:5px;transition:color .15s;}
+  color:rgba(255,255,255,.4);font-size:16px;padding:4px;border-radius:5px;
+  transition:color .15s,opacity .18s,width .25s;flex-shrink:0;}
 .btn-logout:hover{color:white;}
+.sidebar.collapsed .sb-user{padding:12px 14px;}
+.sidebar.collapsed .sb-user > div:not(.sb-av){opacity:0;width:0;}
+.sidebar.collapsed .btn-logout{opacity:0;width:0;padding:0;pointer-events:none;}
 
 /* ── MOBILE OVERLAY ── */
 .sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:150;}
@@ -137,7 +156,7 @@ nav{padding:10px 8px;flex:1;}
   
 
 /* ── STATS ── */
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:16px;}
 .stat{background:white;border:1px solid var(--border);border-radius:10px;padding:14px;
   box-shadow:var(--shadow);display:flex;align-items:center;gap:12px;}
 .stat-ico{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;
@@ -287,6 +306,30 @@ textarea.fc{resize:vertical;min-height:76px;}
 .up-area input{display:none;}
 .prev-img{max-width:100%;max-height:160px;border-radius:7px;margin-top:10px;display:none;}
 
+/* ── INSIGHT PIPELINE ── */
+.insight-pipeline{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;}
+.pipe-card{background:white;border:1px solid var(--border);border-radius:10px;padding:14px 16px;
+  display:flex;flex-direction:column;gap:4px;border-left:4px solid var(--border);box-shadow:var(--shadow);}
+.pipe-card.pipe-wait{border-left-color:#f59e0b;}
+.pipe-card.pipe-prod{border-left-color:#3b82f6;}
+.pipe-card.pipe-done{border-left-color:var(--success);}
+.pipe-lbl{font-size:12px;color:var(--text2);font-weight:600;}
+.pipe-count{font-size:24px;font-weight:700;color:var(--text);}
+.pipe-sum{font-size:13px;color:var(--text2);font-weight:500;}
+
+/* ── TOP CUSTOMERS ── */
+.top-cust-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9;}
+.top-cust-row:last-child{border-bottom:none;}
+.top-cust-rank{width:24px;height:24px;border-radius:50%;background:var(--bg);color:var(--text2);
+  font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.top-cust-rank.r1{background:#fef3c7;color:#92400e;}
+.top-cust-rank.r2{background:#e0e7ff;color:#3730a3;}
+.top-cust-rank.r3{background:#fce7f3;color:#9f1239;}
+.top-cust-info{flex:1;min-width:0;}
+.top-cust-name{font-size:13px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.top-cust-cid{font-size:10px;color:var(--text3);}
+.top-cust-total{font-size:13px;font-weight:700;color:var(--success);flex-shrink:0;}
+
 /* ── CHART ── */
 .chart-grid{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:14px;}
 .chart-card{background:white;border:1px solid var(--border);border-radius:10px;padding:14px;box-shadow:var(--shadow);}
@@ -341,6 +384,7 @@ textarea.fc{resize:vertical;min-height:76px;}
   .main{margin-left:0 !important;}
   .hamburger{display:block;}
   .stats{grid-template-columns:repeat(2,1fr);}
+  .insight-pipeline{grid-template-columns:1fr;}
   .chart-grid{grid-template-columns:1fr;}
   .fgrid{grid-template-columns:1fr;}
   .topbar-r .btn-sm span{display:none;}
@@ -403,26 +447,28 @@ textarea.fc{resize:vertical;min-height:76px;}
       </div>
     </div>
     <div class="sb-toggle-bar">
-      <button class="sb-toggle" onclick="toggleSidebar()" title="ย่อ/ขยาย sidebar" id="sb-toggle-btn">◀ ย่อเมนู</button>
+      <button class="sb-toggle" onclick="toggleSidebar()" title="ย่อ/ขยาย sidebar" id="sb-toggle-btn">
+        <span class="sb-toggle-ico" id="sb-toggle-ico">◀</span><span class="sb-toggle-label">ย่อเมนู</span>
+      </button>
     </div>
     <nav>
       <div class="nav-grp">เมนูหลัก</div>
-      <button class="nav-btn active" onclick="switchTab('orders')" id="nav-orders">
+      <button class="nav-btn active" onclick="switchTab('orders')" id="nav-orders" title="ประวัติการสั่งซื้อ">
         <span class="nav-ico">📋</span><span>ประวัติการสั่งซื้อ</span></button>
-      <button class="nav-btn" onclick="switchTab('progress')" id="nav-progress">
+      <button class="nav-btn" onclick="switchTab('progress')" id="nav-progress" title="In Progress">
         <span class="nav-ico">⏳</span><span>In Progress</span>
         <span class="nav-badge" id="badge-pending">0</span></button>
-      <button class="nav-btn" onclick="switchTab('customers')" id="nav-customers">
+      <button class="nav-btn" onclick="switchTab('customers')" id="nav-customers" title="ข้อมูลลูกค้า">
         <span class="nav-ico">👤</span><span>ข้อมูลลูกค้า</span></button>
-      <button class="nav-btn" onclick="switchTab('insight')" id="nav-insight">
+      <button class="nav-btn" onclick="switchTab('insight')" id="nav-insight" title="Business Insight">
         <span class="nav-ico">📊</span><span>Business Insight</span></button>
-      <button class="nav-btn" onclick="switchTab('dycut')" id="nav-dycut">
+      <button class="nav-btn" onclick="switchTab('dycut')" id="nav-dycut" title="Layout Planner">
         <span class="nav-ico">📏</span><span>Layout Planner</span>
       </button>
       <div class="nav-grp" id="nav-grp-mgmt" style="display:none">จัดการระบบ</div>
-      <button class="nav-btn" onclick="switchTab('users')" id="nav-users" style="display:none">
+      <button class="nav-btn" onclick="switchTab('users')" id="nav-users" style="display:none" title="จัดการผู้ใช้">
         <span class="nav-ico">🔑</span><span>จัดการผู้ใช้</span></button>
-      <button class="nav-btn" onclick="switchTab('changepass')" id="nav-changepass">
+      <button class="nav-btn" onclick="switchTab('changepass')" id="nav-changepass" title="เปลี่ยนรหัสผ่าน">
         <span class="nav-ico">🔒</span><span>เปลี่ยนรหัสผ่าน</span></button>
     </nav>
     <div class="sb-user">
@@ -506,15 +552,35 @@ textarea.fc{resize:vertical;min-height:76px;}
         <!-- INSIGHT -->
         <div class="tab-panel" id="tab-insight">
           <div class="stats">
-            <div class="stat"><div class="stat-ico ic-blue">👤</div><div><div class="stat-lbl">CUSTOMERS</div><div class="stat-val" id="s-cust">–</div></div></div>
-            <div class="stat"><div class="stat-ico ic-amber">⏳</div><div><div class="stat-lbl">IN PROGRESS</div><div class="stat-val" id="s-pend">–</div></div></div>
-            <div class="stat"><div class="stat-ico ic-green">💰</div><div><div class="stat-lbl">เดือนนี้</div><div class="stat-val" id="s-month">–</div></div></div>
-            <div class="stat"><div class="stat-ico ic-purple">📈</div><div><div class="stat-lbl">รวมทั้งหมด</div><div class="stat-val" id="s-total">–</div></div></div>
+            <div class="stat"><div class="stat-ico ic-blue">👤</div><div><div class="stat-lbl">ลูกค้าทั้งหมด</div><div class="stat-val" id="s-cust">–</div></div></div>
+            <div class="stat"><div class="stat-ico ic-amber">📦</div><div><div class="stat-lbl">ออเดอร์ทั้งหมด</div><div class="stat-val" id="s-orders">–</div></div></div>
+            <div class="stat"><div class="stat-ico ic-green">💰</div><div><div class="stat-lbl">รายได้เดือนนี้</div><div class="stat-val" id="s-month">–</div></div></div>
+            <div class="stat"><div class="stat-ico ic-purple">📊</div><div><div class="stat-lbl">เฉลี่ย/ออเดอร์</div><div class="stat-val" id="s-aov">–</div></div></div>
+            <div class="stat"><div class="stat-ico ic-blue">📈</div><div><div class="stat-lbl">vs เดือนที่แล้ว</div><div class="stat-val" id="s-mom">–</div></div></div>
+            <div class="stat"><div class="stat-ico ic-amber">🔁</div><div><div class="stat-lbl">ลูกค้าซ้ำ</div><div class="stat-val" id="s-repeat">–</div></div></div>
+          </div>
+          <div class="insight-pipeline">
+            <div class="pipe-card pipe-wait">
+              <div class="pipe-lbl">⏸ รอชำระเงิน</div>
+              <div class="pipe-count" id="pipe-wait-c">–</div>
+              <div class="pipe-sum" id="pipe-wait-s">–</div>
+            </div>
+            <div class="pipe-card pipe-prod">
+              <div class="pipe-lbl">⚙️ กำลังผลิต</div>
+              <div class="pipe-count" id="pipe-prod-c">–</div>
+              <div class="pipe-sum" id="pipe-prod-s">–</div>
+            </div>
+            <div class="pipe-card pipe-done">
+              <div class="pipe-lbl">✅ จัดส่งสำเร็จ</div>
+              <div class="pipe-count" id="pipe-done-c">–</div>
+              <div class="pipe-sum" id="pipe-done-s">–</div>
+            </div>
           </div>
           <div class="chart-grid">
-            <div class="chart-card"><div class="chart-ttl">ยอดขายรายเดือน (6 เดือนล่าสุด)</div>
+            <div class="chart-card"><div class="chart-ttl">ยอดขายรายเดือน (12 เดือนล่าสุด)</div>
               <div class="bar-wrap" id="chart-monthly"><div style="color:var(--text3);font-size:12px">กำลังโหลด...</div></div></div>
-            <div class="chart-card"><div class="chart-ttl">สถานะออเดอร์</div><div id="chart-status"></div></div>
+            <div class="chart-card"><div class="chart-ttl">ลูกค้าที่ใช้จ่ายสูงสุด (Top 5)</div>
+              <div id="chart-top-cust"><div style="color:var(--text3);font-size:12px">กำลังโหลด...</div></div></div>
           </div>
         </div>
 
@@ -691,7 +757,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.53.0";
+const APP_VERSION = "v1.54.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -883,18 +949,21 @@ async function apiPost(params) {
 }
 
 // ══════════════════════════════════════════════
-// SIDEBAR MOBILE
+// SIDEBAR (unified: desktop collapse + mobile overlay)
 // ══════════════════════════════════════════════
 function toggleSidebar() {
-  document.getElementById("sidebar").classList.toggle("open");
-  document.getElementById("sb-overlay").classList.toggle("open");
-}
-function toggleSidebar() {
   const sb = document.getElementById("sidebar");
-  const btn = document.getElementById("sb-toggle-btn");
+  // Mobile: toggle overlay open/close
+  if (window.innerWidth <= 768) {
+    sb.classList.toggle("open");
+    document.getElementById("sb-overlay").classList.toggle("open");
+    return;
+  }
+  // Desktop: toggle collapsed state, persist, swap toggle icon
   const collapsed = sb.classList.toggle("collapsed");
-  btn.textContent = collapsed ? "▶" : "◀ ย่อเมนู";
-  try{localStorage.setItem("ken_sb_collapsed", collapsed?"1":"0");}catch(e){}
+  const ico = document.getElementById("sb-toggle-ico");
+  if (ico) ico.textContent = collapsed ? "▶" : "◀";
+  try { localStorage.setItem("ken_sb_collapsed", collapsed ? "1" : "0"); } catch(e) {}
 }
 function closeSidebar() {
   document.getElementById("sidebar").classList.remove("open");
@@ -906,8 +975,8 @@ function closeSidebar() {
     if(localStorage.getItem("ken_sb_collapsed")==="1"){
       document.addEventListener("DOMContentLoaded",()=>{
         const sb=document.getElementById("sidebar");
-        const btn=document.getElementById("sb-toggle-btn");
-        if(sb){sb.classList.add("collapsed");if(btn)btn.textContent="▶";}
+        const ico=document.getElementById("sb-toggle-ico");
+        if(sb){sb.classList.add("collapsed");if(ico)ico.textContent="▶";}
       });
     }
   }catch(e){}
@@ -1813,8 +1882,8 @@ hr{border:none;border-top:1.5px solid #333;margin:10px 0;}
 .full{grid-column:1/-1;}
 .price{font-weight:700;color:#16a34a;font-size:16px;}
 .cbs{display:flex;gap:36px;margin:14px 0;}
-.cb{display:flex;align-items:center;gap:8px;font-size:14px;}
-.box{width:16px;height:16px;border:2px solid #333;flex-shrink:0;}
+.cb{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;}
+.cb input[type=checkbox]{width:16px;height:16px;margin:0;flex-shrink:0;cursor:pointer;accent-color:#111;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
 .sec{font-weight:700;font-size:15px;color:#b91c1c;margin-bottom:8px;}
 .detail{white-space:pre-wrap;line-height:1.9;font-size:14px;padding:8px;border-radius:4px;}
 .detail:focus{outline:2px dashed #94a3b8;outline-offset:2px;background:#fffbeb;}
@@ -1854,9 +1923,9 @@ hr{border:none;border-top:1.5px solid #333;margin:10px 0;}
   <div class="row"><span class="lbl">บันทึกโดย</span><span class="val" style="color:#555">${o.createdBy||"–"}</span></div>
 </div>
 <div class="cbs">
-  <div class="cb"><div class="box"></div>รับหน้าร้าน</div>
-  <div class="cb"><div class="box"></div>ส่งขนส่ง</div>
-  <div class="cb"><div class="box"></div>Lalamove</div>
+  <label class="cb"><input type="checkbox">รับหน้าร้าน</label>
+  <label class="cb"><input type="checkbox">ส่งขนส่ง</label>
+  <label class="cb"><input type="checkbox">Lalamove</label>
 </div>
 <hr>
 <div class="sec">รายละเอียด</div>
@@ -2233,25 +2302,99 @@ async function saveCust(){
 async function loadStats(){
   const res=await api({action:"getStats"});
   if(!res||!res.success) return;
-  document.getElementById("s-cust").textContent=res.totalCustomers.toLocaleString();
-  document.getElementById("s-pend").textContent=res.pending;
-  document.getElementById("s-month").textContent="฿"+Math.round(res.monthRevenue).toLocaleString();
-  document.getElementById("s-total").textContent="฿"+Math.round(res.totalRevenue).toLocaleString();
-  const months=Object.entries(res.byMonth).sort((a,b)=>a[0]>b[0]?1:-1).slice(-6);
-  const mx=Math.max(...months.map(m=>m[1]),1);
-  const th=["","ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
-  document.getElementById("chart-monthly").innerHTML=months.map(([k,v])=>{
-    const[y,m]=k.split("-");
-    return `<div class="bar-row"><div class="bar-lbl">${th[parseInt(m)]} ${y.slice(2)}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/mx*100)}%"></div></div><div class="bar-val">฿${Math.round(v).toLocaleString()}</div></div>`;
+
+  const fmt = n => "฿" + Math.round(n).toLocaleString();
+  const th = ["","ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+
+  // === Row 1: 6 KPI cards ===
+  document.getElementById("s-cust").textContent = res.totalCustomers.toLocaleString();
+  document.getElementById("s-orders").textContent = res.totalOrders.toLocaleString();
+  document.getElementById("s-month").textContent = fmt(res.monthRevenue);
+
+  const aov = res.totalOrders ? res.totalRevenue / res.totalOrders : 0;
+  document.getElementById("s-aov").textContent = fmt(aov);
+
+  // month-over-month %
+  const now = new Date();
+  const pad = n => String(n).padStart(2,"0");
+  const curKey = `${now.getFullYear()}-${pad(now.getMonth()+1)}`;
+  const prev = new Date(now.getFullYear(), now.getMonth()-1, 1);
+  const prevKey = `${prev.getFullYear()}-${pad(prev.getMonth()+1)}`;
+  const curRev = res.byMonth?.[curKey] || 0;
+  const prevRev = res.byMonth?.[prevKey] || 0;
+  const momEl = document.getElementById("s-mom");
+  if (prevRev > 0) {
+    const pct = ((curRev - prevRev) / prevRev) * 100;
+    const arrow = pct >= 0 ? "▲" : "▼";
+    const color = pct >= 0 ? "var(--success)" : "var(--danger)";
+    momEl.innerHTML = `<span style="color:${color}">${arrow} ${Math.abs(pct).toFixed(1)}%</span>`;
+  } else {
+    momEl.textContent = curRev > 0 ? "ใหม่" : "–";
+  }
+
+  // repeat-customer %
+  const ordersByCust = {};
+  allOrders.forEach(o => { if (o.customerId) ordersByCust[o.customerId] = (ordersByCust[o.customerId]||0) + 1; });
+  const repeatCount = Object.values(ordersByCust).filter(n => n >= 2).length;
+  const custCount = customers.length || res.totalCustomers || 0;
+  const repeatRate = custCount ? (repeatCount / custCount * 100) : 0;
+  document.getElementById("s-repeat").textContent = repeatRate.toFixed(0) + "%";
+
+  // === Row 2: Status Pipeline ===
+  const byStatus = {
+    "รอชำระเงิน": {count:0, sum:0},
+    "กำลังผลิต":   {count:0, sum:0},
+    "จัดส่งสำเร็จ": {count:0, sum:0}
+  };
+  allOrders.forEach(o => {
+    const s = o.status;
+    const p = parseFloat(o.price) || 0;
+    if (byStatus[s]) { byStatus[s].count++; byStatus[s].sum += p; }
+  });
+  document.getElementById("pipe-wait-c").textContent = byStatus["รอชำระเงิน"].count.toLocaleString();
+  document.getElementById("pipe-wait-s").textContent = fmt(byStatus["รอชำระเงิน"].sum);
+  document.getElementById("pipe-prod-c").textContent = byStatus["กำลังผลิต"].count.toLocaleString();
+  document.getElementById("pipe-prod-s").textContent = fmt(byStatus["กำลังผลิต"].sum);
+  document.getElementById("pipe-done-c").textContent = byStatus["จัดส่งสำเร็จ"].count.toLocaleString();
+  document.getElementById("pipe-done-s").textContent = fmt(byStatus["จัดส่งสำเร็จ"].sum);
+
+  // === Row 3a: monthly bar chart (last 12 months) ===
+  const months = Object.entries(res.byMonth || {}).sort((a,b) => a[0] > b[0] ? 1 : -1).slice(-12);
+  const mx = Math.max(...months.map(m => m[1]), 1);
+  document.getElementById("chart-monthly").innerHTML = months.map(([k,v]) => {
+    const [y,m] = k.split("-");
+    return `<div class="bar-row"><div class="bar-lbl">${th[parseInt(m)]} ${y.slice(2)}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/mx*100)}%"></div></div><div class="bar-val">${fmt(v)}</div></div>`;
   }).join("");
-  const done=res.totalOrders-res.pending;
-  document.getElementById("chart-status").innerHTML=`
-    <div style="display:flex;flex-direction:column;gap:10px;padding:4px 0">
-      <div style="display:flex;align-items:center;gap:10px"><div style="width:10px;height:10px;border-radius:50%;background:var(--warning);flex-shrink:0"></div><div style="flex:1;font-size:13px">กำลังผลิต</div><b style="font-family:var(--mono)">${res.pending}</b></div>
-      <div style="display:flex;align-items:center;gap:10px"><div style="width:10px;height:10px;border-radius:50%;background:var(--success);flex-shrink:0"></div><div style="flex:1;font-size:13px">จัดส่งสำเร็จ</div><b style="font-family:var(--mono)">${done}</b></div>
-      <div style="background:var(--bg);border-radius:6px;overflow:hidden;height:12px;margin-top:4px"><div style="height:100%;background:var(--success);width:${res.totalOrders?Math.round(done/res.totalOrders*100):0}%;border-radius:6px;transition:width .6s"></div></div>
-      <div style="font-size:10px;color:var(--text3);font-family:var(--mono);text-align:right">${res.totalOrders} orders total</div>
-    </div>`;
+
+  // === Row 3b: Top 5 customers by revenue ===
+  const custTotals = {};
+  allOrders.forEach(o => {
+    if (!o.customerId) return;
+    custTotals[o.customerId] = (custTotals[o.customerId] || 0) + (parseFloat(o.price) || 0);
+  });
+  const top5 = Object.entries(custTotals)
+    .sort((a,b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([cid, total]) => {
+      const c = customers.find(x => x.rowId === cid) || customers.find(x => x.customerId === cid);
+      return { name: c?.name || "(ไม่พบ)", cid: c?.customerId || "–", total };
+    });
+  const topEl = document.getElementById("chart-top-cust");
+  if (top5.length === 0) {
+    topEl.innerHTML = `<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px">ยังไม่มีข้อมูล</div>`;
+  } else {
+    topEl.innerHTML = top5.map((c, i) => {
+      const rankCls = i < 3 ? `r${i+1}` : "";
+      return `<div class="top-cust-row">
+        <div class="top-cust-rank ${rankCls}">${i+1}</div>
+        <div class="top-cust-info">
+          <div class="top-cust-name">${c.name}</div>
+          <div class="top-cust-cid">${c.cid}</div>
+        </div>
+        <div class="top-cust-total">${fmt(c.total)}</div>
+      </div>`;
+    }).join("");
+  }
 }
 
 // ══════════════════════════════════════════════

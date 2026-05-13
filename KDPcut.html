@@ -104,6 +104,9 @@ body{background:var(--bg);color:var(--tx);font-size:14px;display:flex;flex-direc
 .lbtn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;border-radius:7px;border:2px solid var(--border);background:var(--s2);cursor:pointer;transition:all .15s;text-align:center;}
 .lbtn:hover{border-color:var(--border2);background:var(--white);}
 .lbtn.active{border-color:var(--blue2);background:var(--blue-bg);}
+.lbtn.best-layout{border-color:#16a34a;background:#f0fdf4;}
+.lbtn.best-layout:hover{border-color:#15803d;background:#dcfce7;}
+.lbtn.best-layout.active{border-color:#16a34a;background:#dcfce7;}
 .lcount{font-size:17px;font-weight:700;color:var(--navy);line-height:1;}
 .lbtn.active .lcount{color:var(--blue2);}
 .lname{font-size:9px;color:var(--tx2);font-weight:500;line-height:1.3;}
@@ -131,9 +134,9 @@ body{background:var(--bg);color:var(--tx);font-size:14px;display:flex;flex-direc
 
 /* ── CANVAS ── */
 .canvas-area{flex:1;overflow:auto;background:var(--bg);background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:20px 20px;}
-.canvas-wrap{min-width:100%;min-height:100%;display:flex;align-items:center;justify-content:center;padding:24px 20px;}
+.canvas-wrap{min-width:100%;min-height:100%;display:flex;align-items:center;justify-content:center;padding:60px 20px 40px 60px;}
 .sheet-outer{display:inline-flex;flex-direction:column;align-items:center;gap:7px;}
-.sheet{background:#fff;position:relative;outline:2px solid var(--blue2);box-shadow:var(--sh-md);flex-shrink:0;}
+.sheet{background:#fff;position:relative;outline:2px solid var(--blue2);box-shadow:var(--sh-md);flex-shrink:0;overflow:visible;}
 .sheet-lbl{font-family:var(--sans);font-size:11px;color:var(--tx2);}
 .placed{position:absolute;inset:0;pointer-events:none;}
 .pi{position:absolute;border:1.5px solid var(--blue2);background:rgba(37,99,235,.05);box-sizing:border-box;}
@@ -157,6 +160,52 @@ body{background:var(--bg);color:var(--tx);font-size:14px;display:flex;flex-direc
 ::-webkit-scrollbar{width:5px;height:5px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+
+/* ── DIMENSION ANNOTATIONS ── */
+.dim-label{
+  position:absolute;pointer-events:none;
+  font-family:var(--sans);font-size:10px;font-weight:600;
+  color:var(--blue2);white-space:nowrap;line-height:1;
+  display:flex;align-items:center;justify-content:center;
+}
+/* Width dimension: sits above first rect */
+.dim-w{
+  height:16px;
+  flex-direction:column;gap:1px;
+}
+/* Height dimension: sits left of first rect */
+.dim-h{
+  width:16px;
+  flex-direction:row;gap:1px;
+  writing-mode:vertical-lr;
+  transform:rotate(180deg);
+}
+/* Gap arrow: horizontal, between col 0 and col 1 */
+.dim-gap{
+  height:12px;
+  flex-direction:column;gap:1px;
+}
+
+/* Arrow lines using pseudo-elements */
+.dim-arrow{
+  position:absolute;pointer-events:none;
+}
+.dim-arrow-line{
+  background:var(--blue2);
+  position:absolute;
+}
+/* Margin bracket lines */
+.margin-line{
+  position:absolute;pointer-events:none;
+  border:1px dashed rgba(37,99,235,.45);
+}
+.margin-label{
+  position:absolute;pointer-events:none;
+  font-family:var(--sans);font-size:9px;font-weight:700;
+  color:rgba(37,99,235,.75);white-space:nowrap;
+  background:rgba(255,255,255,.85);padding:1px 3px;border-radius:3px;
+  line-height:1.3;
+}
 </style>
 </head>
 <body>
@@ -256,7 +305,7 @@ body{background:var(--bg);color:var(--tx);font-size:14px;display:flex;flex-direc
   <!-- RIGHT -->
   <div class="rp-wrap">
     <button class="rpanel-toggle" id="rp-toggle" onclick="toggleRpanel()" title="เปิด/ปิดแผงข้อมูล">
-      <span id="rp-arrow" style="font-size:11px;color:var(--blue2);">◀</span>
+      <span id="rp-arrow" style="font-size:11px;color:var(--blue2);">◀▶</span>
     </button>
     <div class="rpanel" id="rpanel">
       <div>
@@ -543,12 +592,18 @@ function makeIcon(idx,active){
     <line x1="${sp}" y1="${mr}" x2="${W-1}" y2="${mr}" stroke="${sc}" stroke-width=".5" stroke-dasharray="2 2"/></svg>`;
 }
 function renderTabs(layouts){
-  document.getElementById('layout-tabs').innerHTML = layouts.map((L,i)=>`
-    <button class="lbtn${i===selLayout?' active':''}" onclick="selLayout=${i};rerender()">
-      <div class="licon">${makeIcon(i,i===selLayout)}</div>
-      <div class="lcount">${L.n}</div>
+  const maxN = Math.max(...layouts.map(L=>L.n||0));
+  document.getElementById('layout-tabs').innerHTML = layouts.map((L,i)=>{
+    const isBest = maxN>0 && L.n===maxN;
+    const isActive = i===selLayout;
+    const cls = `lbtn${isActive?' active':''}${isBest?' best-layout':''}`;
+    return `<button class="${cls}" onclick="selLayout=${i};rerender()" style="position:relative;">
+      ${isBest?`<span style="position:absolute;top:-1px;right:-1px;background:#16a34a;color:#fff;font-size:7px;font-weight:700;padding:1px 4px;border-radius:0 6px 0 5px;line-height:1.6;letter-spacing:.3px;">BEST</span>`:''}
+      <div class="licon">${makeIcon(i,isActive)}</div>
+      <div class="lcount" style="${isBest?'color:var(--green);':''}">${L.n}</div>
       <div class="lname">${L.label}<br><span style="font-size:8px;color:var(--tx3)">${L.desc}</span></div>
-    </button>`).join('');
+    </button>`;
+  }).join('');
 }
 
 // ── MAIN RENDER ───────────────────────────────────
@@ -563,7 +618,7 @@ function rerender(){
   const rects = buildRects(sw,sh,cw,ch,gap,selLayout);
 
   const ca = document.getElementById('canvas-area');
-  const PAD_W=48, PAD_H=60; // canvas-wrap padding × 2 + label space
+  const PAD_W=80, PAD_H=100; // canvas-wrap padding × 2 + label space
   const aW = Math.max(ca.clientWidth - PAD_W, 80);
   const aH = Math.max(ca.clientHeight - PAD_H, 80);
   let scale = 10;
@@ -581,10 +636,120 @@ function rerender(){
   const gR=document.getElementById('gap').value;
   document.getElementById('sheet-lbl').textContent=`${swR} × ${shR} ${u()}`;
 
-  document.getElementById('placed').innerHTML = rects.map(r=>{
+  // ── Render rectangles ──────────────────────────
+  let html = rects.map(r=>{
     const x=r.x*scale,y=r.y*scale,w=r.w*scale,h=r.h*scale;
     return `<div class="pi${r.rot?' rot':''}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"></div>`;
   }).join('');
+
+  // ── Annotations (only when there's at least 1 rect & valid dims) ──
+  if(rects.length>0 && cw>0 && ch>0){
+    const r0 = rects[0];
+    const x0=r0.x*scale, y0=r0.y*scale, w0=r0.w*scale, h0=r0.h*scale;
+
+    // Display values in current unit
+    const cwD = fromCm(r0.w), chD = fromCm(r0.h), gD = fromCm(gap);
+
+    // ── 1a. Width dimension — arrow + label ABOVE the sheet (outside) ──
+    // placed at negative top so it appears above the sheet border
+    const DIM_ABOVE = 22; // px above sheet top
+    html += `
+      <!-- width dim outside sheet -->
+      <svg style="position:absolute;left:${x0}px;top:${-DIM_ABOVE}px;width:${w0}px;height:14px;overflow:visible;pointer-events:none;"
+           viewBox="0 0 ${w0} 14" preserveAspectRatio="none">
+        <line x1="0" y1="7" x2="${w0}" y2="7" stroke="var(--blue2)" stroke-width="1.2"/>
+        <line x1="0" y1="2" x2="0" y2="12" stroke="var(--blue2)" stroke-width="1.2"/>
+        <line x1="${w0}" y1="2" x2="${w0}" y2="12" stroke="var(--blue2)" stroke-width="1.2"/>
+      </svg>
+      <div style="position:absolute;left:${x0}px;top:${-DIM_ABOVE-14}px;width:${w0}px;text-align:center;font-size:9px;font-weight:700;color:var(--blue2);pointer-events:none;white-space:nowrap;line-height:1;">
+        ${cwD} ${u()}
+      </div>`;
+
+    // ── 1b. Height dimension — arrow + label LEFT of the sheet (outside) ──
+    const DIM_LEFT = 22; // px left of sheet left edge
+    html += `
+      <!-- height dim outside sheet -->
+      <svg style="position:absolute;left:${-DIM_LEFT}px;top:${y0}px;width:14px;height:${h0}px;overflow:visible;pointer-events:none;"
+           viewBox="0 0 14 ${h0}" preserveAspectRatio="none">
+        <line x1="7" y1="0" x2="7" y2="${h0}" stroke="var(--blue2)" stroke-width="1.2"/>
+        <line x1="2" y1="0" x2="12" y2="0" stroke="var(--blue2)" stroke-width="1.2"/>
+        <line x1="2" y1="${h0}" x2="12" y2="${h0}" stroke="var(--blue2)" stroke-width="1.2"/>
+      </svg>
+      <div style="position:absolute;left:${-DIM_LEFT-30}px;top:${y0}px;width:28px;height:${h0}px;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+        <span style="font-size:9px;font-weight:700;color:var(--blue2);writing-mode:vertical-lr;transform:rotate(180deg);white-space:nowrap;">${chD} ${u()}</span>
+      </div>`;
+
+    // ── 1c. Gap dimension arrow (between col 0 and col 1, if gap>0 & ≥2 cols) ──
+    if(gap>0){
+      // find a rect in same row but next column
+      const r1 = rects.find(r => Math.abs(r.y - r0.y)<0.001 && r.x > r0.x + r0.w*0.5);
+      if(r1){
+        const gx0 = (r0.x + r0.w)*scale;
+        const gx1 = r1.x*scale;
+        const gy  = y0 + h0/2;
+        const GAP_PX = gx1 - gx0;
+        html += `
+          <!-- gap dim -->
+          <svg style="position:absolute;left:${gx0}px;top:${gy-8}px;width:${GAP_PX}px;height:16px;overflow:visible;pointer-events:none;"
+               viewBox="0 0 ${GAP_PX} 16" preserveAspectRatio="none">
+            <line x1="0" y1="8" x2="${GAP_PX}" y2="8" stroke="#f59e0b" stroke-width="1.2"/>
+            <line x1="0" y1="4" x2="0" y2="12" stroke="#f59e0b" stroke-width="1.2"/>
+            <line x1="${GAP_PX}" y1="4" x2="${GAP_PX}" y2="12" stroke="#f59e0b" stroke-width="1.2"/>
+          </svg>
+          <div style="position:absolute;left:${gx0}px;top:${gy-20}px;width:${GAP_PX}px;text-align:center;font-size:9px;font-weight:700;color:#d97706;pointer-events:none;white-space:nowrap;line-height:1;">
+            gap ${gD}
+          </div>`;
+      }
+    }
+
+    // ── 2. Right margin ─────────────────────────────────────────────
+    // Find the rightmost edge among all rects
+    const rightmostX = Math.max(...rects.map(r=>(r.x+r.w)*scale));
+    const sheetW = sw*scale;
+    const marginR_px = sheetW - rightmostX;
+    const marginR_val = fromCm(sw - Math.max(...rects.map(r=>r.x+r.w)));
+    if(marginR_px >= 3){
+      const mry = (sh*scale)/2;
+      html += `
+        <!-- right margin -->
+        <svg style="position:absolute;left:${rightmostX}px;top:0;width:${marginR_px}px;height:${sh*scale}px;overflow:visible;pointer-events:none;"
+             viewBox="0 0 ${marginR_px} ${sh*scale}" preserveAspectRatio="none">
+          <rect x="0" y="0" width="${marginR_px}" height="${sh*scale}" fill="rgba(239,68,68,.07)"/>
+          <!-- double-headed arrow -->
+          <line x1="${marginR_px/2}" y1="${mry-18}" x2="${marginR_px/2}" y2="${mry+18}" stroke="#ef4444" stroke-width="1" stroke-dasharray="3 2"/>
+          <line x1="2" y1="${mry}" x2="${marginR_px-2}" y2="${mry}" stroke="#ef4444" stroke-width="1.2"/>
+          <line x1="2" y1="${mry-4}" x2="2" y2="${mry+4}" stroke="#ef4444" stroke-width="1.2"/>
+          <line x1="${marginR_px-2}" y1="${mry-4}" x2="${marginR_px-2}" y2="${mry+4}" stroke="#ef4444" stroke-width="1.2"/>
+        </svg>
+        <div style="position:absolute;left:${rightmostX}px;top:${mry+22}px;width:${marginR_px}px;text-align:center;font-size:9px;font-weight:700;color:#ef4444;pointer-events:none;white-space:nowrap;background:rgba(255,255,255,.8);line-height:1.3;border-radius:2px;">
+          ▶ ${marginR_val} ${u()}
+        </div>`;
+    }
+
+    // ── 3. Bottom margin ────────────────────────────────────────────
+    const bottommostY = Math.max(...rects.map(r=>(r.y+r.h)*scale));
+    const sheetH = sh*scale;
+    const marginB_px = sheetH - bottommostY;
+    const marginB_val = fromCm(sh - Math.max(...rects.map(r=>r.y+r.h)));
+    if(marginB_px >= 3){
+      const mbx = (sw*scale)/2;
+      html += `
+        <!-- bottom margin -->
+        <svg style="position:absolute;left:0;top:${bottommostY}px;width:${sw*scale}px;height:${marginB_px}px;overflow:visible;pointer-events:none;"
+             viewBox="0 0 ${sw*scale} ${marginB_px}" preserveAspectRatio="none">
+          <rect x="0" y="0" width="${sw*scale}" height="${marginB_px}" fill="rgba(239,68,68,.07)"/>
+          <line x1="${mbx-18}" y1="${marginB_px/2}" x2="${mbx+18}" y2="${marginB_px/2}" stroke="#ef4444" stroke-width="1" stroke-dasharray="3 2"/>
+          <line x1="${mbx}" y1="2" x2="${mbx}" y2="${marginB_px-2}" stroke="#ef4444" stroke-width="1.2"/>
+          <line x1="${mbx-4}" y1="2" x2="${mbx+4}" y2="2" stroke="#ef4444" stroke-width="1.2"/>
+          <line x1="${mbx-4}" y1="${marginB_px-2}" x2="${mbx+4}" y2="${marginB_px-2}" stroke="#ef4444" stroke-width="1.2"/>
+        </svg>
+        <div style="position:absolute;top:${bottommostY}px;left:0;width:${sw*scale}px;height:${marginB_px}px;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+          <span style="font-size:9px;font-weight:700;color:#ef4444;background:rgba(255,255,255,.8);padding:1px 4px;border-radius:2px;white-space:nowrap;">▼ ${marginB_val} ${u()}</span>
+        </div>`;
+    }
+  }
+
+  document.getElementById('placed').innerHTML = html;
   document.getElementById('count-big').textContent=L.n||'';
 
   document.getElementById('st-n').textContent=L.n;
@@ -674,11 +839,11 @@ function toggleRpanel(){
   const btn = document.getElementById('rp-toggle');
   if(rpOpen){
     rp.classList.remove('collapsed');
-    arr.textContent = '◀';
+    arr.textContent = '◀▶';
     btn.style.right = '0';
   } else {
     rp.classList.add('collapsed');
-    arr.textContent = '▶';
+    arr.textContent = '◀▶';
     btn.style.right = '0';
   }
   setTimeout(rerender, 220);

@@ -85,10 +85,8 @@ button,input,select,textarea{font-family:'Roboto','Tahoma',sans-serif;}
 .sidebar.collapsed .sb-toggle-label{opacity:0;width:0;}
 
 /* Nav */
-nav{padding:8px;flex:1;overflow-y:auto;overflow-x:hidden;}
-.nav-grp{font-size:9px;color:rgba(255,255,255,.32);text-transform:uppercase;
-  letter-spacing:1.2px;padding:12px 14px 6px;font-weight:600;white-space:nowrap;overflow:hidden;}
-.sidebar.collapsed .nav-grp{display:none;}
+nav{padding:8px;flex:1;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;}
+.nav-bottom{margin-top:auto;padding-top:8px;border-top:1px solid rgba(255,255,255,.08);}
 .nav-btn{display:flex;align-items:center;gap:12px;width:100%;padding:10px 14px;border:none;overflow:hidden;
   background:none;color:rgba(255,255,255,.7);font-family:var(--sans);font-size:13px;
   font-weight:500;border-radius:7px;cursor:pointer;text-align:left;
@@ -96,13 +94,13 @@ nav{padding:8px;flex:1;overflow-y:auto;overflow-x:hidden;}
 .nav-btn:hover{background:rgba(255,255,255,.08);color:white;}
 .nav-btn.active{background:rgba(255,255,255,.16);color:white;}
 .nav-ico{font-size:16px;width:24px;min-width:24px;text-align:center;flex-shrink:0;line-height:1;}
-.nav-btn span:not(.nav-ico){flex:1;overflow:hidden;
+.nav-btn span:not(.nav-ico):not(.nav-badge){flex:1;overflow:hidden;text-overflow:ellipsis;
   transition:opacity .18s ease,width .25s cubic-bezier(.4,0,.2,1),margin .25s;}
-.sidebar.collapsed .nav-btn span:not(.nav-ico){opacity:0;width:0;margin:0;}
-.nav-badge{margin-left:auto;background:#f59e0b;color:white;font-size:9px;
-  padding:1px 7px;border-radius:10px;font-weight:700;flex-shrink:0;
+.sidebar.collapsed .nav-btn span:not(.nav-ico):not(.nav-badge){opacity:0;width:0;margin:0;}
+.nav-badge{background:#f59e0b;color:white;font-size:9px;
+  padding:1px 5px;border-radius:9px;font-weight:700;flex-shrink:0;min-width:18px;text-align:center;
   transition:opacity .18s ease,width .25s,margin .25s,padding .25s;}
-.sidebar.collapsed .nav-badge{opacity:0;width:0;margin:0;padding:0;}
+.sidebar.collapsed .nav-badge{opacity:0;width:0;margin:0;padding:0;min-width:0;}
 
 /* User section */
 .sb-user{padding:12px 14px;border-top:1px solid rgba(255,255,255,.1);
@@ -223,7 +221,7 @@ tbody tr:hover{background:#fafbfc;}
 .dt-row:hover{background:#fafbfc;}
 .dt-cell{padding:2px 8px;font-size:12px;overflow:hidden;text-overflow:ellipsis;
   white-space:nowrap;flex-shrink:0;display:flex;align-items:center;}
-.dt-grp{background:#f1f5f9;padding:7px 12px;font-size:11px;font-weight:600;
+.dt-grp{background:#f1f5f9;padding:8px 12px;font-size:13px;font-weight:600;
   color:var(--text2);font-family:var(--mono);border-bottom:1px solid var(--border);
   display:flex;justify-content:flex-start;align-items:center;gap:24px;
   position:sticky;left:0;width:100%;box-sizing:border-box;}
@@ -452,7 +450,6 @@ textarea.fc{resize:vertical;min-height:76px;}
       </button>
     </div>
     <nav>
-      <div class="nav-grp">เมนูหลัก</div>
       <button class="nav-btn active" onclick="switchTab('orders')" id="nav-orders" title="ประวัติการสั่งซื้อ">
         <span class="nav-ico">📋</span><span>ประวัติการสั่งซื้อ</span></button>
       <button class="nav-btn" onclick="switchTab('progress')" id="nav-progress" title="In Progress">
@@ -465,11 +462,12 @@ textarea.fc{resize:vertical;min-height:76px;}
       <button class="nav-btn" onclick="switchTab('dycut')" id="nav-dycut" title="Layout Planner">
         <span class="nav-ico">📏</span><span>Layout Planner</span>
       </button>
-      <div class="nav-grp" id="nav-grp-mgmt" style="display:none">จัดการระบบ</div>
-      <button class="nav-btn" onclick="switchTab('users')" id="nav-users" style="display:none" title="จัดการผู้ใช้">
-        <span class="nav-ico">🔑</span><span>จัดการผู้ใช้</span></button>
-      <button class="nav-btn" onclick="switchTab('changepass')" id="nav-changepass" title="เปลี่ยนรหัสผ่าน">
-        <span class="nav-ico">🔒</span><span>เปลี่ยนรหัสผ่าน</span></button>
+      <div class="nav-bottom">
+        <button class="nav-btn" onclick="switchTab('users')" id="nav-users" style="display:none" title="จัดการผู้ใช้">
+          <span class="nav-ico">🔑</span><span>จัดการผู้ใช้</span></button>
+        <button class="nav-btn" onclick="switchTab('changepass')" id="nav-changepass" title="เปลี่ยนรหัสผ่าน">
+          <span class="nav-ico">🔒</span><span>เปลี่ยนรหัสผ่าน</span></button>
+      </div>
     </nav>
     <div class="sb-user">
       <div class="sb-av" id="sb-av">?</div>
@@ -757,7 +755,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.54.0";
+const APP_VERSION = "v1.54.1";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -861,7 +859,6 @@ function showApp() {
   if (u.role==="owner") chip.classList.add("owner"); else chip.classList.remove("owner");
   // แสดงเมนูตาม role
   const isOwner = u.role==="owner";
-  document.getElementById("nav-grp-mgmt").style.display = isOwner?"block":"none";
   document.getElementById("nav-users").style.display     = isOwner?"flex":"none";
   document.getElementById("btn-new-order").style.display = isOwner||u.role==="admin"?"":"none";
   document.getElementById("btn-add-cust").style.display  = isOwner||u.role==="admin"?"":"none";

@@ -460,7 +460,7 @@ function addOrder(b) {
       case"รายละเอียด":return b.detail||"";case"ราคารวม":return parseFloat(b.price)||0;
       case"ชื่อผู้รับ":return b.recipient||"";case"ที่อยู่จัดส่ง":return b.address||"";
       case"เบอร์โทรศัพท์":return b.phone||"";case"ลิ้งค์ลูกค้า":return b.link||"";
-      case"รหัสลูกค้า":return b.customerId||"";case"Tracking number":return b.tracking||"";
+      case"รหัสลูกค้า":return "'"+(b.customerId||"");case"Tracking number":return b.tracking||"";
       case"Image URL":return b.imageUrl||"";case"PDF URL":return b.pdfUrl||"";
       case"บันทึกโดย":return b.createdBy||"";
       default:return"";

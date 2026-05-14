@@ -107,7 +107,8 @@ nav{padding:8px;flex:1;display:flex;flex-direction:column;overflow-y:auto;overfl
   display:flex;align-items:center;gap:12px;flex-shrink:0;overflow:hidden;}
 .sb-av{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.18);
   display:flex;align-items:center;justify-content:center;font-size:13px;
-  font-weight:700;color:white;flex-shrink:0;}
+  font-weight:700;color:white;flex-shrink:0;overflow:hidden;}
+.sb-av img{width:100%;height:100%;object-fit:cover;display:block;}
 .sb-user > div:not(.sb-av){flex:1;min-width:0;overflow:hidden;
   transition:opacity .18s ease,width .25s cubic-bezier(.4,0,.2,1);}
 .sb-uname{color:white;font-size:12px;font-weight:600;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -344,10 +345,9 @@ textarea.fc{resize:vertical;min-height:76px;}
   padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:8px;box-shadow:var(--shadow);}
 .u-av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;
   justify-content:center;font-size:15px;font-weight:700;color:white;flex-shrink:0;
-  background-size:cover;background-position:center;cursor:pointer;position:relative;transition:opacity .15s;overflow:hidden;}
+  background-size:cover;background-position:center;cursor:pointer;position:relative;transition:opacity .15s;}
 .u-av:hover{opacity:.85;}
-.u-av img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
-.u-av .u-av-edit{position:absolute;bottom:-2px;right:-2px;background:var(--navy2);color:white;font-size:9px;width:14px;height:14px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;}
+.u-av > img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;}
 .av-owner{background:var(--navy2);}.av-admin{background:#7c3aed;}.av-custom{background:#0891b2;}
 
 /* Role cards */
@@ -792,7 +792,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.55.2";
+const APP_VERSION = "v1.55.3";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -2460,11 +2460,17 @@ async function loadStats(){
 // USER MANAGEMENT
 // ══════════════════════════════════════════════
 async function renderUsersTab(){
-  // Load roles first
-  const rolesRes = await api({action:"getRoles"});
+  // Show loading immediately so the page doesn't look blank
+  const wrap = document.getElementById("users-content");
+  if (wrap) wrap.innerHTML = '<div class="loading-r" style="padding:30px 0"><span class="spin"></span>กำลังโหลด...</div>';
+
+  // Fetch roles + users in parallel
+  const [rolesRes, res] = await Promise.all([
+    api({action:"getRoles"}),
+    api({action:"getUsers"})
+  ]);
   allRoles = (rolesRes && rolesRes.success) ? rolesRes.data : [{role_name:"owner",permissions:PERMISSION_META.map(p=>p.key),description:"เจ้าของระบบ",locked:true}];
 
-  const res=await api({action:"getUsers"});
   if(!res||!res.success){document.getElementById("users-content").innerHTML='<div class="empty">โหลดไม่ได้</div>';return;}
 
   // Roles section HTML
@@ -2505,7 +2511,7 @@ async function renderUsersTab(){
       ? `<span class="rb rb-owner">👑 Owner</span>`
       : `<span class="rb rb-admin">🛡️ ${u.role||'–'}</span>`;
     usersHtml+=`<div class="user-card">
-      <div class="u-av ${avClass}" title="คลิกเพื่ออัปโหลดรูป" onclick="onAvatarClick('${u.username}')">${avContent}<span class="u-av-edit">✎</span></div>
+      <div class="u-av ${avClass}" title="คลิกเพื่ออัปโหลดรูป" onclick="onAvatarClick('${u.username}')">${avContent}</div>
       <div style="flex:1;min-width:0">
         <div class="u-name">${u.fullname||u.username} ${isMe?'<span style="font-size:10px;color:var(--text3)">(คุณ)</span>':""}</div>
         <div class="u-meta">@${u.username} · login ล่าสุด: ${u.last_login||"–"}</div>

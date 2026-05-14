@@ -81,7 +81,7 @@ button,input,select,textarea{font-family:'Roboto','Tahoma',sans-serif;}
 .sb-toggle:hover{color:white;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.15);}
 .sb-toggle-ico{flex-shrink:0;width:14px;text-align:center;}
 .sb-toggle-label{transition:opacity .18s ease,width .25s cubic-bezier(.4,0,.2,1);overflow:hidden;}
-.sidebar.collapsed .sb-toggle{justify-content:center;padding:7px;}
+.sidebar.collapsed .sb-toggle{justify-content:center;padding:7px;gap:0;}
 .sidebar.collapsed .sb-toggle-label{opacity:0;width:0;}
 
 /* Nav */
@@ -634,7 +634,7 @@ textarea.fc{resize:vertical;min-height:76px;}
       <div class="fg full" style="position:relative">
         <label class="lbl">รหัสลูกค้า * (พิมพ์รหัสหรือชื่อเพื่อค้นหา)</label>
         <input class="fc" id="o-cid-input" placeholder="เช่น 000004 หรือ น้ำผึ้ง" autocomplete="off"
-          oninput="filterCustSuggest(this.value)" onblur="setTimeout(()=>hideSuggest(),200)">
+          oninput="filterCustSuggest(this.value)" onfocus="filterCustSuggest(this.value)" onblur="setTimeout(()=>hideSuggest(),200)">
         <input type="hidden" id="o-cid">
         <div id="cust-suggest" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--border2);border-radius:8px;max-height:200px;overflow-y:auto;z-index:100;box-shadow:var(--shadow-md)"></div>
       </div>
@@ -794,10 +794,12 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.55.5";
+const APP_VERSION = "v1.56.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
+let allUsers   = [];     // [{username, fullname, role, avatar_url}, ...]
+let userAvatarMap = {};  // keyed by both fullname AND username → avatar_url
 let currentPageData = [], orderPage = 0;
 let orderPageSize = (function(){
   try { const n = parseInt(localStorage.getItem("ken_order_pgsize"),10);
@@ -946,9 +948,36 @@ function saveConfig() {
 function refresh() { syncOrders(true); loadCustomers(); loadStats(); toast("กำลังซิงค์ข้อมูลใหม่..."); }
 function loadAll() {
   initGIS();
-  loadOrders(); loadCustomers();
+  loadOrders(); loadCustomers(); loadUsersForAvatars();
   if(SESSION?.user.role==="owner") loadStats();
   startAutoSync();
+}
+
+async function loadUsersForAvatars() {
+  try {
+    const res = await api({action:"getUsers"});
+    if (!res || !res.success) return;
+    allUsers = res.data || [];
+    userAvatarMap = {};
+    allUsers.forEach(u => {
+      if (u.avatar_url) {
+        if (u.username) userAvatarMap[u.username] = u.avatar_url;
+        if (u.fullname) userAvatarMap[u.fullname] = u.avatar_url;
+      }
+    });
+    // Refresh sidebar avatar if current user has an updated one
+    const me = allUsers.find(u => u.username === SESSION?.user?.username);
+    if (me && me.avatar_url && SESSION) {
+      const sbAv = document.getElementById("sb-av");
+      if (sbAv && SESSION.user.avatar_url !== me.avatar_url) {
+        SESSION.user.avatar_url = me.avatar_url;
+        try { localStorage.setItem("ken_session", JSON.stringify(SESSION)); } catch(e){}
+        sbAv.innerHTML = `<img src="${me.avatar_url}" alt="${SESSION.user.username}">`;
+      }
+    }
+    // Refresh order rows if already rendered (avatars appear in createdBy cell)
+    if (currentPageData && currentPageData.length) renderOrders();
+  } catch(e) {}
 }
 
 // ══════════════════════════════════════════════
@@ -1485,7 +1514,11 @@ function oRowDiv(o, cols, savedW, isOwner) {
     phone:     o.phone||"–",
     address:   o.address||"–",
     price:     priceVal,
-    createdBy: o.createdBy ? `<span style="color:var(--text2)">${o.createdBy}</span>` : `<span style="color:var(--text3)">–</span>`,
+    createdBy: o.createdBy
+      ? (userAvatarMap[o.createdBy]
+        ? `<span style="display:inline-flex;align-items:center;gap:6px;color:var(--text2)"><img src="${userAvatarMap[o.createdBy]}" alt="" style="width:20px;height:20px;border-radius:50%;object-fit:cover;flex-shrink:0">${o.createdBy}</span>`
+        : `<span style="color:var(--text2)">${o.createdBy}</span>`)
+      : `<span style="color:var(--text3)">–</span>`,
     action:    pdfBtn,
   };
 
@@ -2028,22 +2061,40 @@ function populateCustSel(){ /* autocomplete mode - no dropdown needed */ }
 
 function filterCustSuggest(q) {
   const box = document.getElementById("cust-suggest");
-  if (!q||q.length<1) { box.style.display="none"; return; }
-  const s = q.toLowerCase();
-  // sort by customer id number
-  const sorted = [...customers].sort((a,b)=>a.customerId.localeCompare(b.customerId));
-  const matches = sorted.filter(c=>
-    c.customerId.toLowerCase().includes(s)||
-    (c.name||"").toLowerCase().includes(s)
-  ).slice(0,20);
-  if (!matches.length) { box.style.display="none"; return; }
-  box.innerHTML = matches.map(c=>`
-    <div onclick="selectCust('${c.customerId}')" style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f1f5f9"
-      onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
-      <span style="font-family:var(--mono);font-size:11px;color:var(--navy2);font-weight:600">${c.customerId}</span>
-      <span style="margin-left:8px">${c.name||""}</span>
-    </div>`).join("");
-  box.style.display="block";
+  const s = (q||"").toLowerCase();
+  let matchesHtml = "";
+  if (s.length >= 1) {
+    const sorted = [...customers].sort((a,b)=>a.customerId.localeCompare(b.customerId));
+    const matches = sorted.filter(c =>
+      c.customerId.toLowerCase().includes(s) || (c.name||"").toLowerCase().includes(s)
+    ).slice(0,20);
+    matchesHtml = matches.map(c=>`
+      <div onclick="selectCust('${c.customerId}')" style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f1f5f9"
+        onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
+        <span style="font-family:var(--mono);font-size:11px;color:var(--navy2);font-weight:600">${c.customerId}</span>
+        <span style="margin-left:8px">${c.name||""}</span>
+      </div>`).join("");
+  }
+  // Always offer "create new customer" at the top
+  const createBtn = `<div onclick="openCreateCustFromOrder()" style="padding:9px 12px;cursor:pointer;font-size:13px;background:#f0fdf4;color:#16a34a;font-weight:600;border-bottom:1px solid #dcfce7"
+    onmouseover="this.style.background='#dcfce7'" onmouseout="this.style.background='#f0fdf4'">
+    ➕ สร้างลูกค้าใหม่
+  </div>`;
+  box.innerHTML = createBtn + matchesHtml;
+  box.style.display = "block";
+}
+
+function openCreateCustFromOrder() {
+  hideSuggest();
+  // Optional: pre-fill the new customer's name field with what user typed if it doesn't look like an ID
+  const typed = (document.getElementById("o-cid-input").value || "").trim();
+  openAddCust();
+  if (typed && !/^\d+$/.test(typed)) {
+    setTimeout(() => {
+      const nameInp = document.getElementById("c-name");
+      if (nameInp && !nameInp.value) nameInp.value = typed;
+    }, 100);
+  }
 }
 
 function selectCust(cid) {
@@ -2472,7 +2523,7 @@ async function renderUsersTab(){
   const wrap = document.getElementById("users-content");
   if (wrap) wrap.innerHTML = '<div class="loading-r" style="padding:30px 0"><span class="spin"></span>กำลังโหลด...</div>';
 
-  // Fetch roles + users in parallel
+  // Fetch roles + users in parallel (always re-fetch users to keep avatar map fresh)
   const [rolesRes, res] = await Promise.all([
     api({action:"getRoles"}),
     api({action:"getUsers"})
@@ -2480,6 +2531,16 @@ async function renderUsersTab(){
   allRoles = (rolesRes && rolesRes.success) ? rolesRes.data : [{role_name:"owner",permissions:PERMISSION_META.map(p=>p.key),description:"เจ้าของระบบ",locked:true}];
 
   if(!res||!res.success){document.getElementById("users-content").innerHTML='<div class="empty">โหลดไม่ได้</div>';return;}
+
+  // Keep the global users list + avatar map in sync
+  allUsers = res.data || [];
+  userAvatarMap = {};
+  allUsers.forEach(u => {
+    if (u.avatar_url) {
+      if (u.username) userAvatarMap[u.username] = u.avatar_url;
+      if (u.fullname) userAvatarMap[u.fullname] = u.avatar_url;
+    }
+  });
 
   // Roles section HTML
   let rolesHtml = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
@@ -2592,7 +2653,17 @@ async function saveUser(){
   } else {
     res=await api({action:"addUser",username:un,fullname:fn,password:pw,role});
   }
-  if(res&&res.success){toast(res.message);closeM("m-user");renderUsersTab();}
+  if(res&&res.success){
+    toast(res.message);
+    // If editing self, sync SESSION so sidebar stays consistent
+    if (editUn && editUn === SESSION?.user?.username) {
+      SESSION.user.fullname = fn;
+      try { localStorage.setItem("ken_session", JSON.stringify(SESSION)); } catch(e){}
+      const sbUname = document.getElementById("sb-uname");
+      if (sbUname) sbUname.textContent = fn || SESSION.user.username;
+    }
+    closeM("m-user");renderUsersTab();
+  }
   else toast(res?.message||"เกิดข้อผิดพลาด","err");
 }
 async function deleteUser(un){
@@ -2759,6 +2830,11 @@ async function handleAvatarFile(e){
       const sbAv = document.getElementById("sb-av");
       if (sbAv) sbAv.innerHTML = `<img src="${url}" alt="${username}">`;
     }
+    // Keep the avatar map up to date so orders table picks up the new avatar
+    userAvatarMap[username] = url;
+    const u = allUsers.find(x => x.username === username);
+    if (u) { u.avatar_url = url; if (u.fullname) userAvatarMap[u.fullname] = url; }
+    if (currentPageData && currentPageData.length) renderOrders();
     renderUsersTab();
   } catch(err) {
     toast("อัปโหลดล้มเหลว: " + (err?.message||err), "err");

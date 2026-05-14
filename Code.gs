@@ -133,7 +133,8 @@ function doLogin(body) {
   const rows = sh.getDataRange().getValues();
   const h    = rows[0].map(x=>String(x).trim());
   const iU=h.indexOf("username"), iP=h.indexOf("password"), iR=h.indexOf("role"),
-        iF=h.indexOf("fullname"), iT=h.indexOf("token"), iE=h.indexOf("token_expiry"), iL=h.indexOf("last_login");
+        iF=h.indexOf("fullname"), iT=h.indexOf("token"), iE=h.indexOf("token_expiry"), iL=h.indexOf("last_login"),
+        iA=h.indexOf("avatar_url");
 
   const inputHash = hashPassword(body.password||"");
   for (let i=1; i<rows.length; i++) {
@@ -146,6 +147,7 @@ function doLogin(body) {
       sh.getRange(i+1,iL+1).setValue(new Date().toLocaleString("th-TH"));
       return { success:true, token, expiry:expiry.getTime(),
                user:{ username:rows[i][iU], fullname:rows[i][iF]||rows[i][iU], role:rows[i][iR],
+                      avatar_url: iA >= 0 ? (rows[i][iA] || "") : "",
                       permissions: getRolePermissions(rows[i][iR]) } };
     }
   }

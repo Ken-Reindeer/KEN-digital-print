@@ -794,7 +794,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.57.0";
+const APP_VERSION = "v1.57.3";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -1221,13 +1221,14 @@ async function syncOrders(showLoading=true) {
     const oJson=await ordersRes.json(), cJson=await custsRes.json();
     const oRows=oJson.values||[], cRows=cJson.values||[];
 
+    // custMap keyed by customerId (e.g. "000016") since orders now store customerId in รหัสลูกค้า column
     const custMap={};
     if(cRows.length>1){
       const ch=cRows[0];
-      const iR=ch.indexOf("Row ID"),iC=ch.indexOf("รหัสลูกค้า"),iN=ch.indexOf("ชื่อลูกค้า");
-      if(iR>=0&&iC>=0) for(let i=1;i<cRows.length;i++){
-        const rid=cRows[i][iR]||"",code=cRows[i][iC]||"",name=iN>=0?cRows[i][iN]||"":"";
-        if(rid) custMap[rid]=code+(name?" "+name:"");
+      const iC=ch.indexOf("รหัสลูกค้า"),iN=ch.indexOf("ชื่อลูกค้า");
+      if(iC>=0) for(let i=1;i<cRows.length;i++){
+        const code=cRows[i][iC]||"",name=iN>=0?cRows[i][iN]||"":"";
+        if(code) custMap[code]=code+(name?" "+name:"");
       }
     }
 
@@ -1886,21 +1887,21 @@ function copyOrder(rowId) {
 }
 
 // ──── DELETE ORDER ────
-async function deleteCust(rowId, customerId, name) {
-  const orderCount = allOrders.filter(o => o.customerId === rowId).length;
+async function deleteCust(customerId, name) {
+  const orderCount = allOrders.filter(o => o.customerId === customerId).length;
   if (orderCount > 0) {
     alert(`ไม่สามารถลบลูกค้า "${name}" ได้\nมีประวัติการสั่งซื้อ ${orderCount} รายการ\n\nกรุณาลบออเดอร์ทั้งหมดของลูกค้านี้ก่อน`);
     return;
   }
   if (!confirm(`ต้องการลบลูกค้า "${name}" (${customerId}) ใช่หรือไม่?`)) return;
-  const res = await api({action:"deleteCustomer", rowId, customerId});
+  const res = await api({action:"deleteCustomer", customerId});
   if (!res || !res.success) {
     toast("ลบล้มเหลว: " + (res?.message || "ไม่พบ API deleteCustomer (ต้องเพิ่มฝั่ง Apps Script)"), "err");
     return;
   }
   toast("ลบลูกค้าสำเร็จ ✓");
   closeM('m-cust-profile');
-  customers = customers.filter(c => c.rowId !== rowId && c.customerId !== customerId);
+  customers = customers.filter(c => c.customerId !== customerId);
   renderCust(customers);
 }
 
@@ -1946,7 +1947,7 @@ function showCustProfile(customerId) {
   const safeId = (c.customerId||'').replace(/'/g,"\\'");
   const safeName = (c.name||'').replace(/'/g,"\\'");
   document.getElementById("cust-profile-foot").innerHTML =
-    `<button class="btn btn-danger" onclick="closeM('m-cust-profile');deleteCust('${c.rowId||''}','${safeId}','${safeName}')">🗑️ ลบ</button>
+    `<button class="btn btn-danger" onclick="closeM('m-cust-profile');deleteCust('${safeId}','${safeName}')">🗑️ ลบ</button>
      <button class="btn btn-primary" onclick='closeM("m-cust-profile");editCust(${custJSON})'>✏️ แก้ไข</button>
      <button class="btn btn-ghost" onclick="closeM('m-cust-profile')">ปิด</button>`;
   openM("m-cust-profile");
@@ -2137,7 +2138,7 @@ async function uploadImageViaDrive(cid, c, rowId) {
     const ok = await ensureSpreadsheetId();
     if (!ok) throw new Error("ไม่ได้ spreadsheetId");
     // ขอ folder ID จาก GAS
-    const folderRes = await api({action:"getUploadFolder", customerId:cid, customerName:c.name||"", customerRowId:c.rowId||""});
+    const folderRes = await api({action:"getUploadFolder", customerId:cid, customerName:c.name||""});
     if (!folderRes||!folderRes.success) throw new Error(folderRes?.message||"หา folder ไม่ได้");
 
     const token = await getGISToken();
@@ -2287,7 +2288,7 @@ function renderCust(data){
       address:   c.address||"–",
       total:     isOwner?`<span style="font-weight:600;color:var(--success)">฿${orderTotal.toLocaleString()}</span>`:"–",
       sns:       c.sns?`<a href="${c.sns}" target="_blank" class="btn btn-xs btn-ghost" onclick="${stop}">💬</a>`:"–",
-      action:    `<button class="btn btn-xs" style="background:#dbeafe;color:var(--navy2);border:none;margin-right:4px" onclick='${stop}editCust(${JSON.stringify(c).replace(/'/g,"&#39;")})' title="แก้ไข">✏️</button><button class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none" onclick="${stop}deleteCust('${c.rowId||''}','${(c.customerId||'').replace(/'/g,"\\'")}','${(c.name||'').replace(/'/g,"\\'")}')" title="ลบ">🗑️</button>`,
+      action:    `<button class="btn btn-xs" style="background:#dbeafe;color:var(--navy2);border:none;margin-right:4px" onclick='${stop}editCust(${JSON.stringify(c).replace(/'/g,"&#39;")})' title="แก้ไข">✏️</button><button class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none" onclick="${stop}deleteCust('${(c.customerId||'').replace(/'/g,"\\'")}','${(c.name||'').replace(/'/g,"\\'")}')" title="ลบ">🗑️</button>`,
     };
     let row = `<div class="dt-row" style="cursor:pointer" onclick="showCustProfile('${profileId}')">`;
     cols.forEach((col,i)=>{

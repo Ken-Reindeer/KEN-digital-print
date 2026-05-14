@@ -17,7 +17,6 @@ function testGeneratePDF() {
   const result = generatePDF({
     customerId: "000016",
     customerName: "test",
-    customerRowId: "",
     rowId: "TEST_123",
     detail: "test detail",
     price: "100",
@@ -230,28 +229,6 @@ function guard(ok, fn) {
 // ============================================================
 function getSheet(name) { return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name); }
 
-/**
- * แปลง Row ID (UUID ใน Sheet ลูกค้า) → "000016 อารุณี ไทยบัณฑิต"
- * ถ้าไม่เจอ Row ID ให้คืนค่า fallback เดิม
- */
-function lookupCustomerLabel(rowId) {
-  if (!rowId) return "";
-  const sh = getSheet(SHEET_CUSTOMERS);
-  const data = sh.getDataRange().getValues();
-  const h = data[0].map(x => String(x).trim());
-  const iRowId = h.indexOf("Row ID");
-  const iCode  = h.indexOf("รหัสลูกค้า");
-  const iName  = h.indexOf("ชื่อลูกค้า");
-  if (iRowId < 0) return rowId;
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][iRowId]).trim() === String(rowId).trim()) {
-      const code = iCode >= 0 ? String(data[i][iCode]).trim() : "";
-      const name = iName >= 0 ? String(data[i][iName]).trim() : "";
-      return (code + (name ? " " + name : "")).trim() || rowId;
-    }
-  }
-  return rowId; // fallback
-}
 function sheetToObjects(sh) {
   const data=sh.getDataRange().getValues(); if(data.length<2) return [];
   const h=data[0].map(x=>String(x).trim());
@@ -269,12 +246,9 @@ function ensureCol(sh,name) {
   const h=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0];
   if(!h.map(x=>String(x).trim()).includes(name)) sh.getRange(1,sh.getLastColumn()+1).setValue(name);
 }
-function getOrCreateFolder(customerId, customerName, customerRowId) {
-  // ถ้าไม่มีชื่อลูกค้าส่งมา ให้ lookup จาก Row ID ของ Sheet ลูกค้า
+function getOrCreateFolder(customerId, customerName) {
+  // โฟลเดอร์ลูกค้าใช้รูปแบบ "รหัสลูกค้า ชื่อลูกค้า" (เช่น "000016 อารุณี")
   let label = customerName ? (customerId + " " + customerName).trim() : "";
-  if (!label && customerRowId) {
-    label = lookupCustomerLabel(customerRowId);
-  }
   if (!label) label = customerId || "unknown";
 
   // ใช้ Folder ID โดยตรง เร็วกว่าค้นหาชื่อ
@@ -368,25 +342,21 @@ function updateCustomer(b) {
   return {success:true,message:"อัพเดทสำเร็จ"};
 }
 function deleteCustomer(b) {
+  const customerId = String(b.customerId||"").trim();
+  if (!customerId) return {success:false, message:"ไม่ระบุรหัสลูกค้า"};
   const sh = getSheet(SHEET_CUSTOMERS);
-  let rowNum = -1;
-  if (b.rowId)      rowNum = findRow(sh, "Row ID", b.rowId);
-  if (rowNum < 1 && b.customerId) rowNum = findRow(sh, "รหัสลูกค้า", b.customerId);
-  if (rowNum < 1)   return {success:false, message:"ไม่พบลูกค้า"};
+  const rowNum = findRow(sh, "รหัสลูกค้า", customerId);
+  if (rowNum < 1) return {success:false, message:"ไม่พบลูกค้า"};
 
-  // safety: block delete if customer still has orders (match by customerId now)
-  const codeCol = colIdx(sh, "รหัสลูกค้า");
-  const targetCustomerId = b.customerId || (codeCol >= 0 ? String(sh.getRange(rowNum, codeCol+1).getValue()).trim() : "");
-  if (targetCustomerId) {
-    const osh = getSheet(SHEET_ORDERS), odata = osh.getDataRange().getValues();
-    const iCid = odata[0].map(x=>String(x).trim()).indexOf("รหัสลูกค้า");
-    if (iCid >= 0) {
-      let count = 0;
-      for (let i=1; i<odata.length; i++) {
-        if (String(odata[i][iCid]).trim() === targetCustomerId) count++;
-      }
-      if (count > 0) return {success:false, message:`ลบไม่ได้: มีประวัติการสั่งซื้อ ${count} รายการ`};
+  // safety: block delete if customer still has orders
+  const osh = getSheet(SHEET_ORDERS), odata = osh.getDataRange().getValues();
+  const iCid = odata[0].map(x=>String(x).trim()).indexOf("รหัสลูกค้า");
+  if (iCid >= 0) {
+    let count = 0;
+    for (let i=1; i<odata.length; i++) {
+      if (String(odata[i][iCid]).trim() === customerId) count++;
     }
+    if (count > 0) return {success:false, message:`ลบไม่ได้: มีประวัติการสั่งซื้อ ${count} รายการ`};
   }
   sh.deleteRow(rowNum);
   return {success:true, message:"ลบลูกค้าสำเร็จ"};
@@ -525,14 +495,14 @@ function updateCustomerTotal(customerId,amount) {
 /** คืน folder ID ให้ browser upload ตรงผ่าน Drive API v3 */
 function getUploadFolder(b) {
   try {
-    const folder = getOrCreateFolder(b.customerId||"", b.customerName||"", b.customerRowId||"");
+    const folder = getOrCreateFolder(b.customerId||"", b.customerName||"");
     return {success:true, folderId: folder.getId()};
   } catch(err) { return {success:false, message:err.toString()}; }
 }
 
 function uploadImage(b) {
   try {
-    const folder = getOrCreateFolder(b.customerId||"", b.customerName||"", b.customerRowId||"");
+    const folder = getOrCreateFolder(b.customerId||"", b.customerName||"");
     if (!b.imageData) return {success:false, message:"ไม่พบข้อมูลรูปภาพ"};
 
     const mimeType = b.mimeType || "image/jpeg";
@@ -558,7 +528,7 @@ function uploadImage(b) {
 function generatePDF(b) {
   try {
     Logger.log("generatePDF start, customerId: "+b.customerId+" rowId: "+b.rowId);
-    const folder=getOrCreateFolder(b.customerId||"", b.customerName||"", b.customerRowId||"");
+    const folder=getOrCreateFolder(b.customerId||"", b.customerName||"");
     Logger.log("folder OK: "+folder.getId());
     const tz="Asia/Bangkok";
     const now=new Date();

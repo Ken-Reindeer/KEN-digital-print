@@ -291,7 +291,7 @@ function getOrCreateFolder(customerId, customerName, customerRowId) {
 // CUSTOMERS
 // ============================================================
 function getCustomers(p) {
-  // build totalMap: custRowId → sum ราคารวม จาก Sheet ออเดอร์
+  // build totalMap: รหัสลูกค้า → sum ราคารวม จาก Sheet ออเดอร์
   const totalMap = {};
   try {
     const osh=getSheet(SHEET_ORDERS), odata=osh.getDataRange().getValues();
@@ -307,11 +307,12 @@ function getCustomers(p) {
 
   let data=sheetToObjects(getSheet(SHEET_CUSTOMERS)).map(r=>{
     const rowId=fmt(r["Row ID"]);
+    const customerId=fmt(r["รหัสลูกค้า"]);
     return {
-      rowId, customerId:fmt(r["รหัสลูกค้า"]), name:fmt(r["ชื่อลูกค้า"]),
+      rowId, customerId, name:fmt(r["ชื่อลูกค้า"]),
       phone:fmt(r["เบอร์โทรศัพท์"]), recipient:fmt(r["ชื่อผู้รับ"]), address:fmt(r["ที่อยู่จัดส่ง"]),
       taxInfo:fmt(r["รายละเอียดใบกำกับภาษี"]), sns:fmt(r["ลิ้งค์ SNS"]),
-      total: totalMap[rowId]||0  // sum จาก orders จริง
+      total: totalMap[customerId]||0  // sum จาก orders จริง (join by customerId)
     };
   });
   if(p.search){const q=p.search.toLowerCase();data=data.filter(c=>c.customerId.toLowerCase().includes(q)||c.name.toLowerCase().includes(q)||c.phone.toLowerCase().includes(q));}
@@ -373,16 +374,16 @@ function deleteCustomer(b) {
   if (rowNum < 1 && b.customerId) rowNum = findRow(sh, "รหัสลูกค้า", b.customerId);
   if (rowNum < 1)   return {success:false, message:"ไม่พบลูกค้า"};
 
-  // safety: block delete if customer still has orders
-  const rowIdCol = colIdx(sh, "Row ID");
-  const targetRowId = b.rowId || (rowIdCol >= 0 ? String(sh.getRange(rowNum, rowIdCol+1).getValue()).trim() : "");
-  if (targetRowId) {
+  // safety: block delete if customer still has orders (match by customerId now)
+  const codeCol = colIdx(sh, "รหัสลูกค้า");
+  const targetCustomerId = b.customerId || (codeCol >= 0 ? String(sh.getRange(rowNum, codeCol+1).getValue()).trim() : "");
+  if (targetCustomerId) {
     const osh = getSheet(SHEET_ORDERS), odata = osh.getDataRange().getValues();
     const iCid = odata[0].map(x=>String(x).trim()).indexOf("รหัสลูกค้า");
     if (iCid >= 0) {
       let count = 0;
       for (let i=1; i<odata.length; i++) {
-        if (String(odata[i][iCid]).trim() === targetRowId) count++;
+        if (String(odata[i][iCid]).trim() === targetCustomerId) count++;
       }
       if (count > 0) return {success:false, message:`ลบไม่ได้: มีประวัติการสั่งซื้อ ${count} รายการ`};
     }
@@ -403,19 +404,18 @@ function getOrders(p) {
   const offset = parseInt(p.offset)||0;
   const total  = allData.length - 1;
 
-  // map: Row ID ของ Sheet ลูกค้า → "000016 ชื่อลูกค้า"
+  // map: รหัสลูกค้า (เช่น 000016) → "000016 ชื่อลูกค้า"
   const custMap = {};
   try {
     const csh = getSheet(SHEET_CUSTOMERS);
     const cdata = csh.getDataRange().getValues();
     const ch = cdata[0].map(x=>String(x).trim());
-    const iRowId = ch.indexOf("Row ID"), iCode = ch.indexOf("รหัสลูกค้า"), iName = ch.indexOf("ชื่อลูกค้า");
-    if (iRowId >= 0 && iCode >= 0) {
+    const iCode = ch.indexOf("รหัสลูกค้า"), iName = ch.indexOf("ชื่อลูกค้า");
+    if (iCode >= 0) {
       for (let i = 1; i < cdata.length; i++) {
-        const rowId = String(cdata[i][iRowId]).trim();
-        const code  = String(cdata[i][iCode]).trim();
-        const name  = iName >= 0 ? String(cdata[i][iName]).trim() : "";
-        if (rowId) custMap[rowId] = code + (name ? " " + name : "");
+        const code = String(cdata[i][iCode]).trim();
+        const name = iName >= 0 ? String(cdata[i][iName]).trim() : "";
+        if (code) custMap[code] = code + (name ? " " + name : "");
       }
     }
   } catch(e) {}
@@ -475,21 +475,7 @@ function addOrder(b) {
   const now=new Date();
   const rowId="WEB_"+now.getTime();
 
-  // แปลง customerId (รหัส 000016) → Row ID ของ Sheet ลูกค้า
-  let custRowId = b.customerId||"";
-  try {
-    const csh=getSheet(SHEET_CUSTOMERS);
-    const cdata=csh.getDataRange().getValues();
-    const ch=cdata[0].map(x=>String(x).trim());
-    const iRowId=ch.indexOf("Row ID"), iCode=ch.indexOf("รหัสลูกค้า");
-    if(iRowId>=0 && iCode>=0){
-      for(let i=1;i<cdata.length;i++){
-        if(String(cdata[i][iCode]).trim()===String(b.customerId||"").trim()){
-          custRowId=String(cdata[i][iRowId]).trim()||custRowId; break;
-        }
-      }
-    }
-  } catch(e){}
+  // เก็บ customerId (รหัส 000016) โดยตรง — ไม่ต้องแปลงเป็น Row ID อีกต่อไป
 
   const h=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0];
   sh.appendRow(h.map(col=>{
@@ -504,7 +490,7 @@ function addOrder(b) {
       case"รายละเอียด":return b.detail||"";case"ราคารวม":return parseFloat(b.price)||0;
       case"ชื่อผู้รับ":return b.recipient||"";case"ที่อยู่จัดส่ง":return b.address||"";
       case"เบอร์โทรศัพท์":return b.phone||"";case"ลิ้งค์ลูกค้า":return b.link||"";
-      case"รหัสลูกค้า":return custRowId;case"Tracking number":return b.tracking||"";
+      case"รหัสลูกค้า":return b.customerId||"";case"Tracking number":return b.tracking||"";
       case"Image URL":return b.imageUrl||"";case"PDF URL":return b.pdfUrl||"";
       case"บันทึกโดย":return b.createdBy||"";
       default:return"";

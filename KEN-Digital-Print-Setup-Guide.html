@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>KEN Digital Print — คู่มือการติดตั้งระบบ</title>
+<style>
+@page {
+  size: A4;
+  margin: 2cm;
+}
+
+@media print {
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .no-print { display: none !important; }
+  .page-break { page-break-before: always; }
+  h1 { page-break-after: avoid; }
+  h2 { page-break-after: avoid; }
+  .keep-together { page-break-inside: avoid; }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'Tahoma', 'Sarabun', 'Leelawadee UI', sans-serif;
+  color: #0f172a;
+  line-height: 1.65;
+  font-size: 11pt;
+  margin: 0;
+  padding: 2cm;
+  max-width: 21cm;
+}
+
+.cover {
+  text-align: center;
+  padding-top: 5cm;
+  page-break-after: always;
+}
+.cover h1 {
+  font-size: 36pt;
+  color: #0d2461;
+  margin: 0 0 8pt;
+  font-weight: 700;
+}
+.cover .subtitle {
+  font-size: 18pt;
+  color: #475569;
+  margin: 0 0 1.5cm;
+}
+.cover .intro {
+  font-size: 13pt;
+  color: #0f172a;
+  margin: 0 0 1.5cm;
+  line-height: 1.8;
+}
+.cover-info {
+  display: inline-block;
+  text-align: left;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0;
+  margin-top: 1cm;
+  min-width: 14cm;
+}
+.cover-info .row {
+  display: grid;
+  grid-template-columns: 7cm 1fr;
+  border-bottom: 1px solid #e2e6ed;
+  padding: 10pt 14pt;
+}
+.cover-info .row:last-child { border-bottom: none; }
+.cover-info .lbl { color: #475569; }
+.cover-info .val { color: #0f172a; font-weight: 600; }
+
+h1 {
+  font-size: 20pt;
+  color: #0d2461;
+  margin: 20pt 0 12pt;
+  padding-bottom: 4pt;
+  border-bottom: 2px solid #e2e6ed;
+}
+h2 {
+  font-size: 14pt;
+  color: #1a3faa;
+  margin: 14pt 0 6pt;
+}
+
+p, li { line-height: 1.7; }
+
+.steps {
+  counter-reset: step;
+  list-style: none;
+  padding: 0;
+  margin: 8pt 0 12pt;
+}
+.steps > li {
+  counter-increment: step;
+  position: relative;
+  padding-left: 30pt;
+  margin-bottom: 8pt;
+}
+.steps > li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 1pt;
+  width: 22pt;
+  height: 22pt;
+  background: #1a3faa;
+  color: white;
+  border-radius: 50%;
+  text-align: center;
+  font-weight: 700;
+  font-size: 10pt;
+  line-height: 22pt;
+}
+
+.bullets {
+  list-style: disc;
+  padding-left: 20pt;
+  margin: 8pt 0;
+}
+.bullets li { margin-bottom: 4pt; }
+
+code, .mono {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 10pt;
+  background: #f1f5f9;
+  padding: 1pt 5pt;
+  border-radius: 3px;
+  color: #0f172a;
+}
+
+pre {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 9.5pt;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-left: 4px solid #1a3faa;
+  padding: 10pt 14pt;
+  border-radius: 4px;
+  margin: 8pt 0;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.note {
+  background: #fef3c7;
+  border-left: 4px solid #f59e0b;
+  padding: 10pt 14pt;
+  margin: 10pt 0;
+  border-radius: 4px;
+  font-size: 10.5pt;
+  line-height: 1.6;
+}
+.tip {
+  background: #dcfce7;
+  border-left: 4px solid #16a34a;
+  padding: 10pt 14pt;
+  margin: 10pt 0;
+  border-radius: 4px;
+  font-size: 10.5pt;
+  line-height: 1.6;
+}
+.danger {
+  background: #fee2e2;
+  border-left: 4px solid #dc2626;
+  padding: 10pt 14pt;
+  margin: 10pt 0;
+  border-radius: 4px;
+  font-size: 10.5pt;
+  line-height: 1.6;
+}
+
+a { color: #1a3faa; text-decoration: none; font-weight: 600; }
+
+b { font-weight: 700; color: #0f172a; }
+
+.trouble-q { font-weight: 700; color: #0d2461; margin-top: 12pt; margin-bottom: 2pt; }
+.trouble-a { margin-top: 0; margin-bottom: 8pt; padding-left: 8pt; border-left: 2px solid #e2e6ed; }
+
+.print-tip {
+  background: #e0f2fe;
+  border: 1px solid #0284c7;
+  padding: 12pt;
+  margin: 0 0 20pt;
+  border-radius: 6px;
+  text-align: center;
+  color: #0c4a6e;
+  font-size: 11pt;
+}
+</style>
+</head>
+<body>
+
+<div class="print-tip no-print">
+  📄 <b>การ Save เป็น PDF:</b> กด <code>Ctrl + P</code> → เลือก <b>Save as PDF</b> → คลิก <b>Save</b><br>
+  <span style="font-size:10pt;color:#0c4a6e">หน้านี้จะหายไปอัตโนมัติเมื่อ save เป็น PDF</span>
+</div>
+
+<!-- ===== COVER ===== -->
+<div class="cover">
+  <h1>KEN Digital Print</h1>
+  <div class="subtitle">คู่มือการติดตั้งระบบ</div>
+  <div class="intro">
+    คู่มือสำหรับการติดตั้งระบบ KEN Digital Print<br>
+    บนบัญชี Google ของคุณเอง
+  </div>
+  <div class="cover-info">
+    <div class="row"><span class="lbl">⏱  เวลาในการติดตั้ง</span><span class="val">30-45 นาที</span></div>
+    <div class="row"><span class="lbl">💰  ค่าใช้จ่าย</span><span class="val">ฟรี (ใช้บริการ Google ทั้งหมด)</span></div>
+    <div class="row"><span class="lbl">🔧  ความยาก</span><span class="val">ปานกลาง (มีหลายขั้นตอน)</span></div>
+    <div class="row"><span class="lbl">📦  เวอร์ชัน</span><span class="val">v1.56.0</span></div>
+  </div>
+</div>
+
+<!-- ===== 1. Overview ===== -->
+<h1>1. ภาพรวมระบบ</h1>
+<p>
+ระบบ KEN Digital Print เป็นเว็บแอปสำหรับร้านพิมพ์ดิจิทัล ใช้สำหรับจัดการลูกค้า ออเดอร์
+และพิมพ์ใบสั่งงาน ระบบประกอบด้วย 4 ส่วนหลักที่ทำงานร่วมกัน:
+</p>
+<ul class="bullets">
+  <li><b>Google Spreadsheet</b> — ฐานข้อมูลหลัก เก็บข้อมูลลูกค้า ออเดอร์ ผู้ใช้งาน และสิทธิ์การเข้าถึง</li>
+  <li><b>Google Apps Script (Code.gs)</b> — Backend ทำหน้าที่เป็น API สำหรับ login บันทึก/แก้ไขข้อมูล</li>
+  <li><b>Google Drive Folder</b> — ที่เก็บรูปสินค้าและ avatar ของผู้ใช้</li>
+  <li><b>index.html (Frontend)</b> — หน้าเว็บที่ใช้งานจริง เปิดผ่านเบราว์เซอร์</li>
+</ul>
+<div class="tip">
+  💡 <b>ข้อมูลของคุณอยู่บนบัญชี Google ของคุณเอง</b> ผู้พัฒนาหรือใครก็ตามไม่มีสิทธิ์เข้าถึงข้อมูล
+  ทุกอย่างจัดเก็บใน Google Drive ของคุณ
+</div>
+
+<!-- ===== 2. Prep ===== -->
+<h1>2. สิ่งที่ต้องเตรียมก่อนเริ่ม</h1>
+<ul class="bullets">
+  <li>บัญชี Google (Gmail) ที่จะใช้สำหรับธุรกิจ</li>
+  <li>Chrome browser แนะนำให้ใช้ (Firefox/Edge ก็ใช้ได้)</li>
+  <li>เวลาประมาณ 30-45 นาทีสำหรับการตั้งค่าครั้งแรก</li>
+  <li>ความรู้พื้นฐานในการใช้ Google Drive และ Spreadsheet</li>
+</ul>
+
+<div class="page-break"></div>
+
+<!-- ===== STEP 1 ===== -->
+<h1>3. ขั้นตอนที่ 1: สร้าง Google Spreadsheet</h1>
+<p>Spreadsheet จะเป็นที่เก็บข้อมูลหลักของระบบทั้งหมด (ลูกค้า, ออเดอร์, ผู้ใช้, Roles)</p>
+<ol class="steps">
+  <li>ไปที่ <a href="https://sheets.google.com">sheets.google.com</a></li>
+  <li>คลิกปุ่ม <b>+ Blank</b> เพื่อสร้าง Spreadsheet ใหม่</li>
+  <li>ตั้งชื่อ Spreadsheet เช่น <i>"KEN Digital Print Database"</i>
+    (ดับเบิ้ลคลิกที่ "Untitled spreadsheet" ด้านบนเพื่อเปลี่ยนชื่อ)</li>
+</ol>
+
+<!-- ===== STEP 2 ===== -->
+<h1>4. ขั้นตอนที่ 2: สร้าง Google Drive Folder สำหรับเก็บรูป</h1>
+<p>ทุกรูปที่อัปโหลด (รูปออเดอร์ + avatar) จะถูกเก็บไว้ใน folder นี้</p>
+<ol class="steps">
+  <li>ไปที่ <a href="https://drive.google.com">drive.google.com</a></li>
+  <li>คลิกปุ่ม <b>+ New</b> → <b>New folder</b></li>
+  <li>ตั้งชื่อ folder เช่น <i>"KEN Print Files"</i> แล้วคลิก <b>Create</b></li>
+  <li>เปิดเข้าไปใน folder ที่สร้าง</li>
+  <li>ดูที่ URL ตัวอย่าง: <code>drive.google.com/drive/folders/<b>1abc123xyz...</b></code></li>
+  <li><b>Copy Folder ID</b> (ส่วนที่เป็นตัวอักษรหลัง <code>/folders/</code>) เก็บไว้ใช้ในขั้นถัดไป</li>
+</ol>
+<div class="note">
+  ⚠️ <b>เก็บ Folder ID ไว้ในที่ปลอดภัย</b> จะต้องใช้ค่านี้แก้ใน Code.gs
+</div>
+
+<!-- ===== STEP 3 ===== -->
+<h1>5. ขั้นตอนที่ 3: เปิด Apps Script Editor</h1>
+<ol class="steps">
+  <li>กลับไปที่ Spreadsheet ที่สร้างในขั้นตอนที่ 1</li>
+  <li>ที่เมนูด้านบน คลิก <b>Extensions</b> → <b>Apps Script</b></li>
+  <li>หน้าต่างใหม่ของ Apps Script Editor จะเปิดขึ้นมา</li>
+</ol>
+
+<!-- ===== STEP 4 ===== -->
+<h1>6. ขั้นตอนที่ 4: วาง Code.gs</h1>
+<ol class="steps">
+  <li>ใน Apps Script Editor จะเห็นไฟล์ <code>Code.gs</code> พร้อมโค้ด <code>function myFunction() { }</code></li>
+  <li>ลบโค้ดเดิมทั้งหมดทิ้ง (กด Ctrl+A แล้ว Delete)</li>
+  <li>เปิด GitHub repository: <a href="https://github.com/Ken-Reindeer/KEN-digital-print">github.com/Ken-Reindeer/KEN-digital-print</a></li>
+  <li>คลิกไฟล์ <b>Code.gs</b> → คลิกปุ่ม <b>Raw</b> → copy โค้ดทั้งหมด (Ctrl+A → Ctrl+C)</li>
+  <li>กลับมาที่ Apps Script Editor วางโค้ด (Ctrl+V)</li>
+</ol>
+<p><b>หา 3 บรรทัดที่มี Folder ID ของเก่า (ของ KEN)</b> แล้วเปลี่ยนเป็น Folder ID ของคุณ:</p>
+<pre>DriveApp.getFolderById("1hRmGGI45k1iBurrqVf70VyjcvzlEqMYW")
+                       ↑↑↑
+              เปลี่ยนตรงนี้ (ทั้ง 3 ที่)</pre>
+<p>ใช้ <b>Ctrl+H</b> (Find and Replace) ใน Apps Script เพื่อแทนที่ทุกที่พร้อมกัน:</p>
+<ol class="steps">
+  <li>Find: <code>1hRmGGI45k1iBurrqVf70VyjcvzlEqMYW</code></li>
+  <li>Replace with: <code>(Folder ID ของคุณจากขั้นตอนที่ 2)</code></li>
+  <li>คลิก <b>Replace all</b></li>
+  <li>กด <b>Ctrl+S</b> เพื่อ Save</li>
+</ol>
+
+<div class="page-break"></div>
+
+<!-- ===== STEP 5 ===== -->
+<h1>7. ขั้นตอนที่ 5: รัน setupSystem ครั้งแรก</h1>
+<p>
+ฟังก์ชัน <code>setupSystem</code> จะสร้างแผ่นข้อมูลทั้งหมดใน Spreadsheet ของคุณอัตโนมัติ
+และสร้างบัญชี owner เริ่มต้น
+</p>
+<ol class="steps">
+  <li>ที่ดรอปดาวน์ด้านบน เลือก function <code>setupSystem</code></li>
+  <li>คลิกปุ่ม <b>▶ Run</b></li>
+  <li>Google จะถาม permission ครั้งแรก:
+    <ul class="bullets">
+      <li>คลิก <b>Review permissions</b></li>
+      <li>เลือกบัญชี Google ของคุณ</li>
+      <li>เห็นหน้าจอ "Google hasn't verified this app" → คลิก <b>Advanced</b></li>
+      <li>คลิก <b>Go to (your project name) (unsafe)</b></li>
+      <li>คลิก <b>Allow</b> ที่หน้าจอขอสิทธิ์ Drive และ Spreadsheet</li>
+    </ul>
+  </li>
+  <li>รอจนเสร็จ จะเห็น popup แจ้งว่าติดตั้งสำเร็จ พร้อม username/password เริ่มต้น</li>
+  <li>กลับไปที่ Spreadsheet จะเห็นแผ่นใหม่ที่ถูกสร้างขึ้น:
+    <b>Users</b>, <b>ข้อมูลลูกค้า</b>, <b>ประวัติการสั่งซื้อ</b></li>
+</ol>
+<div class="tip">
+  💡 <b>บัญชีเริ่มต้น:</b><br>
+  Username: <code><b>owner</b></code><br>
+  Password: <code><b>ken2024</b></code><br><br>
+  <b>อย่าลืมเปลี่ยน password ทันทีหลัง login ครั้งแรก!</b>
+</div>
+
+<!-- ===== STEP 6 ===== -->
+<h1>8. ขั้นตอนที่ 6: Deploy เป็น Web App</h1>
+<p>
+การ Deploy จะทำให้ Apps Script ของคุณกลายเป็น URL สาธารณะ
+ที่ index.html ใช้เรียกข้อมูลได้
+</p>
+<ol class="steps">
+  <li>กลับไปที่ Apps Script Editor</li>
+  <li>คลิกปุ่ม <b>Deploy</b> มุมขวาบน → <b>New deployment</b></li>
+  <li>คลิก ⚙️ (Select type) → เลือก <b>Web app</b></li>
+  <li>กรอกข้อมูล:
+    <ul class="bullets">
+      <li><b>Description:</b> เช่น "KEN Print v1"</li>
+      <li><b>Execute as:</b> <code>Me (your-email@gmail.com)</code></li>
+      <li><b>Who has access:</b> <code>Anyone</code></li>
+    </ul>
+  </li>
+  <li>คลิก <b>Deploy</b></li>
+  <li>Google อาจขอ permission อีกครั้ง — Allow ผ่าน</li>
+  <li><b>Copy "Web app URL"</b> ที่ขึ้นมา (ลงท้ายด้วย <code>/exec</code>)</li>
+  <li>เก็บ URL นี้ไว้ — นี่คือ <b>SCRIPT_URL</b> ของคุณ</li>
+</ol>
+<div class="note">
+  ⚠️ <b>ทุกครั้งที่แก้ Code.gs</b> ต้องกลับมาที่ <b>Deploy</b> →
+  <b>Manage deployments</b> → คลิก ✏️ → <b>Version: New version</b> →
+  <b>Deploy</b> เพื่อให้การแก้ไขมีผล
+</div>
+
+<div class="page-break"></div>
+
+<!-- ===== STEP 7 ===== -->
+<h1>9. ขั้นตอนที่ 7: สร้าง OAuth Client ID</h1>
+<p>
+OAuth Client ID จำเป็นสำหรับการอัปโหลดรูปจากเบราว์เซอร์ไปที่ Google Drive โดยตรง
+ขั้นตอนนี้ยาวสุด แต่ทำครั้งเดียวจบ
+</p>
+
+<h2>7.1 สร้าง Project ใหม่</h2>
+<ol class="steps">
+  <li>ไปที่ <a href="https://console.cloud.google.com">console.cloud.google.com</a></li>
+  <li>ที่ด้านบนของหน้า ดรอปดาวน์เลือก Project → คลิก <b>NEW PROJECT</b></li>
+  <li>ตั้งชื่อ Project เช่น <i>"KEN Print OAuth"</i> → <b>CREATE</b></li>
+  <li>รอประมาณ 30 วินาทีให้ Project ถูกสร้าง แล้วเลือก Project ที่สร้าง</li>
+</ol>
+
+<h2>7.2 เปิดใช้ Google Drive API</h2>
+<ol class="steps">
+  <li>เมนูซ้าย → <b>APIs &amp; Services</b> → <b>Library</b></li>
+  <li>ค้นหา <code>Google Drive API</code></li>
+  <li>คลิก Google Drive API → คลิก <b>ENABLE</b></li>
+</ol>
+
+<h2>7.3 กำหนด OAuth Consent Screen</h2>
+<ol class="steps">
+  <li>เมนูซ้าย → <b>APIs &amp; Services</b> → <b>OAuth consent screen</b></li>
+  <li>เลือก <b>External</b> → คลิก <b>CREATE</b></li>
+  <li>กรอกข้อมูล:
+    <ul class="bullets">
+      <li><b>App name:</b> เช่น "KEN Digital Print"</li>
+      <li><b>User support email:</b> Gmail ของคุณ</li>
+      <li><b>Developer contact information:</b> Gmail ของคุณ</li>
+    </ul>
+  </li>
+  <li>คลิก <b>SAVE AND CONTINUE</b> ผ่านทุกขั้นจนถึง Summary</li>
+  <li>คลิก <b>BACK TO DASHBOARD</b></li>
+</ol>
+
+<h2>7.4 สร้าง OAuth Client ID</h2>
+<ol class="steps">
+  <li>เมนูซ้าย → <b>APIs &amp; Services</b> → <b>Credentials</b></li>
+  <li>คลิก <b>+ CREATE CREDENTIALS</b> → <b>OAuth client ID</b></li>
+  <li><b>Application type:</b> เลือก <code>Web application</code></li>
+  <li><b>Name:</b> เช่น "KEN Print Web Client"</li>
+  <li><b>Authorized JavaScript origins:</b> คลิก <b>+ ADD URI</b> แล้วใส่ URL ที่จะใช้เปิด index.html<br>
+    (เช่น <code>https://ken-reindeer.github.io</code> ถ้าใช้ GitHub Pages)</li>
+  <li>คลิก <b>CREATE</b></li>
+  <li><b>Copy "Your Client ID"</b> ที่ขึ้นมา เก็บไว้ใช้ในขั้นถัดไป</li>
+</ol>
+
+<!-- ===== STEP 8 ===== -->
+<h1>10. ขั้นตอนที่ 8: เพิ่มตัวเองเป็น Test User</h1>
+<p>
+ตอนแอปยังไม่ผ่าน Google verification เฉพาะคนที่อยู่ในรายชื่อ Test users
+ถึงจะใช้งานได้ (จำกัด 100 คน)
+</p>
+<ol class="steps">
+  <li>กลับไปที่ <b>APIs &amp; Services</b> → <b>OAuth consent screen</b></li>
+  <li>เลื่อนลงไปหา section <b>Test users</b></li>
+  <li>คลิก <b>+ ADD USERS</b></li>
+  <li>ใส่ Gmail ของคุณ → คลิก <b>SAVE</b></li>
+  <li>ถ้ามีพนักงานคนอื่นต้อง login → เพิ่ม Gmail ของเขามาที่นี่ด้วย</li>
+</ol>
+
+<div class="page-break"></div>
+
+<!-- ===== STEP 9 ===== -->
+<h1>11. ขั้นตอนที่ 9: ตั้งค่า index.html</h1>
+<ol class="steps">
+  <li>ไปที่ <a href="https://github.com/Ken-Reindeer/KEN-digital-print">github.com/Ken-Reindeer/KEN-digital-print</a></li>
+  <li>คลิกไฟล์ <b>index.html</b> → คลิกปุ่ม <b>Raw</b></li>
+  <li>คลิกขวา → <b>Save as</b> → บันทึก index.html ลงในเครื่อง</li>
+  <li>เปิด index.html ด้วย text editor (Notepad, VS Code, Sublime, ฯลฯ)</li>
+  <li>กด <b>Ctrl+F</b> ค้นหา: <code>GIS_CLIENT_ID</code></li>
+  <li>หาบรรทัด: <code>const GIS_CLIENT_ID = "223704026014-..."</code></li>
+  <li>แก้เป็น Client ID ของคุณจากขั้นตอนที่ 7.4</li>
+  <li>(ทางเลือก) แก้บรรทัด <code>KDPlogo.png</code> ให้ชี้ไปที่ logo ของคุณเอง</li>
+  <li>Save</li>
+</ol>
+
+<!-- ===== STEP 10 ===== -->
+<h1>12. ขั้นตอนที่ 10: เริ่มใช้งาน</h1>
+<ol class="steps">
+  <li>เปิด index.html ในเบราว์เซอร์ (ดับเบิ้ลคลิกไฟล์) หรืออัปโหลดไปที่ Google Drive แล้วเปิดผ่าน Drive</li>
+  <li>หน้าแรกจะเป็นหน้า Login พร้อมช่องให้กรอก <b>SCRIPT_URL</b></li>
+  <li>วาง SCRIPT_URL จากขั้นตอนที่ 6 (Web app URL)</li>
+  <li>Login ด้วย: username = <code><b>owner</b></code>, password = <code><b>ken2024</b></code></li>
+  <li><b>เปลี่ยน password ทันที</b> ที่เมนู "เปลี่ยนรหัสผ่าน"</li>
+</ol>
+<div class="tip">
+  💡 <b>เคล็ดลับ:</b> ถ้าต้องการใช้งานบนมือถือหรือคอมพิวเตอร์เครื่องอื่น
+  ให้ host index.html บน GitHub Pages (ฟรี) จะได้ URL ใช้งานจากที่ไหนก็ได้
+</div>
+
+<div class="page-break"></div>
+
+<!-- ===== TROUBLESHOOTING ===== -->
+<h1>13. ปัญหาที่พบบ่อย (Troubleshooting)</h1>
+
+<p class="trouble-q">❌ ถ้า upload รูปไม่ขึ้น / ขึ้น "This app isn't verified"</p>
+<p class="trouble-a">เช็คว่า Gmail ของคุณอยู่ใน <b>Test users</b> ของ OAuth project แล้วหรือยัง (ขั้นตอนที่ 8)</p>
+
+<p class="trouble-q">❌ ขึ้น "Unknown action" หลังแก้ Code.gs</p>
+<p class="trouble-a">ต้อง <b>Deploy → Manage deployments → Edit → Version: New version → Deploy</b> ทุกครั้งหลังแก้ Code.gs</p>
+
+<p class="trouble-q">❌ รูปแสดงเป็นกากบาท หรือเข้าไม่ได้</p>
+<p class="trouble-a">เช็คว่า Folder ID ใน Code.gs ถูกต้อง และ folder นั้นยังอยู่ใน Drive ของคุณ</p>
+
+<p class="trouble-q">❌ เปิด index.html แล้วหน้าจอว่าง</p>
+<p class="trouble-a">เปิด Developer Tools (F12) → Console ดูว่ามี error อะไร
+ถ้าเป็น CORS error เช็คว่า Authorized origins ใน OAuth Client ID ตรงกับ URL ที่เปิด</p>
+
+<p class="trouble-q">❌ Login ไม่ได้ บอก "Username หรือ Password ไม่ถูกต้อง"</p>
+<p class="trouble-a">ตรวจสอบ Username/Password ในแผ่น Users ของ Spreadsheet
+Password ใช้รหัสที่ hash แล้ว — ถ้าจำไม่ได้ ลบ row ของ user ที่มีปัญหา
+แล้วรัน <code>setupSystem</code> ใหม่</p>
+
+<p class="trouble-q">❌ Apps Script รัน timeout (6 นาที)</p>
+<p class="trouble-a">เกิดจากข้อมูลเยอะมาก — ปกติไม่ควรเจอ ถ้าเจอบ่อย อาจต้องเพิ่ม pagination ใน backend</p>
+
+<!-- ===== IMPORTANT NOTES ===== -->
+<h1>14. หมายเหตุสำคัญ</h1>
+<ul class="bullets">
+  <li><b>ขีดจำกัด Test users 100 คน</b> — ระบบรองรับสูงสุด 100 Google accounts ใน Test users
+    ก่อนต้องทำ App Verification กับ Google (สำหรับการใช้งานทั่วไปไม่มีผล)</li>
+  <li><b>อย่าแชร์ Web app URL หรือ password</b> กับคนที่ไม่ใช่พนักงานของคุณ
+    เพราะใครก็ตามที่มี URL + login จะเข้าถึงข้อมูลได้</li>
+  <li><b>Backup spreadsheet เป็นประจำ</b> — File → Make a copy ทุกสัปดาห์/เดือน</li>
+  <li><b>Apps Script มีโควต้ารายวัน</b> — Drive API calls, email send, etc. — สำหรับใช้งาน
+    ปกติของร้านพิมพ์ขนาด SME ไม่ต้องห่วง</li>
+  <li><b>ห้ามแก้ structure ของ Spreadsheet โดยตรง</b> — เช่นเปลี่ยนชื่อ column
+    หรือลบ column จะทำให้ระบบพัง — ให้แก้ผ่าน UI เท่านั้น</li>
+</ul>
+
+<div class="tip" style="margin-top: 1.5cm; text-align: center;">
+  ✅ <b>ติดตั้งเสร็จแล้ว!</b><br><br>
+  ถ้ามีปัญหาในการติดตั้ง ตรวจสอบ Troubleshooting ด้านบน หรือดู source code ของระบบที่:<br>
+  <a href="https://github.com/Ken-Reindeer/KEN-digital-print">github.com/Ken-Reindeer/KEN-digital-print</a>
+</div>
+
+</body>
+</html>

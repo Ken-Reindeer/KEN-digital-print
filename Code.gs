@@ -187,7 +187,8 @@ function handleAction(action, p, body, user) {
     case "addRole":           return guard(isOwner, ()=>addRole(body));
     case "updateRole":        return guard(isOwner, ()=>updateRole(body));
     case "deleteRole":        return guard(isOwner, ()=>deleteRole(body));
-    case "uploadUserAvatar":  return guard(isOwner || user.username===body.username, ()=>uploadUserAvatar(body));
+    case "getUserAvatarFolder": return guard(isOwner || user.username===body.username, ()=>getUserAvatarFolder(body));
+    case "saveUserAvatarUrl":   return guard(isOwner || user.username===body.username, ()=>saveUserAvatarUrl(body));
     case "getCustomers":      return getCustomers(p);
     case "addCustomer":       return guard(isStaff, ()=>addCustomer(body));
     case "updateCustomer":    return guard(isStaff, ()=>updateCustomer(body));
@@ -763,7 +764,7 @@ function deleteRole(b) {
 }
 
 // ============================================================
-// USER AVATAR
+// USER AVATAR (browser uploads directly to Drive via GIS; backend just stores URL)
 // ============================================================
 function getOrCreateUserAvatarFolder() {
   const parent = DriveApp.getFolderById("1hRmGGI45k1iBurrqVf70VyjcvzlEqMYW");
@@ -771,35 +772,19 @@ function getOrCreateUserAvatarFolder() {
   return it.hasNext() ? it.next() : parent.createFolder("Users");
 }
 
-function uploadUserAvatar(b) {
-  const username = String(b.username||"").trim();
-  if (!username) return {success:false, message:"ไม่ระบุ username"};
-  const sh = getSheet(SHEET_USERS);
-  const rowNum = findRow(sh,"username",username);
-  if (rowNum < 0) return {success:false, message:"ไม่พบผู้ใช้"};
-  if (!b.imageData) return {success:false, message:"ไม่มีรูปแนบมา"};
-
-  // imageData is "data:image/png;base64,..." or just base64
-  let dataStr = String(b.imageData);
-  let mime = "image/png", ext = "png";
-  const m = dataStr.match(/^data:(image\/(png|jpeg|jpg|webp));base64,(.*)$/);
-  let b64;
-  if (m) { mime = m[1]; ext = m[2]==="jpeg"?"jpg":m[2]; b64 = m[3]; }
-  else { b64 = dataStr; }
-
+function getUserAvatarFolder(b) {
   const folder = getOrCreateUserAvatarFolder();
-  // Remove old avatar(s) with same username prefix
-  const files = folder.getFiles();
-  while (files.hasNext()) {
-    const f = files.next();
-    if (f.getName().split(".")[0] === username) { try { f.setTrashed(true); } catch(e){} }
-  }
-  const blob = Utilities.newBlob(Utilities.base64Decode(b64), mime, username+"."+ext);
-  const file = folder.createFile(blob);
-  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  const url = "https://drive.google.com/thumbnail?id=" + file.getId() + "&sz=w200";
+  return {success:true, folderId: folder.getId()};
+}
 
+function saveUserAvatarUrl(b) {
+  const username = String(b.username||"").trim();
+  if (!username)  return {success:false, message:"ไม่ระบุ username"};
+  if (!b.url)     return {success:false, message:"ไม่ระบุ URL"};
+  const sh = getSheet(SHEET_USERS);
+  const rowNum = findRow(sh, "username", username);
+  if (rowNum < 0) return {success:false, message:"ไม่พบผู้ใช้"};
   ensureCol(sh, "avatar_url");
-  sh.getRange(rowNum, colIdx(sh,"avatar_url")+1).setValue(url);
-  return {success:true, message:"อัปโหลดรูปสำเร็จ", url};
+  sh.getRange(rowNum, colIdx(sh,"avatar_url")+1).setValue(b.url);
+  return {success:true, message:"บันทึก URL สำเร็จ", url: b.url};
 }

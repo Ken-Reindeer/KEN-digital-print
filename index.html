@@ -296,6 +296,8 @@ tbody tr:hover{background:#fafbfc;}
   outline:none;transition:border-color .15s;width:100%;}
 .fc:focus{border-color:var(--navy2);background:white;}
 .fc::placeholder{color:var(--text3);}
+.fc[readonly],.fc:disabled{background:#eef2f7;color:var(--text2);cursor:not-allowed;border-color:var(--border);}
+.fc[readonly]:focus,.fc:disabled:focus{border-color:var(--border);background:#eef2f7;}
 textarea.fc{resize:vertical;min-height:76px;}
 
 /* ── UPLOAD ── */
@@ -509,7 +511,6 @@ textarea.fc{resize:vertical;min-height:76px;}
         <span class="role-chip" id="role-chip">–</span>
         <span id="ver-chip" style="font-size:9px;font-family:var(--mono);color:var(--text3);padding:2px 6px;background:var(--bg);border-radius:10px;border:1px solid var(--border)"></span>
         <button class="btn btn-ghost btn-sm" onclick="refresh()">⟳ <span>รีเฟรช</span></button>
-        <button class="btn btn-primary btn-sm" onclick="openNewOrder()" id="btn-new-order">+ <span>ออเดอร์</span></button>
       </div>
     </div>
 
@@ -527,6 +528,7 @@ textarea.fc{resize:vertical;min-height:76px;}
         <!-- ORDERS -->
         <div class="tab-panel active" id="tab-orders">
           <div class="toolbar">
+            <button class="btn btn-primary" onclick="openNewOrder()" id="btn-new-order" style="padding:8px 16px;font-size:13px;font-weight:600">+ ออเดอร์</button>
             <div class="srch"><span>🔍</span><input type="text" id="orders-search" placeholder="ค้นหา... (กด Enter)" onkeydown="if(event.key==='Enter')filterOrdersLocal(this.value)">
             <button class="btn btn-sm btn-ghost" onclick="searchOrdersServer()" title="ค้นหา">🔎</button></div>
             <select class="fsel" id="status-filter" onchange="filterOrdersLocal(document.getElementById('orders-search').value)">
@@ -792,11 +794,16 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.55.3";
+const APP_VERSION = "v1.55.5";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
-let currentPageData = [], orderPage = 0, orderPageSize = 50;
+let currentPageData = [], orderPage = 0;
+let orderPageSize = (function(){
+  try { const n = parseInt(localStorage.getItem("ken_order_pgsize"),10);
+        return [50,100,200].indexOf(n) >= 0 ? n : 50;
+  } catch(e) { return 50; }
+})();
 let imgBase64  = "", imgMime = "", imgFileName = "", imgViewUrl = "", copiedImageUrl = "";
 
 let allRoles = [];
@@ -1446,6 +1453,7 @@ function setOrderPage(p) {
 function setOrderPageSize(sz) {
   orderPageSize = sz;
   orderPage = 0;
+  try { localStorage.setItem("ken_order_pgsize", String(sz)); } catch(e){}
   renderOrders();
 }
 
@@ -2518,8 +2526,8 @@ async function renderUsersTab(){
       </div>
       <div style="display:flex;align-items:center;gap:7px">
         ${roleBadge}
-        ${!isMe?`<button class="btn btn-xs btn-ghost" onclick='openEditUser("${u.username}","${(u.fullname||"").replace(/"/g,"&quot;")}","${u.role||""}")'>✏️</button>
-        <button class="btn btn-xs btn-danger" onclick="deleteUser('${u.username}')">🗑️</button>`:""}
+        <button class="btn btn-xs btn-ghost" onclick='openEditUser("${u.username}","${(u.fullname||"").replace(/"/g,"&quot;")}","${u.role||""}")'>✏️</button>
+        ${!isMe?`<button class="btn btn-xs btn-danger" onclick="deleteUser('${u.username}')">🗑️</button>`:""}
       </div>
     </div>`;
   });
@@ -2548,6 +2556,12 @@ function openEditUser(un, fn, role){
   document.getElementById("u-fn").value=fn||"";
   document.getElementById("u-pw").value="";
   populateRoleDropdown(role);
+  // Lock role dropdown when editing self or when target is owner (prevents brick)
+  const roleSel = document.getElementById("u-role");
+  const lockRole = (role === "owner") || (un === SESSION?.user?.username);
+  roleSel.disabled = lockRole;
+  roleSel.style.opacity = lockRole ? "0.6" : "";
+  roleSel.style.cursor  = lockRole ? "not-allowed" : "";
   updateRoleDesc();openM("m-user");
 }
 function updateRoleDesc(){

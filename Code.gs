@@ -460,12 +460,20 @@ function addOrder(b) {
       case"รายละเอียด":return b.detail||"";case"ราคารวม":return parseFloat(b.price)||0;
       case"ชื่อผู้รับ":return b.recipient||"";case"ที่อยู่จัดส่ง":return b.address||"";
       case"เบอร์โทรศัพท์":return b.phone||"";case"ลิ้งค์ลูกค้า":return b.link||"";
-      case"รหัสลูกค้า":return "'"+(b.customerId||"");case"Tracking number":return b.tracking||"";
+      case"รหัสลูกค้า":return b.customerId||"";case"Tracking number":return b.tracking||"";
       case"Image URL":return b.imageUrl||"";case"PDF URL":return b.pdfUrl||"";
       case"บันทึกโดย":return b.createdBy||"";
       default:return"";
     }
   }));
+  // Force the customerId cell to plain-text format so codes like "000001" don't get auto-cast to number 1
+  const newRow = sh.getLastRow();
+  const cidColIdx = colIdx(sh, "รหัสลูกค้า");
+  if (cidColIdx >= 0 && b.customerId) {
+    const cell = sh.getRange(newRow, cidColIdx+1);
+    cell.setNumberFormat("@");
+    cell.setValue(b.customerId);
+  }
   updateCustomerTotal(b.customerId,parseFloat(b.price)||0);
   return {success:true,message:"บันทึกออเดอร์สำเร็จ",rowId};
 }

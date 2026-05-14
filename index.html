@@ -343,8 +343,24 @@ textarea.fc{resize:vertical;min-height:76px;}
 .user-card{background:white;border:1px solid var(--border);border-radius:10px;
   padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:8px;box-shadow:var(--shadow);}
 .u-av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;
-  justify-content:center;font-size:15px;font-weight:700;color:white;flex-shrink:0;}
-.av-owner{background:var(--navy2);}.av-admin{background:#7c3aed;}
+  justify-content:center;font-size:15px;font-weight:700;color:white;flex-shrink:0;
+  background-size:cover;background-position:center;cursor:pointer;position:relative;transition:opacity .15s;overflow:hidden;}
+.u-av:hover{opacity:.85;}
+.u-av img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.u-av .u-av-edit{position:absolute;bottom:-2px;right:-2px;background:var(--navy2);color:white;font-size:9px;width:14px;height:14px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;}
+.av-owner{background:var(--navy2);}.av-admin{background:#7c3aed;}.av-custom{background:#0891b2;}
+
+/* Role cards */
+.role-card{background:white;border:1px solid var(--border);border-radius:10px;
+  padding:12px 14px;display:flex;align-items:center;gap:12px;margin-bottom:8px;box-shadow:var(--shadow);}
+.role-card.locked{background:#f8fafc;}
+.role-name{font-size:13px;font-weight:600;color:var(--text);}
+.role-locked-tag{font-size:9px;color:var(--text3);background:var(--bg);padding:2px 6px;border-radius:4px;margin-left:6px;}
+.role-desc{font-size:11px;color:var(--text2);margin-top:2px;}
+.role-perms{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;}
+.role-perm-chip{font-size:10px;background:#e0e7ff;color:#3730a3;padding:2px 7px;border-radius:10px;}
+.perm-row{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:4px 0;}
+.perm-row input{width:16px;height:16px;cursor:pointer;}
 .u-name{font-size:13px;font-weight:600;}
 .u-meta{font-size:10px;color:var(--text3);font-family:var(--mono);}
 .rb{padding:2px 9px;border-radius:20px;font-size:10px;font-weight:600;font-family:var(--mono);}
@@ -711,10 +727,7 @@ textarea.fc{resize:vertical;min-height:76px;}
       <div class="fg"><label class="lbl">ชื่อ-นามสกุล</label><input class="fc" id="u-fn"></div>
       <div class="fg"><label class="lbl">Password *</label><input class="fc" id="u-pw" type="password" autocomplete="new-password"></div>
       <div class="fg"><label class="lbl">Role</label>
-        <select class="fc" id="u-role" onchange="updateRoleDesc()">
-          <option value="admin">Admin</option>
-          <option value="owner">Owner</option>
-        </select></div>
+        <select class="fc" id="u-role" onchange="updateRoleDesc()"></select></div>
       <div class="fg full">
         <div id="role-desc" style="background:#f8fafc;border-radius:8px;padding:11px 14px;font-size:12px;color:var(--text2);line-height:1.7;border:1px solid var(--border)"></div>
       </div>
@@ -726,6 +739,30 @@ textarea.fc{resize:vertical;min-height:76px;}
     <button class="btn btn-primary" onclick="saveUser()">💾 บันทึก</button>
   </div>
 </div></div>
+
+<!-- ══ MODAL: ADD/EDIT ROLE ══ -->
+<div class="overlay" id="m-role">
+<div class="modal">
+  <div class="modal-hd"><span class="modal-title" id="role-mtitle">สร้าง Role</span><button class="modal-x" onclick="closeM('m-role')">✕</button></div>
+  <div class="modal-body">
+    <div class="fgrid">
+      <div class="fg"><label class="lbl">ชื่อ Role *</label><input class="fc" id="r-name" autocomplete="off" placeholder="เช่น sales, production, viewer"></div>
+      <div class="fg full"><label class="lbl">คำอธิบาย</label><input class="fc" id="r-desc"></div>
+      <div class="fg full">
+        <label class="lbl">เมนูที่เข้าได้</label>
+        <div id="r-perms" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:12px;background:#f8fafc;border-radius:8px;border:1px solid var(--border)"></div>
+      </div>
+      <input type="hidden" id="r-edit-name" value="">
+    </div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn btn-ghost" onclick="closeM('m-role')">ยกเลิก</button>
+    <button class="btn btn-primary" onclick="saveRole()">💾 บันทึก</button>
+  </div>
+</div></div>
+
+<!-- ══ HIDDEN FILE INPUT FOR AVATAR ══ -->
+<input type="file" id="avatar-file-input" accept="image/*" style="display:none">
 
 <!-- ══ MODAL: STATUS PICKER ══ -->
 <div class="overlay" id="m-status">
@@ -755,12 +792,27 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.54.1";
+const APP_VERSION = "v1.55.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
 let currentPageData = [], orderPage = 0, orderPageSize = 50;
 let imgBase64  = "", imgMime = "", imgFileName = "", imgViewUrl = "", copiedImageUrl = "";
+
+let allRoles = [];
+const PERMISSION_META = [
+  {key:"orders",    label:"📋 ประวัติการสั่งซื้อ"},
+  {key:"progress",  label:"⏳ In Progress"},
+  {key:"customers", label:"👤 ข้อมูลลูกค้า"},
+  {key:"insight",   label:"📊 Business Insight"},
+  {key:"dycut",     label:"📏 Layout Planner"},
+  {key:"users",     label:"🔑 จัดการผู้ใช้"}
+];
+function userCan(perm) {
+  if (SESSION?.user?.role === "owner") return true;
+  const p = SESSION?.user?.permissions;
+  return Array.isArray(p) && p.indexOf(perm) >= 0;
+}
 
 const ROLE_DESC = {
   owner:"👑 Owner — เข้าถึงได้ทุกอย่าง รวมถึงยอดรายได้, Business Insight และจัดการผู้ใช้งาน",
@@ -851,17 +903,24 @@ function showApp() {
   document.getElementById("login-page").style.display="none";
   document.getElementById("app").classList.add("show");
   const u = SESSION.user;
-  document.getElementById("sb-av").textContent    = (u.fullname||u.username)[0].toUpperCase();
+  const sbAv = document.getElementById("sb-av");
+  if (u.avatar_url) sbAv.innerHTML = `<img src="${u.avatar_url}" alt="${u.username}">`;
+  else sbAv.textContent = (u.fullname||u.username)[0].toUpperCase();
   document.getElementById("sb-uname").textContent = u.fullname||u.username;
-  document.getElementById("sb-role").textContent  = u.role.toUpperCase();
+  document.getElementById("sb-role").textContent  = (u.role||"").toUpperCase();
   const chip = document.getElementById("role-chip");
-  chip.textContent = u.role==="owner"?"👑 Owner":"🛡️ Admin";
-  if (u.role==="owner") chip.classList.add("owner"); else chip.classList.remove("owner");
-  // แสดงเมนูตาม role
   const isOwner = u.role==="owner";
-  document.getElementById("nav-users").style.display     = isOwner?"flex":"none";
-  document.getElementById("btn-new-order").style.display = isOwner||u.role==="admin"?"":"none";
-  document.getElementById("btn-add-cust").style.display  = isOwner||u.role==="admin"?"":"none";
+  chip.textContent = isOwner ? "👑 Owner" : "🛡️ " + (u.role||"–");
+  if (isOwner) chip.classList.add("owner"); else chip.classList.remove("owner");
+  // Enforce permissions on nav buttons
+  PERMISSION_META.forEach(p => {
+    const btn = document.getElementById("nav-" + p.key);
+    if (btn) btn.style.display = userCan(p.key) ? "flex" : "none";
+  });
+  const newOrderBtn = document.getElementById("btn-new-order");
+  const addCustBtn  = document.getElementById("btn-add-cust");
+  if (newOrderBtn) newOrderBtn.style.display = userCan("orders")    ? "" : "none";
+  if (addCustBtn)  addCustBtn.style.display  = userCan("customers") ? "" : "none";
   // config
   if (SCRIPT_URL) { document.getElementById("cfg-bar").style.display="none"; loadAll(); }
   else document.getElementById("cfg-bar").style.display="flex";
@@ -992,9 +1051,8 @@ const tabMeta = {
   dycut:["Layout Planner","KDPcut"],
 };
 function switchTab(t) {
-  if (t==="users" && SESSION?.user.role!=="owner") { toast("เฉพาะ Owner เท่านั้น","err"); return; }
-  if (t==="insight" && SESSION?.user.role!=="owner") {
-    toast("เฉพาะ Owner เท่านั้นที่ดูยอดรายได้ได้","err"); return;
+  if (PERMISSION_META.some(p => p.key === t) && !userCan(t)) {
+    toast("ไม่มีสิทธิ์เข้าเมนูนี้","err"); return;
   }
   document.querySelectorAll(".tab-panel").forEach(p=>p.classList.remove("active"));
   document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));
@@ -1392,27 +1450,28 @@ function setOrderPageSize(sz) {
 }
 
 function oRowDiv(o, cols, savedW, isOwner) {
+  const stop = "event.stopPropagation();";
   const badge = o.status==="กำลังผลิต"
-    ? `<span class="badge b-prod" style="cursor:pointer" onclick="openStatusPicker('${o.rowId}','${o.status}')"><span class="sdot d-prod"></span>กำลังผลิต</span>`
+    ? `<span class="badge b-prod" style="cursor:pointer" onclick="${stop}openStatusPicker('${o.rowId}','${o.status}')"><span class="sdot d-prod"></span>กำลังผลิต</span>`
     : o.status==="จัดส่งสำเร็จ"
-    ? `<span class="badge b-done" style="cursor:pointer" onclick="openStatusPicker('${o.rowId}','${o.status}')"><span class="sdot d-done"></span>สำเร็จ</span>`
+    ? `<span class="badge b-done" style="cursor:pointer" onclick="${stop}openStatusPicker('${o.rowId}','${o.status}')"><span class="sdot d-done"></span>สำเร็จ</span>`
     : o.status==="รอชำระเงิน"
-    ? `<span class="badge b-wait" style="cursor:pointer" onclick="openStatusPicker('${o.rowId}','${o.status}')"><span class="sdot d-wait"></span>รอชำระเงิน</span>`
+    ? `<span class="badge b-wait" style="cursor:pointer" onclick="${stop}openStatusPicker('${o.rowId}','${o.status}')"><span class="sdot d-wait"></span>รอชำระเงิน</span>`
     : `<span class="badge b-other">${o.status||"–"}</span>`;
   const thumb = o.imageUrl
-    ? `<img class="thumb" src="${o.imageUrl}" onclick="showLb('${o.imageUrl}')" loading="lazy">`
+    ? `<img class="thumb" src="${o.imageUrl}" onclick="${stop}showLb('${o.imageUrl}')" loading="lazy">`
     : '<div class="no-thumb">🖼️</div>';
   const det = (o.detail||"").replace(/\n/g," ");
   const pdfBtn = o.pdfUrl
-    ? `<a href="${o.pdfUrl}" target="_blank" class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none" title="เปิด PDF">📄</a>`
-    : `<button class="btn btn-xs btn-ghost" onclick="printOrder('${o.rowId}')" title="พิมพ์">🖨️</button>`;
+    ? `<a href="${o.pdfUrl}" target="_blank" class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none" title="เปิด PDF" onclick="${stop}">📄</a>`
+    : `<button class="btn btn-xs btn-ghost" onclick="${stop}printOrder('${o.rowId}')" title="พิมพ์">🖨️</button>`;
   const priceVal = isOwner ? `<span style="font-weight:600;color:${parseFloat(o.price)<0?"var(--danger)":"var(--success)"}">฿${(parseFloat(o.price)||0).toLocaleString()}</span>` : "";
 
   const valueMap = {
     status:    badge,
     customer:  o.customerLabel||o.customerId||"–",
     thumb:     thumb,
-    detail:    `<span style="cursor:pointer;display:block;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onclick="showDetail('${o.rowId}')">${det||"–"}</span>`,
+    detail:    `<span style="display:block;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${det||"–"}</span>`,
     tracking:  o.tracking||"–",
     recipient: o.recipient||"–",
     phone:     o.phone||"–",
@@ -1422,7 +1481,7 @@ function oRowDiv(o, cols, savedW, isOwner) {
     action:    pdfBtn,
   };
 
-  let html = '<div class="dt-row">';
+  let html = `<div class="dt-row" style="cursor:pointer" onclick="showDetail('${o.rowId}')">`;
   cols.forEach((c,i)=>{
     const w = savedW[c[0]] || c[2];
     html += `<div class="dt-cell" style="width:var(--col-${c[0]}-w,${w}px)">${valueMap[c[0]]||""}</div>`;
@@ -1531,33 +1590,34 @@ function renderProgress(data) {
 }
 
 function oProgressRowDiv(o, cols, savedW) {
+  const stop = "event.stopPropagation();";
   const badge = o.status==="กำลังผลิต"
-    ? `<span class="badge b-prod" style="cursor:pointer" onclick="openStatusPicker('${o.rowId}','${o.status}')"><span class="sdot d-prod"></span>กำลังผลิต</span>`
+    ? `<span class="badge b-prod" style="cursor:pointer" onclick="${stop}openStatusPicker('${o.rowId}','${o.status}')"><span class="sdot d-prod"></span>กำลังผลิต</span>`
     : o.status==="จัดส่งสำเร็จ"
-    ? `<span class="badge b-done" style="cursor:pointer" onclick="openStatusPicker('${o.rowId}','${o.status}')"><span class="sdot d-done"></span>สำเร็จ</span>`
+    ? `<span class="badge b-done" style="cursor:pointer" onclick="${stop}openStatusPicker('${o.rowId}','${o.status}')"><span class="sdot d-done"></span>สำเร็จ</span>`
     : o.status==="รอชำระเงิน"
-    ? `<span class="badge b-wait" style="cursor:pointer" onclick="openStatusPicker('${o.rowId}','${o.status}')"><span class="sdot d-wait"></span>รอชำระเงิน</span>`
+    ? `<span class="badge b-wait" style="cursor:pointer" onclick="${stop}openStatusPicker('${o.rowId}','${o.status}')"><span class="sdot d-wait"></span>รอชำระเงิน</span>`
     : `<span class="badge b-other">${o.status||"–"}</span>`;
   const thumb = o.imageUrl
-    ? `<img class="thumb" src="${o.imageUrl}" onclick="showLb('${o.imageUrl}')" loading="lazy">`
+    ? `<img class="thumb" src="${o.imageUrl}" onclick="${stop}showLb('${o.imageUrl}')" loading="lazy">`
     : '<div class="no-thumb">🖼️</div>';
   const det = (o.detail||"").replace(/\n/g," ");
   const pdfBtn = o.pdfUrl
-    ? `<a href="${o.pdfUrl}" target="_blank" class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none" title="เปิด PDF">📄</a>`
-    : `<button class="btn btn-xs btn-ghost" onclick="printOrder('${o.rowId}')" title="พิมพ์">🖨️</button>`;
+    ? `<a href="${o.pdfUrl}" target="_blank" class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none" title="เปิด PDF" onclick="${stop}">📄</a>`
+    : `<button class="btn btn-xs btn-ghost" onclick="${stop}printOrder('${o.rowId}')" title="พิมพ์">🖨️</button>`;
 
   const valueMap = {
     status:    badge,
     customer:  o.customerLabel||o.customerId||"–",
     thumb:     thumb,
-    detail:    `<span style="cursor:pointer;display:block;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onclick="showDetail('${o.rowId}')">${det||"–"}</span>`,
+    detail:    `<span style="display:block;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${det||"–"}</span>`,
     recipient: o.recipient||"–",
     phone:     o.phone||"–",
     address:   o.address||"–",
     action:    pdfBtn,
   };
 
-  let html = '<div class="dt-row">';
+  let html = `<div class="dt-row" style="cursor:pointer" onclick="showDetail('${o.rowId}')">`;
   cols.forEach((c,i)=>{
     const w = savedW[c[0]] || c[2];
     html += `<div class="dt-cell" style="width:var(--col-${c[0]}-w,${w}px)">${valueMap[c[0]]||""}</div>`;
@@ -2156,19 +2216,21 @@ function renderCust(data){
   head += '</div>';
 
   let body = '';
+  const stop = "event.stopPropagation();";
   sorted.forEach(c=>{
     const orderTotal=allOrders.filter(o=>o.customerId===c.rowId).reduce((s,o)=>s+(parseFloat(o.price)||0),0);
+    const profileId = c.rowId||c.customerId;
     const valueMap = {
       custId:    c.customerId||"–",
-      name:      `<span style="cursor:pointer;color:var(--navy2)" onclick="showCustProfile('${c.rowId||c.customerId}')">${c.name||"–"}</span>`,
+      name:      `<span style="color:var(--navy2);font-weight:500">${c.name||"–"}</span>`,
       phone:     c.phone||"–",
       recipient: c.recipient||"–",
       address:   c.address||"–",
       total:     isOwner?`<span style="font-weight:600;color:var(--success)">฿${orderTotal.toLocaleString()}</span>`:"–",
-      sns:       c.sns?`<a href="${c.sns}" target="_blank" class="btn btn-xs btn-ghost">💬</a>`:"–",
-      action:    `<button class="btn btn-xs" style="background:#dbeafe;color:var(--navy2);border:none;margin-right:4px" onclick='editCust(${JSON.stringify(c).replace(/'/g,"&#39;")})' title="แก้ไข">✏️</button><button class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none" onclick="deleteCust('${c.rowId||''}','${(c.customerId||'').replace(/'/g,"\\'")}','${(c.name||'').replace(/'/g,"\\'")}')" title="ลบ">🗑️</button>`,
+      sns:       c.sns?`<a href="${c.sns}" target="_blank" class="btn btn-xs btn-ghost" onclick="${stop}">💬</a>`:"–",
+      action:    `<button class="btn btn-xs" style="background:#dbeafe;color:var(--navy2);border:none;margin-right:4px" onclick='${stop}editCust(${JSON.stringify(c).replace(/'/g,"&#39;")})' title="แก้ไข">✏️</button><button class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none" onclick="${stop}deleteCust('${c.rowId||''}','${(c.customerId||'').replace(/'/g,"\\'")}','${(c.name||'').replace(/'/g,"\\'")}')" title="ลบ">🗑️</button>`,
     };
-    let row = '<div class="dt-row">';
+    let row = `<div class="dt-row" style="cursor:pointer" onclick="showCustProfile('${profileId}')">`;
     cols.forEach((col,i)=>{
       const w = savedW[col[0]] || col[2];
       row += `<div class="dt-cell" style="width:${w}px">${valueMap[col[0]]||""}</div>`;
@@ -2398,44 +2460,102 @@ async function loadStats(){
 // USER MANAGEMENT
 // ══════════════════════════════════════════════
 async function renderUsersTab(){
+  // Load roles first
+  const rolesRes = await api({action:"getRoles"});
+  allRoles = (rolesRes && rolesRes.success) ? rolesRes.data : [{role_name:"owner",permissions:PERMISSION_META.map(p=>p.key),description:"เจ้าของระบบ",locked:true}];
+
   const res=await api({action:"getUsers"});
   if(!res||!res.success){document.getElementById("users-content").innerHTML='<div class="empty">โหลดไม่ได้</div>';return;}
-  let html='<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn btn-primary btn-sm" onclick="openAddUser()">+ เพิ่มผู้ใช้</button></div>';
+
+  // Roles section HTML
+  let rolesHtml = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+    <div style="font-size:14px;font-weight:600">🛡️ Roles (${allRoles.length})</div>
+    <button class="btn btn-primary btn-sm" onclick="openAddRole()">+ สร้าง Role</button>
+  </div>`;
+  rolesHtml += allRoles.map(r => {
+    const chips = (r.permissions||[]).map(p => {
+      const meta = PERMISSION_META.find(x=>x.key===p);
+      return `<span class="role-perm-chip">${meta?meta.label:p}</span>`;
+    }).join("");
+    const actions = r.locked ? "" :
+      `<button class="btn btn-xs btn-ghost" onclick="openEditRole('${r.role_name.replace(/'/g,"\\'")}')">✏️</button>
+       <button class="btn btn-xs btn-danger" onclick="deleteRole('${r.role_name.replace(/'/g,"\\'")}')">🗑️</button>`;
+    return `<div class="role-card ${r.locked?'locked':''}">
+      <div style="flex:1;min-width:0">
+        <div><span class="role-name">${r.role_name}</span>${r.locked?'<span class="role-locked-tag">🔒 ระบบ</span>':''}</div>
+        ${r.description?`<div class="role-desc">${r.description}</div>`:''}
+        <div class="role-perms">${chips||'<span style="font-size:10px;color:var(--text3)">— ไม่มีสิทธิ์ —</span>'}</div>
+      </div>
+      <div style="display:flex;gap:6px">${actions}</div>
+    </div>`;
+  }).join("");
+
+  // Users section HTML
+  let usersHtml = `<div style="display:flex;align-items:center;justify-content:space-between;margin:24px 0 10px">
+    <div style="font-size:14px;font-weight:600">👥 ผู้ใช้งาน (${res.data.length})</div>
+    <button class="btn btn-primary btn-sm" onclick="openAddUser()">+ เพิ่มผู้ใช้</button>
+  </div>`;
   res.data.forEach(u=>{
     const isMe=u.username===SESSION?.user.username;
-    html+=`<div class="user-card">
-      <div class="u-av av-${u.role}">${(u.fullname||u.username)[0].toUpperCase()}</div>
+    const avClass = u.role==="owner"?"av-owner":(u.role==="admin"?"av-admin":"av-custom");
+    const avContent = u.avatar_url
+      ? `<img src="${u.avatar_url}" alt="${u.username}">`
+      : (u.fullname||u.username)[0].toUpperCase();
+    const roleBadge = u.role==="owner"
+      ? `<span class="rb rb-owner">👑 Owner</span>`
+      : `<span class="rb rb-admin">🛡️ ${u.role||'–'}</span>`;
+    usersHtml+=`<div class="user-card">
+      <div class="u-av ${avClass}" title="คลิกเพื่ออัปโหลดรูป" onclick="onAvatarClick('${u.username}')">${avContent}<span class="u-av-edit">✎</span></div>
       <div style="flex:1;min-width:0">
-        <div class="u-name">${u.fullname||u.username} ${isMe?'<span style="font-size:10px;color:var(--text3);font-family:var(--mono)">(คุณ)</span>':""}</div>
+        <div class="u-name">${u.fullname||u.username} ${isMe?'<span style="font-size:10px;color:var(--text3)">(คุณ)</span>':""}</div>
         <div class="u-meta">@${u.username} · login ล่าสุด: ${u.last_login||"–"}</div>
       </div>
       <div style="display:flex;align-items:center;gap:7px">
-        <span class="rb rb-${u.role}">${u.role==="owner"?"👑 Owner":"🛡️ Admin"}</span>
-        ${!isMe?`<button class="btn btn-xs btn-ghost" onclick='openEditUser("${u.username}")'>✏️</button>
+        ${roleBadge}
+        ${!isMe?`<button class="btn btn-xs btn-ghost" onclick='openEditUser("${u.username}","${(u.fullname||"").replace(/"/g,"&quot;")}","${u.role||""}")'>✏️</button>
         <button class="btn btn-xs btn-danger" onclick="deleteUser('${u.username}')">🗑️</button>`:""}
       </div>
     </div>`;
   });
-  document.getElementById("users-content").innerHTML=html;
+
+  document.getElementById("users-content").innerHTML = rolesHtml + usersHtml;
 }
+
+function populateRoleDropdown(selected) {
+  const sel = document.getElementById("u-role");
+  sel.innerHTML = allRoles.map(r => `<option value="${r.role_name}"${r.role_name===selected?' selected':''}>${r.role_name}</option>`).join("");
+}
+
 function openAddUser(){
   document.getElementById("user-mtitle").textContent="เพิ่มผู้ใช้งาน";
   document.getElementById("u-edit-un").value="";
   document.getElementById("u-un").value="";document.getElementById("u-fn").value="";
-  document.getElementById("u-pw").value="";document.getElementById("u-role").value="admin";
+  document.getElementById("u-pw").value="";
   document.getElementById("u-un").readOnly=false;
+  populateRoleDropdown(allRoles.find(r=>!r.locked)?.role_name || "owner");
   updateRoleDesc();openM("m-user");
 }
-function openEditUser(un){
+function openEditUser(un, fn, role){
   document.getElementById("user-mtitle").textContent="แก้ไขผู้ใช้งาน";
   document.getElementById("u-edit-un").value=un;
   document.getElementById("u-un").value=un;document.getElementById("u-un").readOnly=true;
+  document.getElementById("u-fn").value=fn||"";
   document.getElementById("u-pw").value="";
+  populateRoleDropdown(role);
   updateRoleDesc();openM("m-user");
 }
 function updateRoleDesc(){
   const r=document.getElementById("u-role").value;
-  document.getElementById("role-desc").textContent=ROLE_DESC[r]||"";
+  const found = allRoles.find(x => x.role_name === r);
+  if (found) {
+    const perms = (found.permissions||[]).map(p => {
+      const m = PERMISSION_META.find(x=>x.key===p);
+      return m ? m.label : p;
+    }).join(", ");
+    document.getElementById("role-desc").textContent = (found.description||r) + (perms?(" — เข้าได้: " + perms):" — ไม่มีสิทธิ์เข้าหน้าใดเลย");
+  } else {
+    document.getElementById("role-desc").textContent = ROLE_DESC[r]||"";
+  }
 }
 async function saveUser(){
   const editUn=document.getElementById("u-edit-un").value;
@@ -2460,6 +2580,84 @@ async function deleteUser(un){
   const res=await api({action:"deleteUser",username:un});
   if(res&&res.success){toast("ลบสำเร็จ");renderUsersTab();}
   else toast(res?.message||"ลบไม่ได้","err");
+}
+
+// ── ROLE MANAGEMENT ──
+function openAddRole(){
+  document.getElementById("role-mtitle").textContent="สร้าง Role";
+  document.getElementById("r-edit-name").value="";
+  document.getElementById("r-name").value="";
+  document.getElementById("r-name").readOnly=false;
+  document.getElementById("r-desc").value="";
+  renderPermCheckboxes([]);
+  openM("m-role");
+}
+function openEditRole(roleName){
+  const r = allRoles.find(x => x.role_name === roleName);
+  if (!r) return;
+  document.getElementById("role-mtitle").textContent="แก้ไข Role";
+  document.getElementById("r-edit-name").value=roleName;
+  document.getElementById("r-name").value=roleName;
+  document.getElementById("r-name").readOnly=true;
+  document.getElementById("r-desc").value=r.description||"";
+  renderPermCheckboxes(r.permissions||[]);
+  openM("m-role");
+}
+function renderPermCheckboxes(checked){
+  document.getElementById("r-perms").innerHTML = PERMISSION_META.map(p =>
+    `<label class="perm-row"><input type="checkbox" value="${p.key}"${checked.indexOf(p.key)>=0?' checked':''}>${p.label}</label>`
+  ).join("");
+}
+async function saveRole(){
+  const editName = document.getElementById("r-edit-name").value;
+  const name = document.getElementById("r-name").value.trim();
+  const desc = document.getElementById("r-desc").value.trim();
+  if (!name) return toast("กรุณาระบุชื่อ Role","err");
+  const perms = Array.from(document.querySelectorAll("#r-perms input:checked")).map(c => c.value);
+  const action = editName ? "updateRole" : "addRole";
+  const res = await api({action, roleName:name, description:desc, permissions:perms});
+  if (res && res.success) { toast(res.message); closeM("m-role"); renderUsersTab(); }
+  else toast(res?.message||"บันทึกไม่สำเร็จ","err");
+}
+async function deleteRole(roleName){
+  if (!confirm(`ลบ Role "${roleName}" ?`)) return;
+  const res = await api({action:"deleteRole", roleName});
+  if (res && res.success) { toast(res.message); renderUsersTab(); }
+  else toast(res?.message||"ลบไม่ได้","err");
+}
+
+// ── AVATAR UPLOAD ──
+let _avatarUploadTarget = "";
+function onAvatarClick(username){
+  _avatarUploadTarget = username;
+  const inp = document.getElementById("avatar-file-input");
+  inp.value = "";
+  inp.onchange = handleAvatarFile;
+  inp.click();
+}
+async function handleAvatarFile(e){
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  if (f.size > 2 * 1024 * 1024) { toast("รูปใหญ่เกิน 2MB","err"); return; }
+  toast("กำลังอัปโหลดรูป...");
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const res = await api({action:"uploadUserAvatar", username:_avatarUploadTarget, imageData: reader.result});
+    if (res && res.success) {
+      toast("อัปโหลดรูปสำเร็จ ✓");
+      // If uploaded for self, update sidebar avatar too
+      if (_avatarUploadTarget === SESSION?.user?.username && SESSION) {
+        SESSION.user.avatar_url = res.url;
+        localStorage.setItem("ken_session", JSON.stringify(SESSION));
+        const sbAv = document.getElementById("sb-av");
+        if (sbAv) sbAv.innerHTML = `<img src="${res.url}" alt="${_avatarUploadTarget}">`;
+      }
+      renderUsersTab();
+    } else {
+      toast(res?.message||"อัปโหลดล้มเหลว","err");
+    }
+  };
+  reader.readAsDataURL(f);
 }
 
 // ══════════════════════════════════════════════

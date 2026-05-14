@@ -145,7 +145,8 @@ function doLogin(body) {
       sh.getRange(i+1,iE+1).setValue(expiry.toISOString());
       sh.getRange(i+1,iL+1).setValue(new Date().toLocaleString("th-TH"));
       return { success:true, token, expiry:expiry.getTime(),
-               user:{ username:rows[i][iU], fullname:rows[i][iF]||rows[i][iU], role:rows[i][iR] } };
+               user:{ username:rows[i][iU], fullname:rows[i][iF]||rows[i][iU], role:rows[i][iR],
+                      permissions: getRolePermissions(rows[i][iR]) } };
     }
   }
   return { success:false, message:"Username หรือ Password ไม่ถูกต้อง" };
@@ -179,9 +180,14 @@ function doLogout(body) {
 // ============================================================
 function handleAction(action, p, body, user) {
   const isOwner = user.role==="owner";
-  const isStaff = ["owner","admin"].includes(user.role);
+  const isStaff = isOwner || getRolePermissions(user.role).length > 0;
   switch(action) {
     case "logout":            return doLogout(body);
+    case "getRoles":          return getRoles();
+    case "addRole":           return guard(isOwner, ()=>addRole(body));
+    case "updateRole":        return guard(isOwner, ()=>updateRole(body));
+    case "deleteRole":        return guard(isOwner, ()=>deleteRole(body));
+    case "uploadUserAvatar":  return guard(isOwner || user.username===body.username, ()=>uploadUserAvatar(body));
     case "getCustomers":      return getCustomers(p);
     case "addCustomer":       return guard(isStaff, ()=>addCustomer(body));
     case "updateCustomer":    return guard(isStaff, ()=>updateCustomer(body));
@@ -632,7 +638,10 @@ function getStats() {
 // USERS
 // ============================================================
 function getUsers() {
-  return {success:true,data:sheetToObjects(getSheet(SHEET_USERS)).map(r=>({username:fmt(r["username"]),fullname:fmt(r["fullname"]),role:fmt(r["role"]),last_login:fmt(r["last_login"])}))};
+  return {success:true,data:sheetToObjects(getSheet(SHEET_USERS)).map(r=>({
+    username:fmt(r["username"]),fullname:fmt(r["fullname"]),role:fmt(r["role"]),
+    last_login:fmt(r["last_login"]), avatar_url: fmt(r["avatar_url"])
+  }))};
 }
 function addUser(b) {
   const sh=getSheet(SHEET_USERS);
@@ -661,4 +670,136 @@ function changePassword(b,user) {
   sh.getRange(rowNum,colIdx(sh,"password")+1).setValue(hashPassword(b.newPassword));
   sh.getRange(rowNum,colIdx(sh,"token")+1).setValue("");
   return {success:true,message:"เปลี่ยนรหัสผ่านสำเร็จ กรุณา login ใหม่"};
+}
+
+// ============================================================
+// ROLES & PERMISSIONS
+// ============================================================
+const ALL_PERMISSIONS = ["orders","progress","customers","insight","dycut","users"];
+
+function getRolesSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName("Roles");
+  if (!sh) {
+    sh = ss.insertSheet("Roles");
+    sh.appendRow(["role_name","permissions","description","created_at"]);
+    styleHeader(sh, 4);
+    // Seed default "admin" role so existing admins keep working
+    sh.appendRow(["admin", JSON.stringify(ALL_PERMISSIONS), "ผู้ดูแลระบบ (เริ่มต้น)", new Date().toISOString()]);
+  }
+  return sh;
+}
+
+function getRolePermissions(roleName) {
+  if (roleName === "owner") return ALL_PERMISSIONS.slice();
+  if (!roleName) return [];
+  try {
+    const sh = getRolesSheet();
+    const rows = sh.getDataRange().getValues();
+    const h = rows[0].map(x=>String(x).trim());
+    const iN = h.indexOf("role_name"), iP = h.indexOf("permissions");
+    for (let i=1; i<rows.length; i++) {
+      if (String(rows[i][iN]).trim() === String(roleName).trim()) {
+        try { return JSON.parse(rows[i][iP] || "[]"); } catch(e) { return []; }
+      }
+    }
+  } catch(e) {}
+  return [];
+}
+
+function getRoles() {
+  const sh = getRolesSheet();
+  const rows = sh.getDataRange().getValues();
+  const h = rows[0].map(x=>String(x).trim());
+  const iN = h.indexOf("role_name"), iP = h.indexOf("permissions"), iD = h.indexOf("description");
+  const list = [{ role_name:"owner", permissions: ALL_PERMISSIONS.slice(), description:"เจ้าของระบบ (สิทธิ์ทั้งหมด)", locked:true }];
+  for (let i=1; i<rows.length; i++) {
+    if (!rows[i][iN]) continue;
+    let perms = [];
+    try { perms = JSON.parse(rows[i][iP] || "[]"); } catch(e){}
+    list.push({ role_name: String(rows[i][iN]).trim(), permissions: perms, description: String(rows[i][iD]||""), locked:false });
+  }
+  return { success:true, data:list, allPermissions: ALL_PERMISSIONS };
+}
+
+function addRole(b) {
+  const name = String(b.roleName||"").trim();
+  if (!name) return {success:false, message:"กรุณาระบุชื่อ Role"};
+  if (name.toLowerCase()==="owner") return {success:false, message:"ชื่อ owner สงวนไว้ใช้งานระบบ"};
+  const sh = getRolesSheet();
+  if (findRow(sh,"role_name",name) > 0) return {success:false, message:"มี Role ชื่อนี้แล้ว"};
+  const perms = Array.isArray(b.permissions) ? b.permissions.filter(p=>ALL_PERMISSIONS.indexOf(p)>=0) : [];
+  sh.appendRow([name, JSON.stringify(perms), String(b.description||""), new Date().toISOString()]);
+  return {success:true, message:"สร้าง Role สำเร็จ"};
+}
+
+function updateRole(b) {
+  const name = String(b.roleName||"").trim();
+  if (!name || name.toLowerCase()==="owner") return {success:false, message:"ไม่สามารถแก้ไข Role นี้"};
+  const sh = getRolesSheet();
+  const rowNum = findRow(sh,"role_name",name);
+  if (rowNum < 0) return {success:false, message:"ไม่พบ Role"};
+  const perms = Array.isArray(b.permissions) ? b.permissions.filter(p=>ALL_PERMISSIONS.indexOf(p)>=0) : [];
+  sh.getRange(rowNum, colIdx(sh,"permissions")+1).setValue(JSON.stringify(perms));
+  if (b.description !== undefined) sh.getRange(rowNum, colIdx(sh,"description")+1).setValue(String(b.description||""));
+  return {success:true, message:"อัพเดท Role สำเร็จ"};
+}
+
+function deleteRole(b) {
+  const name = String(b.roleName||"").trim();
+  if (!name || name.toLowerCase()==="owner") return {success:false, message:"ไม่สามารถลบ Role นี้"};
+  const sh = getRolesSheet();
+  const rowNum = findRow(sh,"role_name",name);
+  if (rowNum < 0) return {success:false, message:"ไม่พบ Role"};
+  // Block delete if any user has this role
+  const ush = getSheet(SHEET_USERS);
+  const urows = ush.getDataRange().getValues();
+  const iR = urows[0].map(x=>String(x).trim()).indexOf("role");
+  let count = 0;
+  for (let i=1; i<urows.length; i++) if (String(urows[i][iR]).trim()===name) count++;
+  if (count > 0) return {success:false, message:`ลบไม่ได้: มีผู้ใช้ ${count} คน ใช้ Role นี้อยู่ — กรุณาย้ายผู้ใช้ไป Role อื่นก่อน`};
+  sh.deleteRow(rowNum);
+  return {success:true, message:"ลบ Role สำเร็จ"};
+}
+
+// ============================================================
+// USER AVATAR
+// ============================================================
+function getOrCreateUserAvatarFolder() {
+  const parent = DriveApp.getFolderById("1hRmGGI45k1iBurrqVf70VyjcvzlEqMYW");
+  const it = parent.getFoldersByName("Users");
+  return it.hasNext() ? it.next() : parent.createFolder("Users");
+}
+
+function uploadUserAvatar(b) {
+  const username = String(b.username||"").trim();
+  if (!username) return {success:false, message:"ไม่ระบุ username"};
+  const sh = getSheet(SHEET_USERS);
+  const rowNum = findRow(sh,"username",username);
+  if (rowNum < 0) return {success:false, message:"ไม่พบผู้ใช้"};
+  if (!b.imageData) return {success:false, message:"ไม่มีรูปแนบมา"};
+
+  // imageData is "data:image/png;base64,..." or just base64
+  let dataStr = String(b.imageData);
+  let mime = "image/png", ext = "png";
+  const m = dataStr.match(/^data:(image\/(png|jpeg|jpg|webp));base64,(.*)$/);
+  let b64;
+  if (m) { mime = m[1]; ext = m[2]==="jpeg"?"jpg":m[2]; b64 = m[3]; }
+  else { b64 = dataStr; }
+
+  const folder = getOrCreateUserAvatarFolder();
+  // Remove old avatar(s) with same username prefix
+  const files = folder.getFiles();
+  while (files.hasNext()) {
+    const f = files.next();
+    if (f.getName().split(".")[0] === username) { try { f.setTrashed(true); } catch(e){} }
+  }
+  const blob = Utilities.newBlob(Utilities.base64Decode(b64), mime, username+"."+ext);
+  const file = folder.createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  const url = "https://drive.google.com/thumbnail?id=" + file.getId() + "&sz=w200";
+
+  ensureCol(sh, "avatar_url");
+  sh.getRange(rowNum, colIdx(sh,"avatar_url")+1).setValue(url);
+  return {success:true, message:"อัปโหลดรูปสำเร็จ", url};
 }

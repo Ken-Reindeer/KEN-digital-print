@@ -386,7 +386,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 .stock-table{width:100%;border-collapse:collapse;font-size:13px;}
 .stock-table thead tr{background:#f8fafc;border-bottom:2px solid var(--border);}
 .stock-table th{padding:11px 10px;text-align:left;font-size:11px;color:var(--text2);
-  font-weight:700;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap;}
+  font-weight:700;letter-spacing:.3px;white-space:nowrap;}
 .stock-table tbody tr{border-bottom:1px solid #f1f5f9;transition:background .12s;cursor:pointer;}
 .stock-table tbody tr:hover{background:#fafbfc;}
 .stock-table tbody tr.pinned{background:#fffbeb;}
@@ -1011,7 +1011,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.61.0";
+const APP_VERSION = "v1.61.1";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -3311,22 +3311,22 @@ function openEditFromStockHistory() {
 // STATS
 // ══════════════════════════════════════════════
 async function loadStats(){
-  const res=await api({action:"getStats"});
-  if(!res||!res.success) return;
   if(!customers.length) await loadCustomers();
 
   const fmt = n => "฿" + Math.round(n).toLocaleString();
-  const th = ["","ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+  const priceOf = o => parseFloat(String(o.price).replace(/,/g,"")) || 0;
+  // Only positive-price orders count as revenue (negative entries are expenses)
+  const revenueOrders = allOrders.filter(o => priceOf(o) > 0);
+  const totalRevenue = revenueOrders.reduce((s,o) => s + priceOf(o), 0);
 
   // === Row 1: 6 KPI cards ===
-  document.getElementById("s-cust").textContent = res.totalCustomers.toLocaleString();
-  document.getElementById("s-orders").textContent = res.totalOrders.toLocaleString();
-  document.getElementById("s-month").textContent = fmt(res.monthRevenue);
+  document.getElementById("s-cust").textContent = customers.length.toLocaleString();
+  document.getElementById("s-orders").textContent = revenueOrders.length.toLocaleString();
 
-  const aov = res.totalOrders ? res.totalRevenue / res.totalOrders : 0;
+  const aov = revenueOrders.length ? totalRevenue / revenueOrders.length : 0;
   document.getElementById("s-aov").textContent = fmt(aov);
 
-  // Compute monthly stats client-side from allOrders (authoritative: handles Thai date format correctly)
+  // Compute monthly stats client-side from allOrders (handles Thai date format + positive-price filter)
   const monthlyStats = computeMonthlyStats();
   const now = new Date();
   const pad = n => String(n).padStart(2,"0");
@@ -3335,7 +3335,6 @@ async function loadStats(){
   const prevKey = `${prev.getFullYear()}-${pad(prev.getMonth()+1)}`;
   const curRev = monthlyStats[curKey]?.all || 0;
   const prevRev = monthlyStats[prevKey]?.all || 0;
-  // override server-reported monthRevenue with client-side computed value
   document.getElementById("s-month").textContent = fmt(curRev);
   const momEl = document.getElementById("s-mom");
   if (prevRev > 0) {
@@ -3347,23 +3346,23 @@ async function loadStats(){
     momEl.textContent = curRev > 0 ? "ใหม่" : "–";
   }
 
-  // repeat-customer %
+  // repeat-customer % (count orders with positive price only)
   const ordersByCust = {};
-  allOrders.forEach(o => { if (o.customerId) ordersByCust[o.customerId] = (ordersByCust[o.customerId]||0) + 1; });
+  revenueOrders.forEach(o => { if (o.customerId) ordersByCust[o.customerId] = (ordersByCust[o.customerId]||0) + 1; });
   const repeatCount = Object.values(ordersByCust).filter(n => n >= 2).length;
-  const custCount = customers.length || res.totalCustomers || 0;
+  const custCount = customers.length || 0;
   const repeatRate = custCount ? (repeatCount / custCount * 100) : 0;
   document.getElementById("s-repeat").textContent = repeatRate.toFixed(0) + "%";
 
-  // === Row 2: Status Pipeline ===
+  // === Row 2: Status Pipeline (positive-price orders only) ===
   const byStatus = {
     "รอชำระเงิน": {count:0, sum:0},
     "กำลังผลิต":   {count:0, sum:0},
     "จัดส่งสำเร็จ": {count:0, sum:0}
   };
-  allOrders.forEach(o => {
+  revenueOrders.forEach(o => {
     const s = o.status;
-    const p = parseFloat(o.price) || 0;
+    const p = priceOf(o);
     if (byStatus[s]) { byStatus[s].count++; byStatus[s].sum += p; }
   });
   document.getElementById("pipe-wait-c").textContent = byStatus["รอชำระเงิน"].count.toLocaleString();
@@ -3376,11 +3375,11 @@ async function loadStats(){
   // === Row 3a: monthly line chart (last 12 months) — 3 lines: all, new, repeat ===
   renderMonthlyLineChart(monthlyStats);
 
-  // === Row 3b: Top 10 customers by revenue ===
+  // === Row 3b: Top 10 customers by revenue (positive-price only) ===
   const custTotals = {};
-  allOrders.forEach(o => {
+  revenueOrders.forEach(o => {
     if (!o.customerId) return;
-    custTotals[o.customerId] = (custTotals[o.customerId] || 0) + (parseFloat(o.price) || 0);
+    custTotals[o.customerId] = (custTotals[o.customerId] || 0) + priceOf(o);
   });
   const top5 = Object.entries(custTotals)
     .sort((a,b) => b[1] - a[1])
@@ -3419,11 +3418,14 @@ function parseThaiDate(s) {
   return new Date(+m[3], +m[2]-1, +m[1], +(m[4]||0), +(m[5]||0));
 }
 
-// Build {YYYY-MM: {all, new, repeat, orders:[]}} for last 12 months, from allOrders
+// Build {YYYY-MM: {all, new, repeat, orders:[]}} for last 12 months, from allOrders.
+// Only positive-price orders count as revenue (negative entries are expenses, excluded).
 function computeMonthlyStats() {
-  // 1) Find each customer's first-ever order month
+  const priceOf = o => parseFloat(String(o.price).replace(/,/g,"")) || 0;
+  const revenueOrders = allOrders.filter(o => priceOf(o) > 0);
+  // 1) Find each customer's first revenue-order month
   const firstMonthByCust = {};
-  allOrders.forEach(o => {
+  revenueOrders.forEach(o => {
     if (!o.customerId) return;
     const d = parseThaiDate(o.date); if (!d) return;
     const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
@@ -3440,12 +3442,12 @@ function computeMonthlyStats() {
   }
   const stats = {};
   keys.forEach(k => stats[k] = {all:0, new:0, repeat:0, orders:[], newOrders:[], repeatOrders:[]});
-  // 3) Bucket orders
-  allOrders.forEach(o => {
+  // 3) Bucket revenue orders
+  revenueOrders.forEach(o => {
     const d = parseThaiDate(o.date); if (!d) return;
     const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
     if (!stats[key]) return;
-    const p = parseFloat(String(o.price).replace(/,/g,"")) || 0;
+    const p = priceOf(o);
     stats[key].all += p;
     stats[key].orders.push(o);
     if (o.customerId && firstMonthByCust[o.customerId] === key) {
@@ -3566,7 +3568,7 @@ function showMonthDetail(monthKey, type, stats) {
   const rows = list.map(o => `
     <tr style="cursor:pointer" onclick="closeM('m-month-detail');showDetail('${o.rowId}')">
       <td style="font-size:11px;color:var(--text3);white-space:nowrap">${o.date||""}</td>
-      <td style="font-size:12px"><strong>${o.customerLabel||o.customerId||"–"}</strong></td>
+      <td style="font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(o.customerLabel||o.customerId||'').replace(/"/g,'&quot;')}"><strong>${o.customerLabel||o.customerId||"–"}</strong></td>
       <td><span class="badge ${o.status==='จัดส่งสำเร็จ'?'b-done':o.status==='กำลังผลิต'?'b-prod':'b-wait'}" style="font-size:10px">${o.status||"–"}</span></td>
       <td style="font-size:12px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(o.detail||"").substring(0,60)}</td>
       <td style="font-weight:600;color:var(--success);text-align:right;white-space:nowrap">฿${(parseFloat(o.price)||0).toLocaleString()}</td>

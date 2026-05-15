@@ -190,6 +190,16 @@ function handleAction(action, p, body, user) {
     case "deleteRole":        return guard(isOwner, ()=>deleteRole(body));
     case "getUserAvatarFolder": return guard(isOwner || user.username===body.username, ()=>getUserAvatarFolder(body));
     case "saveUserAvatarUrl":   return guard(isOwner || user.username===body.username, ()=>saveUserAvatarUrl(body));
+    case "getStock":             return guard(isStaff, ()=>getStock());
+    case "getStockTransactions": return guard(isStaff, ()=>getStockTransactions(body));
+    case "addStock":             return guard(isOwner, ()=>addStock(body));
+    case "updateStock":          return guard(isOwner, ()=>updateStock(body));
+    case "deleteStock":          return guard(isOwner, ()=>deleteStock(body));
+    case "togglePinStock":       return guard(isStaff, ()=>togglePinStock(body));
+    case "depositStock":         return guard(isStaff, ()=>depositStock({...body, by_user:user.username}));
+    case "withdrawStock":        return guard(isStaff, ()=>withdrawStock({...body, by_user:user.username}));
+    case "getStockImageFolder":  return guard(isStaff, ()=>getStockImageFolder());
+    case "saveStockImageUrl":    return guard(isStaff, ()=>saveStockImageUrl(body));
     case "getCustomers":      return getCustomers(p);
     case "addCustomer":       return guard(isStaff, ()=>addCustomer(body));
     case "updateCustomer":    return guard(isStaff, ()=>updateCustomer(body));
@@ -752,5 +762,241 @@ function saveUserAvatarUrl(b) {
   if (rowNum < 0) return {success:false, message:"ไม่พบผู้ใช้"};
   ensureCol(sh, "avatar_url");
   sh.getRange(rowNum, colIdx(sh,"avatar_url")+1).setValue(b.url);
+  return {success:true, message:"บันทึก URL สำเร็จ", url: b.url};
+}
+
+// ============================================================
+// STOCK MANAGEMENT
+// ============================================================
+const SHEET_STOCK = "Stock";
+const SHEET_STOCK_TXN = "Stock Transactions";
+
+function getStockSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(SHEET_STOCK);
+  if (!sh) {
+    sh = ss.insertSheet(SHEET_STOCK);
+    sh.appendRow(["material_id","name","unit","current_stock","low_threshold",
+                  "price_per_unit","notes","image_url","pinned","updated_at","updated_by"]);
+    styleHeader(sh, 11);
+  }
+  return sh;
+}
+
+function getStockTxnSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(SHEET_STOCK_TXN);
+  if (!sh) {
+    sh = ss.insertSheet(SHEET_STOCK_TXN);
+    sh.appendRow(["txn_id","timestamp","material_id","delta","reason","order_ref","by_user"]);
+    styleHeader(sh, 7);
+  }
+  return sh;
+}
+
+function getOrCreateStockFolder() {
+  const parent = DriveApp.getFolderById("1hRmGGI45k1iBurrqVf70VyjcvzlEqMYW");
+  const it = parent.getFoldersByName("Stocks");
+  return it.hasNext() ? it.next() : parent.createFolder("Stocks");
+}
+
+function getStock() {
+  const sh = getStockSheet();
+  const data = sheetToObjects(sh).map(r => ({
+    material_id: fmt(r["material_id"]),
+    name: fmt(r["name"]),
+    unit: fmt(r["unit"]),
+    current_stock: parseFloat(r["current_stock"]) || 0,
+    low_threshold: parseFloat(r["low_threshold"]) || 0,
+    price_per_unit: parseFloat(r["price_per_unit"]) || 0,
+    notes: fmt(r["notes"]),
+    image_url: fmt(r["image_url"]),
+    pinned: String(r["pinned"]).toLowerCase() === "true",
+    updated_at: fmt(r["updated_at"]),
+    updated_by: fmt(r["updated_by"])
+  }));
+  return {success:true, data};
+}
+
+function getStockTransactions(b) {
+  const materialId = String(b.materialId || "").trim();
+  const limit = parseInt(b.limit) || 20;
+  if (!materialId) return {success:false, message:"ไม่ระบุ material"};
+  const sh = getStockTxnSheet();
+  const all = sheetToObjects(sh)
+    .filter(r => String(r["material_id"]).trim() === materialId)
+    .map(r => ({
+      txn_id: fmt(r["txn_id"]),
+      timestamp: fmt(r["timestamp"]),
+      material_id: fmt(r["material_id"]),
+      delta: parseFloat(r["delta"]) || 0,
+      reason: fmt(r["reason"]),
+      order_ref: fmt(r["order_ref"]),
+      by_user: fmt(r["by_user"])
+    }));
+  // Sort newest first
+  all.sort((a,b) => (a.timestamp < b.timestamp ? 1 : -1));
+  return {success:true, data: all.slice(0, limit), totalCount: all.length};
+}
+
+function genMaterialId(sh) {
+  const data = sh.getDataRange().getValues();
+  const h = data[0].map(x=>String(x).trim());
+  const iId = h.indexOf("material_id");
+  let max = 0;
+  if (iId >= 0) {
+    for (let i=1; i<data.length; i++) {
+      const n = parseInt(String(data[i][iId]).replace(/\D/g,""));
+      if (!isNaN(n) && n > max) max = n;
+    }
+  }
+  return "MAT" + String(max+1).padStart(3, "0");
+}
+
+function addStock(b) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    const name = String(b.name||"").trim();
+    const unit = String(b.unit||"").trim();
+    if (!name) return {success:false, message:"กรุณาระบุชื่อ Material"};
+    if (!unit) return {success:false, message:"กรุณาระบุหน่วย"};
+    const sh = getStockSheet();
+    // Check duplicate name
+    const existing = sheetToObjects(sh);
+    if (existing.some(r => String(r["name"]).trim().toLowerCase() === name.toLowerCase())) {
+      return {success:false, message:`ชื่อ "${name}" มีอยู่แล้ว`};
+    }
+    const material_id = genMaterialId(sh);
+    const now = new Date().toISOString();
+    sh.appendRow([
+      "'"+material_id, name, unit, 0,
+      parseFloat(b.low_threshold)||0,
+      parseFloat(b.price_per_unit)||0,
+      String(b.notes||""), "", "FALSE", now, String(b.by_user||"")
+    ]);
+    // Force material_id cell to plain text format
+    const newRow = sh.getLastRow();
+    const idCol = colIdx(sh, "material_id");
+    if (idCol >= 0) {
+      const cell = sh.getRange(newRow, idCol+1);
+      cell.setNumberFormat("@");
+      cell.setValue(material_id);
+    }
+    return {success:true, message:"เพิ่ม Material สำเร็จ", material_id};
+  } finally { lock.releaseLock(); }
+}
+
+function updateStock(b) {
+  const material_id = String(b.material_id||"").trim();
+  if (!material_id) return {success:false, message:"ไม่ระบุ material_id"};
+  const sh = getStockSheet();
+  const rowNum = findRow(sh, "material_id", material_id);
+  if (rowNum < 1) return {success:false, message:"ไม่พบ material"};
+  const map = {
+    "name": b.name,
+    "unit": b.unit,
+    "low_threshold": b.low_threshold !== undefined ? parseFloat(b.low_threshold)||0 : undefined,
+    "price_per_unit": b.price_per_unit !== undefined ? parseFloat(b.price_per_unit)||0 : undefined,
+    "notes": b.notes
+  };
+  Object.keys(map).forEach(k => {
+    if (map[k] !== undefined) {
+      const ci = colIdx(sh, k);
+      if (ci >= 0) sh.getRange(rowNum, ci+1).setValue(map[k]);
+    }
+  });
+  return {success:true, message:"อัพเดทสำเร็จ"};
+}
+
+function deleteStock(b) {
+  const material_id = String(b.material_id||"").trim();
+  if (!material_id) return {success:false, message:"ไม่ระบุ material_id"};
+  const sh = getStockSheet();
+  const rowNum = findRow(sh, "material_id", material_id);
+  if (rowNum < 1) return {success:false, message:"ไม่พบ material"};
+  // Block delete if txns exist
+  const txsh = getStockTxnSheet();
+  const txData = txsh.getDataRange().getValues();
+  const iCid = txData[0].map(x=>String(x).trim()).indexOf("material_id");
+  let count = 0;
+  if (iCid >= 0) {
+    for (let i=1; i<txData.length; i++) {
+      if (String(txData[i][iCid]).trim() === material_id) count++;
+    }
+  }
+  if (count > 0) {
+    return {success:false, message:`ลบไม่ได้: มี ${count} ประวัติ transaction ติดอยู่`};
+  }
+  sh.deleteRow(rowNum);
+  return {success:true, message:"ลบสำเร็จ"};
+}
+
+function togglePinStock(b) {
+  const material_id = String(b.material_id||"").trim();
+  if (!material_id) return {success:false, message:"ไม่ระบุ material_id"};
+  const sh = getStockSheet();
+  const rowNum = findRow(sh, "material_id", material_id);
+  if (rowNum < 1) return {success:false, message:"ไม่พบ material"};
+  const ci = colIdx(sh, "pinned");
+  if (ci < 0) return {success:false, message:"ไม่มี column pinned"};
+  const cur = String(sh.getRange(rowNum, ci+1).getValue()).toLowerCase() === "true";
+  const newVal = !cur;
+  sh.getRange(rowNum, ci+1).setValue(newVal ? "TRUE" : "FALSE");
+  return {success:true, message: newVal?"ปักหมุดแล้ว":"ยกเลิกปักหมุด", pinned:newVal};
+}
+
+function _stockMutation(b, signMultiplier, successMsgPrefix) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    const material_id = String(b.material_id||"").trim();
+    const qty = Math.abs(parseFloat(b.qty) || 0);
+    if (!material_id) return {success:false, message:"ไม่ระบุ material_id"};
+    if (qty <= 0) return {success:false, message:"จำนวนต้องมากกว่า 0"};
+    const sh = getStockSheet();
+    const rowNum = findRow(sh, "material_id", material_id);
+    if (rowNum < 1) return {success:false, message:"ไม่พบ material"};
+    const curCol = colIdx(sh, "current_stock") + 1;
+    const cur = parseFloat(sh.getRange(rowNum, curCol).getValue()) || 0;
+    const delta = qty * signMultiplier;
+    const newStock = cur + delta;
+    const now = new Date().toISOString();
+    sh.getRange(rowNum, curCol).setValue(newStock);
+    sh.getRange(rowNum, colIdx(sh, "updated_at")+1).setValue(now);
+    sh.getRange(rowNum, colIdx(sh, "updated_by")+1).setValue(String(b.by_user||""));
+    // Append transaction
+    const txsh = getStockTxnSheet();
+    txsh.appendRow([
+      "T" + Date.now(),
+      now,
+      material_id,
+      delta,
+      String(b.reason||""),
+      String(b.order_ref||""),
+      String(b.by_user||"")
+    ]);
+    return {success:true, message:`${successMsgPrefix}สำเร็จ`, current_stock:newStock};
+  } finally { lock.releaseLock(); }
+}
+
+function depositStock(b)  { return _stockMutation(b, +1, "เติม"); }
+function withdrawStock(b) { return _stockMutation(b, -1, "เบิก"); }
+
+function getStockImageFolder() {
+  const folder = getOrCreateStockFolder();
+  return {success:true, folderId: folder.getId()};
+}
+
+function saveStockImageUrl(b) {
+  const material_id = String(b.material_id||"").trim();
+  if (!material_id) return {success:false, message:"ไม่ระบุ material_id"};
+  if (!b.url) return {success:false, message:"ไม่ระบุ URL"};
+  const sh = getStockSheet();
+  const rowNum = findRow(sh, "material_id", material_id);
+  if (rowNum < 1) return {success:false, message:"ไม่พบ material"};
+  const ci = colIdx(sh, "image_url");
+  if (ci < 0) return {success:false, message:"ไม่มี column image_url"};
+  sh.getRange(rowNum, ci+1).setValue(b.url);
   return {success:true, message:"บันทึก URL สำเร็จ", url: b.url};
 }

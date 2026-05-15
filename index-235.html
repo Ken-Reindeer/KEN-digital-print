@@ -370,6 +370,77 @@ textarea.fc{resize:vertical;min-height:76px;}
 .perm-tag{display:inline-block;background:#f1f5f9;border-radius:3px;padding:1px 5px;margin:1px;font-size:9px;font-family:var(--mono);}
 .perm-tag.on{background:#dbeafe;color:var(--navy2);}
 
+/* ── STOCK TABLE ── */
+.stock-table-wrap{background:white;border-radius:10px;overflow:hidden;}
+.stock-table{width:100%;border-collapse:collapse;font-size:13px;}
+.stock-table thead tr{background:#f8fafc;border-bottom:2px solid var(--border);}
+.stock-table th{padding:11px 10px;text-align:left;font-size:11px;color:var(--text2);
+  font-weight:700;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap;}
+.stock-table tbody tr{border-bottom:1px solid #f1f5f9;transition:background .12s;cursor:pointer;}
+.stock-table tbody tr:hover{background:#fafbfc;}
+.stock-table tbody tr.pinned{background:#fffbeb;}
+.stock-table tbody tr.pinned:hover{background:#fef3c7;}
+.stock-table tbody tr:last-child{border-bottom:none;}
+.stock-table td{padding:10px;vertical-align:middle;}
+.stock-table .col-pin{width:36px;text-align:center;padding:6px 4px;}
+.stock-table .col-img{width:54px;padding:6px 4px;}
+.stock-table .col-name{min-width:200px;}
+.stock-table .col-stock{width:170px;}
+.stock-table .col-threshold{width:90px;text-align:right;}
+.stock-table .col-status{width:110px;text-align:center;}
+.stock-table .col-updated{width:180px;}
+.stock-table .col-actions{width:200px;text-align:center;white-space:nowrap;}
+.tbl-img{width:36px;height:36px;border-radius:6px;object-fit:cover;
+  background:#eef2ff;cursor:zoom-in;display:block;}
+.tbl-img.empty{display:flex;align-items:center;justify-content:center;
+  font-size:18px;color:#6366f1;cursor:default;}
+.tbl-pin-btn{background:transparent;border:none;cursor:pointer;font-size:14px;
+  padding:4px;border-radius:4px;transition:all .15s;opacity:.22;line-height:1;}
+.tbl-pin-btn:hover{opacity:1;background:var(--bg);}
+.stock-table tr.pinned .tbl-pin-btn{opacity:1;}
+.tbl-name{font-size:13px;font-weight:600;color:var(--text);line-height:1.3;}
+.tbl-subtitle{font-size:11px;color:var(--text3);margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px;}
+.tbl-stock-count{font-size:15px;font-weight:700;color:var(--text);}
+.tbl-stock-unit{font-size:11px;color:var(--text2);margin-left:3px;}
+.tbl-stock-bar{margin-top:4px;height:5px;background:#f1f5f9;border-radius:3px;overflow:hidden;}
+.tbl-stock-fill{height:100%;border-radius:3px;transition:width .4s ease;}
+.tbl-stock-fill.ok{background:linear-gradient(90deg,#16a34a 0%,#22c55e 100%);}
+.tbl-stock-fill.low{background:linear-gradient(90deg,#d97706 0%,#f59e0b 100%);}
+.tbl-stock-fill.out{background:linear-gradient(90deg,#dc2626 0%,#ef4444 100%);}
+.tbl-threshold{font-size:12px;color:var(--text2);}
+.tbl-price{font-size:10px;color:var(--text3);margin-top:1px;}
+.tbl-updated-time{font-size:11px;color:var(--text2);}
+.tbl-updated-by{display:inline-flex;align-items:center;gap:5px;margin-top:2px;
+  font-size:11px;color:var(--text2);}
+.tbl-updated-by img{width:18px;height:18px;border-radius:50%;object-fit:cover;}
+.tbl-updated-by .av-fallback{width:18px;height:18px;border-radius:50%;
+  background:var(--navy2);color:white;font-size:9px;font-weight:700;
+  display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
+.tbl-actions{display:flex;gap:4px;justify-content:center;}
+.tbl-actions .btn{padding:6px 9px;font-size:11px;font-weight:600;}
+.btn-deposit{background:var(--success);color:white;}
+.btn-deposit:hover{background:#15803d;}
+.btn-withdraw{background:var(--navy);color:white;}
+.btn-withdraw:hover{background:var(--navy2);}
+.btn-view{background:white;color:var(--text2);border:1px solid var(--border);}
+.btn-view:hover{background:var(--bg);color:var(--text);}
+.tbl-empty{text-align:center;padding:50px 20px;color:var(--text3);font-size:13px;}
+.status-badge{font-size:10px;font-weight:700;padding:3px 10px;border-radius:11px;
+  white-space:nowrap;display:inline-block;}
+.status-badge.ok{background:#dcfce7;color:#15803d;border:1px solid #86efac;}
+.status-badge.low{background:#fef3c7;color:#92400e;border:1px solid #fde68a;}
+.status-badge.out{background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;}
+.txn-delta-pos{color:var(--success);font-weight:700;}
+.txn-delta-neg{color:var(--danger);font-weight:700;}
+.txn-order-link{color:var(--navy2);font-size:10px;text-decoration:none;
+  background:#dbeafe;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;}
+.txn-order-link:hover{text-decoration:underline;}
+@media (max-width:1000px){
+  .stock-table-wrap{overflow-x:auto;}
+  .stock-table{min-width:1100px;}
+}
+
 /* ── TOAST ── */
 .toasts{position:fixed;bottom:20px;right:16px;z-index:1000;display:flex;flex-direction:column;gap:7px;}
 .toast{background:white;border-left:4px solid var(--success);border-radius:9px;
@@ -475,6 +546,8 @@ textarea.fc{resize:vertical;min-height:76px;}
         <span class="nav-badge" id="badge-pending">0</span></button>
       <button class="nav-btn" onclick="switchTab('customers')" id="nav-customers" title="ข้อมูลลูกค้า">
         <span class="nav-ico">👤</span><span>ข้อมูลลูกค้า</span></button>
+      <button class="nav-btn" onclick="switchTab('stock')" id="nav-stock" title="จัดการคลังวัสดุ">
+        <span class="nav-ico">📦</span><span>จัดการคลังวัสดุ</span></button>
       <button class="nav-btn" onclick="switchTab('insight')" id="nav-insight" title="Business Insight">
         <span class="nav-ico">📊</span><span>Business Insight</span></button>
       <button class="nav-btn" onclick="switchTab('dycut')" id="nav-dycut" title="Layout Planner">
@@ -561,6 +634,19 @@ textarea.fc{resize:vertical;min-height:76px;}
             <button class="btn btn-primary btn-sm" onclick="openAddCust()" id="btn-add-cust">+ ลูกค้า</button>
           </div>
           <div class="card"><div class="table-scroll" id="cust-wrap">
+            <div class="loading-r"><span class="spin"></span>กำลังโหลด...</div>
+          </div></div>
+        </div>
+
+        <!-- STOCK -->
+        <div class="tab-panel" id="tab-stock">
+          <div class="toolbar">
+            <button class="btn btn-primary" onclick="openAddMaterial()" id="btn-add-material">+ เพิ่ม Material</button>
+            <div class="srch"><span>🔍</span>
+              <input type="text" id="stock-search" placeholder="ค้นหาชื่อ material..." oninput="renderStockTable()">
+            </div>
+          </div>
+          <div class="card"><div class="stock-table-wrap" id="stock-table-wrap">
             <div class="loading-r"><span class="spin"></span>กำลังโหลด...</div>
           </div></div>
         </div>
@@ -763,6 +849,86 @@ textarea.fc{resize:vertical;min-height:76px;}
   </div>
 </div></div>
 
+<!-- ══ MODAL: ADD/EDIT STOCK MATERIAL ══ -->
+<div class="overlay" id="m-stock-edit">
+<div class="modal">
+  <div class="modal-hd">
+    <span class="modal-title" id="m-stk-title">+ เพิ่ม Material ใหม่</span>
+    <button class="modal-x" onclick="closeM('m-stock-edit')">✕</button>
+  </div>
+  <div class="modal-body">
+    <div class="fg full">
+      <label class="lbl">รูปภาพ Material</label>
+      <div class="up-area" id="stk-up-area" onclick="document.getElementById('stk-img-inp').click()"
+        ondragover="event.preventDefault();this.classList.add('drag')"
+        ondragleave="this.classList.remove('drag')" ondrop="handleStockImageDrop(event)">
+        <input type="file" id="stk-img-inp" accept="image/*" onchange="handleStockImageFile(this)" style="display:none">
+        <div id="stk-up-hint" style="font-size:24px;margin-bottom:6px;color:var(--text3)">🖼️</div>
+        <div id="stk-up-hint-text" style="font-size:12px;color:var(--text3)">คลิกเพื่อเลือกรูป หรือลากมาวาง</div>
+        <img id="stk-img-prev" class="prev-img" style="display:none">
+      </div>
+    </div>
+    <div class="fgrid">
+      <div class="fg"><label class="lbl">ชื่อ Material *</label>
+        <input class="fc" id="stk-name" placeholder="เช่น สติกเกอร์ PP ขาวเงา"></div>
+      <div class="fg"><label class="lbl">หน่วย *</label>
+        <input class="fc" id="stk-unit" placeholder="เช่น ม้วน, แผ่น, รีม"></div>
+      <div class="fg"><label class="lbl">ราคา/หน่วย (฿)</label>
+        <input class="fc" id="stk-price" type="number" inputmode="decimal" placeholder="0.00"></div>
+      <div class="fg"><label class="lbl">Alert Threshold</label>
+        <input class="fc" id="stk-threshold" type="number" placeholder="แจ้งเตือนเมื่อเหลือน้อยกว่า"></div>
+      <div class="fg full"><label class="lbl">Notes</label>
+        <textarea class="fc" id="stk-notes" rows="2" placeholder="รายละเอียดเพิ่มเติม"></textarea></div>
+      <input type="hidden" id="stk-edit-id" value="">
+    </div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn btn-ghost" onclick="closeM('m-stock-edit')">ยกเลิก</button>
+    <button class="btn btn-danger" id="btn-delete-mat" onclick="deleteMaterial()" style="display:none">🗑️ ลบ</button>
+    <button class="btn btn-primary" onclick="saveMaterial()">💾 บันทึก</button>
+  </div>
+</div></div>
+
+<!-- ══ MODAL: STOCK DEPOSIT/WITHDRAW ══ -->
+<div class="overlay" id="m-stock-txn">
+<div class="modal" style="max-width:420px">
+  <div class="modal-hd">
+    <span class="modal-title" id="m-stx-title">เติม Material</span>
+    <button class="modal-x" onclick="closeM('m-stock-txn')">✕</button>
+  </div>
+  <div class="modal-body">
+    <div id="m-stx-material" style="font-size:13px;color:var(--text2);margin-bottom:14px;
+      padding:10px 12px;background:var(--bg);border-radius:8px"></div>
+    <div class="fg"><label class="lbl">จำนวน *</label>
+      <input class="fc" id="stx-qty" type="number" inputmode="decimal" min="0" placeholder="0" autofocus></div>
+    <div class="fg"><label class="lbl">เหตุผล / หมายเหตุ</label>
+      <input class="fc" id="stx-reason" placeholder="(ไม่บังคับ) เช่น รับจากซัพ, งานลูกค้า X"></div>
+    <div class="fg" id="stx-order-row" style="display:none">
+      <label class="lbl">อ้างอิงเลขที่ออเดอร์ (ถ้ามี)</label>
+      <input class="fc" id="stx-order" placeholder="เช่น WEB_xxx">
+    </div>
+    <input type="hidden" id="stx-material-id" value="">
+    <input type="hidden" id="stx-mode" value="deposit">
+  </div>
+  <div class="modal-foot">
+    <button class="btn btn-ghost" onclick="closeM('m-stock-txn')">ยกเลิก</button>
+    <button class="btn btn-success" id="btn-save-stx" onclick="saveStockTxn()">💾 บันทึก</button>
+  </div>
+</div></div>
+
+<!-- ══ MODAL: STOCK HISTORY ══ -->
+<div class="overlay" id="m-stock-history">
+<div class="modal" style="max-width:820px">
+  <div class="modal-hd">
+    <span class="modal-title" id="m-stk-hist-title">📋 ประวัติ</span>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button class="btn btn-ghost btn-sm" id="m-stk-hist-edit-btn" onclick="openEditFromStockHistory()">✏️ แก้ไข</button>
+      <button class="modal-x" onclick="closeM('m-stock-history')">✕</button>
+    </div>
+  </div>
+  <div class="modal-body" id="m-stk-hist-body"></div>
+</div></div>
+
 <!-- ══ HIDDEN FILE INPUT FOR AVATAR ══ -->
 <input type="file" id="avatar-file-input" accept="image/*" style="display:none">
 
@@ -794,7 +960,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.57.6";
+const APP_VERSION = "v1.58.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -813,6 +979,7 @@ const PERMISSION_META = [
   {key:"orders",    label:"📋 ประวัติการสั่งซื้อ"},
   {key:"progress",  label:"⏳ In Progress"},
   {key:"customers", label:"👤 ข้อมูลลูกค้า"},
+  {key:"stock",     label:"📦 จัดการคลังวัสดุ"},
   {key:"insight",   label:"📊 Business Insight"},
   {key:"dycut",     label:"📏 Layout Planner"},
   {key:"users",     label:"🔑 จัดการผู้ใช้"}
@@ -949,6 +1116,7 @@ function refresh() { syncOrders(true); loadCustomers(); loadStats(); toast("ก�
 function loadAll() {
   initGIS();
   loadOrders(); loadCustomers(); loadUsersForAvatars();
+  if (userCan("stock")) loadStock();
   if(SESSION?.user.role==="owner") loadStats();
   startAutoSync();
 }
@@ -1081,6 +1249,7 @@ const tabMeta = {
   orders:["ประวัติการสั่งซื้อ","Order History"],
   progress:["In Progress Board","กำลังผลิต"],
   customers:["ข้อมูลลูกค้า","Customer Database"],
+  stock:["จัดการคลังวัสดุ","Stock Management"],
   insight:["Business Insight","Dashboard"],
   users:["จัดการผู้ใช้งาน","User Management"],
   changepass:["เปลี่ยนรหัสผ่าน","Change Password"],
@@ -2413,6 +2582,472 @@ async function saveCust(){
     sns:document.getElementById("c-sns").value});
   if(res&&res.success){toast(res.message);closeM("m-cust");loadCustomers();}
   else toast(res?.message||"เกิดข้อผิดพลาด","err");
+}
+
+// ══════════════════════════════════════════════
+// STOCK MANAGEMENT
+// ══════════════════════════════════════════════
+let allStock = [];
+let currentStockHistoryMaterialId = null;
+let pendingStockImageFile = null;
+let pendingStockImageDataUrl = "";
+
+async function loadStock() {
+  if (!userCan("stock")) return;
+  const wrap = document.getElementById("stock-table-wrap");
+  if (wrap && !allStock.length) {
+    wrap.innerHTML = '<div class="loading-r"><span class="spin"></span>กำลังโหลด...</div>';
+  }
+  const res = await api({action:"getStock"});
+  if (!res || !res.success) {
+    if (wrap) wrap.innerHTML = '<div class="tbl-empty">โหลดไม่ได้</div>';
+    return;
+  }
+  allStock = res.data || [];
+  renderStockTable();
+}
+
+function computeStockStatus(current, threshold) {
+  if (current <= 0) return { status:"out", pct:0 };
+  const t = threshold || 0;
+  if (t <= 0) return { status:"ok", pct:100 };
+  const pct = Math.min(100, Math.round((current / (t * 3)) * 100));
+  let status = "ok";
+  if (current < t) status = "low";
+  return { status, pct: Math.max(pct, current > 0 ? 8 : 0) };
+}
+
+function statusBadgeHtml(status) {
+  if (status === "low") return `<span class="status-badge low">ใกล้หมด</span>`;
+  if (status === "out") return `<span class="status-badge out">หมด</span>`;
+  return `<span class="status-badge ok">ปกติ</span>`;
+}
+
+function stockUserAvatarPill(username) {
+  if (!username) return `<span class="av-fallback">?</span><span>–</span>`;
+  const url = userAvatarMap[username];
+  const initial = (username[0] || "?").toUpperCase();
+  const avatarHtml = url
+    ? `<img src="${url}" alt="">`
+    : `<span class="av-fallback">${escapeHtml(initial)}</span>`;
+  return `${avatarHtml}<span>${escapeHtml(username)}</span>`;
+}
+
+function escapeHtml(s) {
+  return String(s||"").replace(/[&<>"']/g, c =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+}
+
+function formatRelativeTime(iso) {
+  if (!iso) return "–";
+  const then = new Date(iso), now = new Date();
+  const diff = (now - then) / 1000;
+  if (diff < 60) return "เมื่อสักครู่";
+  if (diff < 3600) return `${Math.floor(diff/60)} นาทีที่แล้ว`;
+  if (diff < 86400) return `${Math.floor(diff/3600)} ชม. ที่แล้ว`;
+  if (diff < 172800) return "เมื่อวาน";
+  if (diff < 604800) return `${Math.floor(diff/86400)} วันที่แล้ว`;
+  return formatThaiDate(iso);
+}
+
+function formatThaiDate(iso) {
+  if (!iso) return "–";
+  const d = new Date(iso);
+  const pad = n => String(n).padStart(2,"0");
+  return `${pad(d.getDate())}/${pad(d.getMonth()+1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function renderStockTable() {
+  const q = (document.getElementById("stock-search")?.value || "").toLowerCase().trim();
+  const wrap = document.getElementById("stock-table-wrap");
+  if (!wrap) return;
+  let rows = allStock.slice();
+  if (q) rows = rows.filter(m => m.name.toLowerCase().includes(q));
+  rows.sort((a, b) => {
+    const ap = a.pinned ? 1 : 0, bp = b.pinned ? 1 : 0;
+    if (ap !== bp) return bp - ap;
+    return 0;
+  });
+
+  if (!rows.length) {
+    wrap.innerHTML = `<div class="tbl-empty">
+      ${q ? `ไม่พบ "${escapeHtml(q)}"` : "ยังไม่มี Material — คลิก + เพิ่ม Material เพื่อเริ่ม"}
+    </div>`;
+    return;
+  }
+
+  const stop = "event.stopPropagation();";
+  const bodyHtml = rows.map(m => {
+    const imgHtml = m.image_url
+      ? `<img class="tbl-img" src="${escapeHtml(m.image_url)}" alt="${escapeHtml(m.name)}" onclick="${stop}showLb('${escapeHtml(m.image_url)}')">`
+      : `<div class="tbl-img empty">📋</div>`;
+    const { status, pct } = computeStockStatus(m.current_stock, m.low_threshold);
+    const priceHtml = m.price_per_unit
+      ? `<div class="tbl-price">฿${parseFloat(m.price_per_unit).toLocaleString()}/${escapeHtml(m.unit)}</div>`
+      : "";
+    const subtitleHtml = m.notes
+      ? `<div class="tbl-subtitle">${escapeHtml(m.notes)}</div>`
+      : "";
+    const thresholdText = m.low_threshold > 0
+      ? `${m.low_threshold.toLocaleString()} ${escapeHtml(m.unit)}`
+      : "–";
+    const pinned = m.pinned ? " class='pinned'" : "";
+    return `
+    <tr${pinned} onclick="showStockHistory('${m.material_id}')">
+      <td class="col-pin">
+        <button class="tbl-pin-btn" onclick="${stop}toggleStockPin('${m.material_id}')" title="${m.pinned?'ยกเลิกปักหมุด':'ปักหมุดให้อยู่บนสุด'}">📌</button>
+      </td>
+      <td class="col-img">${imgHtml}</td>
+      <td class="col-name">
+        <div class="tbl-name">${escapeHtml(m.name)}</div>
+        ${subtitleHtml}
+      </td>
+      <td class="col-stock">
+        <span class="tbl-stock-count">${m.current_stock.toLocaleString()}</span><span class="tbl-stock-unit">${escapeHtml(m.unit)}</span>
+        <div class="tbl-stock-bar"><div class="tbl-stock-fill ${status}" style="width:${pct}%"></div></div>
+      </td>
+      <td class="col-threshold"><span class="tbl-threshold">${thresholdText}</span>${priceHtml}</td>
+      <td class="col-status">${statusBadgeHtml(status)}</td>
+      <td class="col-updated">
+        <div class="tbl-updated-time">🕒 ${formatRelativeTime(m.updated_at)}</div>
+        <div class="tbl-updated-by">${stockUserAvatarPill(m.updated_by)}</div>
+      </td>
+      <td class="col-actions">
+        <div class="tbl-actions">
+          <button class="btn btn-deposit" onclick="${stop}openStockDeposit('${m.material_id}')">➕ เติม</button>
+          <button class="btn btn-withdraw" onclick="${stop}openStockWithdraw('${m.material_id}')">➖ เบิก</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join("");
+
+  wrap.innerHTML = `
+    <table class="stock-table">
+      <thead>
+        <tr>
+          <th class="col-pin"></th>
+          <th class="col-img">รูป</th>
+          <th class="col-name">ชื่อ Material</th>
+          <th class="col-stock">คงเหลือ</th>
+          <th class="col-threshold">ขั้นต่ำ</th>
+          <th class="col-status">สถานะ</th>
+          <th class="col-updated">อัปเดต</th>
+          <th class="col-actions">จัดการ</th>
+        </tr>
+      </thead>
+      <tbody>${bodyHtml}</tbody>
+    </table>
+  `;
+}
+
+function resetMaterialForm() {
+  document.getElementById("stk-edit-id").value = "";
+  document.getElementById("stk-name").value = "";
+  document.getElementById("stk-unit").value = "";
+  document.getElementById("stk-price").value = "";
+  document.getElementById("stk-threshold").value = "";
+  document.getElementById("stk-notes").value = "";
+  pendingStockImageFile = null;
+  pendingStockImageDataUrl = "";
+  document.getElementById("stk-img-inp").value = "";
+  const prev = document.getElementById("stk-img-prev");
+  prev.src = ""; prev.style.display = "none";
+  document.getElementById("stk-up-hint").style.display = "";
+  document.getElementById("stk-up-hint-text").style.display = "";
+  document.getElementById("btn-delete-mat").style.display = "none";
+}
+
+function openAddMaterial() {
+  resetMaterialForm();
+  document.getElementById("m-stk-title").textContent = "+ เพิ่ม Material ใหม่";
+  openM("m-stock-edit");
+}
+
+function openEditMaterial(materialId) {
+  const m = allStock.find(x => x.material_id === materialId);
+  if (!m) return;
+  resetMaterialForm();
+  document.getElementById("m-stk-title").textContent = "✏️ แก้ไข Material";
+  document.getElementById("stk-edit-id").value = materialId;
+  document.getElementById("stk-name").value = m.name;
+  document.getElementById("stk-unit").value = m.unit;
+  document.getElementById("stk-price").value = m.price_per_unit || "";
+  document.getElementById("stk-threshold").value = m.low_threshold || "";
+  document.getElementById("stk-notes").value = m.notes || "";
+  if (m.image_url) {
+    pendingStockImageDataUrl = m.image_url;
+    const prev = document.getElementById("stk-img-prev");
+    prev.src = m.image_url;
+    prev.style.display = "block";
+    document.getElementById("stk-up-hint").style.display = "none";
+    document.getElementById("stk-up-hint-text").style.display = "none";
+  }
+  document.getElementById("btn-delete-mat").style.display = "";
+  openM("m-stock-edit");
+}
+
+async function handleStockImageFile(input) {
+  const f = input.files && input.files[0];
+  if (!f) return;
+  if (f.size > 10 * 1024 * 1024) { toast("รูปใหญ่เกิน 10MB", "err"); return; }
+  try {
+    const dataUrl = await compressAndCropAvatar(f, 512, 0.85);
+    pendingStockImageFile = f;
+    pendingStockImageDataUrl = dataUrl;
+    const prev = document.getElementById("stk-img-prev");
+    prev.src = dataUrl;
+    prev.style.display = "block";
+    document.getElementById("stk-up-hint").style.display = "none";
+    document.getElementById("stk-up-hint-text").style.display = "none";
+  } catch(err) {
+    toast("ผิดพลาด: " + err.message, "err");
+  }
+}
+
+function handleStockImageDrop(e) {
+  e.preventDefault();
+  document.getElementById("stk-up-area").classList.remove("drag");
+  const f = e.dataTransfer.files && e.dataTransfer.files[0];
+  if (f && f.type.startsWith("image/")) {
+    const inp = document.getElementById("stk-img-inp");
+    const dt = new DataTransfer(); dt.items.add(f);
+    inp.files = dt.files;
+    handleStockImageFile(inp);
+  }
+}
+
+async function uploadStockImageViaDrive(materialId, dataUrl) {
+  const b64 = dataUrl.split(",")[1];
+
+  const folderRes = await api({action:"getStockImageFolder"});
+  if (!folderRes || !folderRes.success) throw new Error(folderRes?.message || "หา folder ไม่ได้");
+
+  const token = await getGISToken();
+
+  const q = encodeURIComponent(`'${folderRes.folderId}' in parents and trashed = false`);
+  const listRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&pageSize=200`,
+    {headers:{Authorization:"Bearer "+token}});
+  if (listRes.ok) {
+    const listData = await listRes.json();
+    const prefix = materialId + ".";
+    for (const old of (listData.files||[])) {
+      if (old.name === materialId || old.name.startsWith(prefix)) {
+        try { await fetch(`https://www.googleapis.com/drive/v3/files/${old.id}`,
+          {method:"DELETE", headers:{Authorization:"Bearer "+token}}); } catch(_){}
+      }
+    }
+  }
+
+  const byteStr = atob(b64), arr = new Uint8Array(byteStr.length);
+  for (let i=0; i<byteStr.length; i++) arr[i] = byteStr.charCodeAt(i);
+  const fileBlob = new Blob([arr], {type:"image/jpeg"});
+
+  const meta = JSON.stringify({name: materialId + ".jpg", parents:[folderRes.folderId]});
+  const form = new FormData();
+  form.append("metadata", new Blob([meta],{type:"application/json"}));
+  form.append("file", fileBlob);
+
+  const upRes = await fetch(
+    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",
+    {method:"POST", headers:{Authorization:"Bearer "+token}, body:form}
+  );
+  if (!upRes.ok) throw new Error("Drive upload HTTP " + upRes.status);
+  const fileId = (await upRes.json()).id;
+
+  await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`,
+    {method:"POST", headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},
+     body:JSON.stringify({role:"reader", type:"anyone"})});
+
+  const url = "https://lh3.googleusercontent.com/d/" + fileId;
+  const saveRes = await api({action:"saveStockImageUrl", material_id:materialId, url});
+  if (!saveRes || !saveRes.success) throw new Error(saveRes?.message || "บันทึก URL ล้มเหลว");
+  return url;
+}
+
+async function saveMaterial() {
+  const editId = document.getElementById("stk-edit-id").value;
+  const name = document.getElementById("stk-name").value.trim();
+  const unit = document.getElementById("stk-unit").value.trim();
+  const price = parseFloat(document.getElementById("stk-price").value) || 0;
+  const threshold = parseInt(document.getElementById("stk-threshold").value) || 0;
+  const notes = document.getElementById("stk-notes").value.trim();
+
+  if (!name) return toast("กรุณากรอกชื่อ Material", "err");
+  if (!unit) return toast("กรุณากรอกหน่วย", "err");
+
+  let res, materialId;
+  if (editId) {
+    res = await api({action:"updateStock", material_id:editId, name, unit, low_threshold:threshold, price_per_unit:price, notes});
+    materialId = editId;
+  } else {
+    res = await api({action:"addStock", name, unit, low_threshold:threshold, price_per_unit:price, notes});
+    materialId = res?.material_id;
+  }
+  if (!res || !res.success) return toast(res?.message || "บันทึกล้มเหลว", "err");
+
+  if (pendingStockImageFile && pendingStockImageDataUrl && materialId) {
+    try {
+      toast("กำลังอัปโหลดรูป...");
+      await uploadStockImageViaDrive(materialId, pendingStockImageDataUrl);
+    } catch(err) {
+      toast("อัปโหลดรูปไม่ได้: " + err.message, "err");
+    }
+  }
+
+  toast(editId ? "อัพเดทสำเร็จ ✓" : "เพิ่ม Material สำเร็จ ✓", "ok");
+  closeM("m-stock-edit");
+  await loadStock();
+}
+
+async function deleteMaterial() {
+  const id = document.getElementById("stk-edit-id").value;
+  if (!id) return;
+  const m = allStock.find(x => x.material_id === id);
+  if (!m) return;
+  if (!confirm(`ลบ "${m.name}" ?`)) return;
+  const res = await api({action:"deleteStock", material_id:id});
+  if (!res || !res.success) return toast(res?.message || "ลบไม่ได้", "err");
+  if (currentStockHistoryMaterialId === id) {
+    currentStockHistoryMaterialId = null;
+    closeM("m-stock-history");
+  }
+  closeM("m-stock-edit");
+  toast("ลบสำเร็จ ✓", "ok");
+  await loadStock();
+}
+
+async function toggleStockPin(materialId) {
+  const res = await api({action:"togglePinStock", material_id:materialId});
+  if (!res || !res.success) return toast(res?.message || "ล้มเหลว", "err");
+  toast(res.message, "ok");
+  await loadStock();
+}
+
+function openStockDeposit(materialId) { openStockTxn(materialId, "deposit"); }
+function openStockWithdraw(materialId) { openStockTxn(materialId, "withdraw"); }
+
+function openStockTxn(materialId, mode) {
+  const m = allStock.find(x => x.material_id === materialId);
+  if (!m) return;
+  document.getElementById("stx-material-id").value = materialId;
+  document.getElementById("stx-mode").value = mode;
+  document.getElementById("stx-qty").value = "";
+  document.getElementById("stx-reason").value = "";
+  document.getElementById("stx-order").value = "";
+  document.getElementById("m-stx-title").textContent = (mode === "deposit" ? "➕ เติม" : "➖ เบิก") + " Material";
+  document.getElementById("m-stx-material").innerHTML =
+    `<b>${escapeHtml(m.name)}</b> · คงเหลือปัจจุบัน: <b style="color:var(--navy2)">${m.current_stock.toLocaleString()} ${escapeHtml(m.unit)}</b>`;
+  document.getElementById("stx-order-row").style.display = mode === "withdraw" ? "" : "none";
+  const btn = document.getElementById("btn-save-stx");
+  btn.className = "btn " + (mode === "deposit" ? "btn-success" : "btn-danger");
+  btn.textContent = mode === "deposit" ? "💾 เติม" : "💾 เบิก";
+  openM("m-stock-txn");
+  setTimeout(() => document.getElementById("stx-qty").focus(), 100);
+}
+
+async function saveStockTxn() {
+  const materialId = document.getElementById("stx-material-id").value;
+  const mode = document.getElementById("stx-mode").value;
+  const qty = parseFloat(document.getElementById("stx-qty").value);
+  const reason = document.getElementById("stx-reason").value.trim();
+  const orderRef = document.getElementById("stx-order").value.trim();
+
+  if (!qty || qty <= 0) return toast("กรุณากรอกจำนวนที่ถูกต้อง", "err");
+
+  const m = allStock.find(x => x.material_id === materialId);
+  if (!m) return toast("ไม่พบ material", "err");
+
+  if (mode === "withdraw" && m.current_stock - qty < 0) {
+    if (!confirm(`สต็อกจะติดลบ (${(m.current_stock-qty)} ${m.unit})\nยืนยันเบิกหรือไม่?`)) return;
+  }
+
+  const action = mode === "deposit" ? "depositStock" : "withdrawStock";
+  const res = await api({action, material_id:materialId, qty, reason, order_ref: mode === "withdraw" ? orderRef : ""});
+  if (!res || !res.success) return toast(res?.message || "บันทึกล้มเหลว", "err");
+
+  closeM("m-stock-txn");
+  toast(mode === "deposit" ? `เติมสำเร็จ +${qty} ${m.unit} ✓` : `เบิกสำเร็จ -${qty} ${m.unit} ✓`, "ok");
+  await loadStock();
+  if (currentStockHistoryMaterialId === materialId && document.getElementById("m-stock-history").classList.contains("open")) {
+    showStockHistory(materialId);
+  }
+}
+
+async function showStockHistory(materialId) {
+  const m = allStock.find(x => x.material_id === materialId);
+  if (!m) return;
+  currentStockHistoryMaterialId = materialId;
+  document.getElementById("m-stk-hist-title").textContent = `📋 ประวัติ: ${m.name}`;
+  document.getElementById("m-stk-hist-body").innerHTML = '<div class="loading-r" style="padding:30px"><span class="spin"></span>กำลังโหลด...</div>';
+  openM("m-stock-history");
+
+  const res = await api({action:"getStockTransactions", materialId, limit:20});
+  if (!res || !res.success) {
+    document.getElementById("m-stk-hist-body").innerHTML = '<div class="tbl-empty">โหลดประวัติไม่ได้</div>';
+    return;
+  }
+  renderStockHistoryRows(m, res.data || [], res.totalCount || 0);
+}
+
+function renderStockHistoryRows(m, txns, totalCount) {
+  const sortedAsc = [...txns].sort((a,b) => (a.timestamp < b.timestamp ? -1 : 1));
+  const balanceByTxn = {};
+  const totalDelta = sortedAsc.reduce((s,t) => s + t.delta, 0);
+  let running = m.current_stock - totalDelta;
+  sortedAsc.forEach(t => { running += t.delta; balanceByTxn[t.txn_id] = running; });
+
+  let rowsHtml = "";
+  if (txns.length === 0) {
+    rowsHtml = '<div style="text-align:center;padding:30px;color:var(--text3);font-size:13px">ยังไม่มีประวัติ</div>';
+  } else {
+    rowsHtml = txns.map(t => {
+      const sign = t.delta > 0 ? "+" : t.delta < 0 ? "" : "±";
+      const cls = t.delta > 0 ? "txn-delta-pos" : t.delta < 0 ? "txn-delta-neg" : "";
+      const typeIcon = t.delta > 0 ? "➕ เติม" : t.delta < 0 ? "➖ เบิก" : "✏️ ปรับ";
+      const orderLink = t.order_ref
+        ? `<a class="txn-order-link" onclick="toast('👉 ${escapeHtml(t.order_ref)}', 'ok')">ดู ${escapeHtml(t.order_ref)}</a>`
+        : "";
+      const bal = balanceByTxn[t.txn_id];
+      return `
+      <div class="dt-row" style="border-bottom:1px solid #f1f5f9">
+        <div class="dt-cell" style="width:120px;color:var(--text2);font-size:12px;padding:8px 10px">${formatThaiDate(t.timestamp)}</div>
+        <div class="dt-cell" style="width:90px;padding:8px 10px">${typeIcon}</div>
+        <div class="dt-cell ${cls}" style="width:70px;padding:8px 10px;justify-content:flex-end">${sign}${t.delta}</div>
+        <div class="dt-cell" style="flex:1;min-width:140px;padding:8px 10px">${escapeHtml(t.reason||"")}${orderLink}</div>
+        <div class="dt-cell" style="width:70px;padding:8px 10px;justify-content:flex-end;font-weight:600">${bal!==undefined ? bal.toLocaleString() : "–"}</div>
+        <div class="dt-cell" style="width:140px;padding:8px 10px;gap:5px">${stockUserAvatarPill(t.by_user)}</div>
+      </div>`;
+    }).join("");
+  }
+
+  const summary = `
+    <div style="display:flex;gap:14px;align-items:center;padding:10px 14px;background:var(--bg);border-radius:8px;margin-bottom:14px;font-size:13px;flex-wrap:wrap">
+      <div><b>คงเหลือ:</b> <span style="font-size:16px;font-weight:700;color:var(--navy2)">${m.current_stock.toLocaleString()}</span> ${escapeHtml(m.unit)}</div>
+      <div style="color:var(--text2)">·</div>
+      <div><b>ขั้นต่ำ:</b> ${m.low_threshold.toLocaleString()} ${escapeHtml(m.unit)}</div>
+      ${m.price_per_unit ? `<div style="color:var(--text2)">·</div><div><b>ราคา:</b> ฿${parseFloat(m.price_per_unit).toLocaleString()}/${escapeHtml(m.unit)}</div>` : ""}
+    </div>
+    ${m.notes ? `<div style="font-size:12px;color:var(--text2);margin-bottom:12px">📝 ${escapeHtml(m.notes)}</div>` : ""}
+    <div style="font-size:14px;font-weight:600;margin-bottom:8px">${txns.length} รายการ <span style="font-size:11px;color:var(--text3);font-weight:500">(จากทั้งหมด ${totalCount} รายการ)</span></div>
+    <div class="dt">
+      <div class="dt-head" style="background:white;font-size:11px">
+        <div class="dt-cell" style="width:120px;padding:8px 10px">วันที่/เวลา</div>
+        <div class="dt-cell" style="width:90px;padding:8px 10px">ประเภท</div>
+        <div class="dt-cell" style="width:70px;padding:8px 10px;justify-content:flex-end">จำนวน</div>
+        <div class="dt-cell" style="flex:1;min-width:140px;padding:8px 10px">เหตุผล</div>
+        <div class="dt-cell" style="width:70px;padding:8px 10px;justify-content:flex-end">คงเหลือ</div>
+        <div class="dt-cell" style="width:140px;padding:8px 10px">โดย</div>
+      </div>
+      ${rowsHtml}
+    </div>
+  `;
+  document.getElementById("m-stk-hist-body").innerHTML = summary;
+}
+
+function openEditFromStockHistory() {
+  if (!currentStockHistoryMaterialId) return;
+  closeM("m-stock-history");
+  openEditMaterial(currentStockHistoryMaterialId);
 }
 
 // ══════════════════════════════════════════════

@@ -989,7 +989,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.58.2";
+const APP_VERSION = "v1.59.1";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -2743,7 +2743,7 @@ function printStockList(){
   <thead><tr><th style="width:36px">#</th><th>ชื่อ Material</th><th style="width:110px">คงเหลือ</th><th style="width:130px">อัปเดตล่าสุด</th><th>หมายเหตุ</th></tr></thead>
   <tbody>${bodyRows}</tbody>
 </table>
-<script>window.onload=()=>{setTimeout(()=>window.print(),200);};</script>
+<script>window.onload=()=>{setTimeout(()=>window.print(),200);};<\/script>
 </body></html>`;
   const w = window.open("", "_blank");
   if (!w) { toast("Popup ถูกบล็อก กรุณาอนุญาต popup", "err"); return; }

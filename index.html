@@ -654,6 +654,7 @@ textarea.fc{resize:vertical;min-height:76px;}
           <div class="toolbar">
             <button class="btn btn-primary" onclick="openAddMaterial()" id="btn-add-material">+ เพิ่ม Material</button>
             <button class="btn" onclick="exportStockCsv()" id="btn-export-stock" title="ดาวน์โหลด CSV ตามรายการที่แสดง">⬇ Export CSV</button>
+            <button class="btn" onclick="printStockList()" id="btn-print-stock" title="พิมพ์รายการวัสดุ (เรียงตามชื่อ A-Z)">🖨️ Print</button>
             <div class="srch"><span>🔍</span>
               <input type="text" id="stock-search" placeholder="ค้นหาชื่อ material..." oninput="renderStockTable()">
             </div>
@@ -784,7 +785,7 @@ textarea.fc{resize:vertical;min-height:76px;}
       <div class="fg"><label class="lbl">เบอร์โทร</label><input class="fc" id="c-phone" type="tel"></div>
       <div class="fg"><label class="lbl">ชื่อผู้รับ</label><input class="fc" id="c-recip"></div>
       <div class="fg full"><label class="lbl">ที่อยู่จัดส่ง</label><textarea class="fc" id="c-addr" rows="2"></textarea></div>
-      <div class="fg full"><label class="lbl">รายละเอียดใบกำกับภาษี</label><textarea class="fc" id="c-tax" rows="2"></textarea></div>
+      <div class="fg full"><label class="lbl">Notes</label><textarea class="fc" id="c-notes" rows="2"></textarea></div>
       <div class="fg full"><label class="lbl">ลิ้งค์ SNS</label><input class="fc" id="c-sns" placeholder="https://chat.line.biz/..."></div>
       <input type="hidden" id="c-mode" value="add">
     </div>
@@ -921,7 +922,7 @@ textarea.fc{resize:vertical;min-height:76px;}
       <label class="lbl">ซัพพลายเออร์</label>
       <div style="display:flex;gap:6px">
         <input class="fc" id="stx-supplier" list="stx-supplier-list" placeholder="พิมพ์ชื่อ หรือเลือกจากรายการ" style="flex:1">
-        <button class="btn btn-ghost btn-sm" onclick="fillSupplierReason()" type="button" title="กรอก 'Supplier : ...' ลงในช่องเหตุผล">⬆ ใช้</button>
+        <button class="btn btn-ghost btn-sm" onclick="fillSupplierReason()" type="button" title="กรอก 'Supplier : ...' ลงในช่องเหตุผล">⬇ ใช้</button>
       </div>
       <datalist id="stx-supplier-list"></datalist>
     </div>
@@ -2133,6 +2134,7 @@ function showCustProfile(customerId) {
       <div><div style="font-size:10px;color:var(--text3)">ชื่อลูกค้า</div><strong>${c.name||"–"}</strong></div>
       <div><div style="font-size:10px;color:var(--text3)">เบอร์โทร</div>${c.phone||"–"}</div>
       <div style="grid-column:1/-1"><div style="font-size:10px;color:var(--text3)">ที่อยู่</div>${c.address||"–"}</div>
+      ${c.notes?`<div style="grid-column:1/-1"><div style="font-size:10px;color:var(--text3)">Notes</div>${c.notes}</div>`:""}
       ${isOwner?`<div style="grid-column:1/-1"><div style="font-size:10px;color:var(--text3)">ยอดรวมทั้งหมด</div><strong style="color:var(--success);font-size:18px">฿${total.toLocaleString()}</strong></div>`:""}
     </div>
     <div style="font-weight:600;margin-bottom:8px">ประวัติการสั่งซื้อ (${orders.length} รายการ)</div>
@@ -2432,6 +2434,7 @@ const CUST_COLS_BASE = [
   ["phone",     "เบอร์โทร",     110, false],
   ["recipient", "ชื่อผู้รับ",   130, false],
   ["address",   "ที่อยู่",       200, false],
+  ["notes",     "Notes",         150, false],
   ["sns",       "SNS",            60, false],
   ["action",    "",               90, false],
 ];
@@ -2461,7 +2464,7 @@ function renderCust(data){
   });
   const savedW = getCustColWidths();
   const cols = [...CUST_COLS_BASE];
-  if(isOwner) cols.splice(5, 0, ["total","ยอดรวม",100,false]);
+  if(isOwner) cols.splice(6, 0, ["total","ยอดรวม",100,false]);
 
   let head = '<div class="dt-head">';
   cols.forEach((c,i)=>{
@@ -2483,6 +2486,7 @@ function renderCust(data){
       phone:     c.phone||"–",
       recipient: c.recipient||"–",
       address:   c.address||"–",
+      notes:     c.notes?`<span style="font-size:12px;color:var(--text2);white-space:normal">${c.notes.replace(/[<>]/g,'')}</span>`:"–",
       total:     isOwner?`<span style="font-weight:600;color:var(--success)">฿${orderTotal.toLocaleString()}</span>`:"–",
       sns:       c.sns?`<a href="${c.sns}" target="_blank" class="btn btn-xs btn-ghost" onclick="${stop}">💬</a>`:"–",
       action:    `<button class="btn btn-xs" style="background:#dbeafe;color:var(--navy2);border:none;margin-right:4px" onclick='${stop}editCust(${JSON.stringify(c).replace(/'/g,"&#39;")})' title="แก้ไข">✏️</button><button class="btn btn-xs" style="background:#fee2e2;color:#dc2626;border:none" onclick="${stop}deleteCust('${(c.customerId||'').replace(/'/g,"\\'")}','${(c.name||'').replace(/'/g,"\\'")}')" title="ลบ">🗑️</button>`,
@@ -2490,7 +2494,7 @@ function renderCust(data){
     let row = `<div class="dt-row" style="cursor:pointer" onclick="showCustProfile('${profileId}')">`;
     cols.forEach((col,i)=>{
       const w = savedW[col[0]] || col[2];
-      row += `<div class="dt-cell" style="width:${w}px">${valueMap[col[0]]||""}</div>`;
+      row += `<div class="dt-cell" data-col="${col[0]}" style="width:${w}px">${valueMap[col[0]]||""}</div>`;
       if(i<cols.length-1) row += `<div class="dt-resizer"></div>`;
     });
     row += '</div>';
@@ -2511,6 +2515,7 @@ function enableCustDtResize(container, cols, widths) {
       headCell = rz.previousElementSibling;
       startW = headCell.offsetWidth;
       allRows = container.querySelectorAll(".dt-row");
+      const rowCells = container.querySelectorAll(`.dt-row .dt-cell[data-col="${colKey}"]`);
       headCell.style.willChange = "width";
       document.body.style.cursor = "col-resize";
       document.body.style.userSelect = "none";
@@ -2521,7 +2526,7 @@ function enableCustDtResize(container, cols, widths) {
         rafId = requestAnimationFrame(()=>{
           const newW = Math.max(40, startW + pendingX - startX);
           headCell.style.width = newW + "px";
-          container.querySelector('.dt')?.style.setProperty('--col-'+colKey+'-w', newW+'px');
+          rowCells.forEach(cell => cell.style.width = newW + "px");
           rafId = null;
         });
       };
@@ -2544,7 +2549,7 @@ function enableCustDtResize(container, cols, widths) {
 function openAddCust(){
   document.getElementById("cust-mtitle").textContent="เพิ่มลูกค้าใหม่";
   document.getElementById("c-mode").value="add";
-  ["c-id","c-name","c-phone","c-recip","c-addr","c-tax","c-sns"].forEach(id=>document.getElementById(id).value="");
+  ["c-id","c-name","c-phone","c-recip","c-addr","c-notes","c-sns"].forEach(id=>document.getElementById(id).value="");
   document.getElementById("c-id").readOnly=false;
   document.getElementById("c-id").style.borderColor="";
   document.getElementById("c-id").style.background="";
@@ -2566,7 +2571,7 @@ function editCust(c){
   document.getElementById("c-id").value=c.customerId;document.getElementById("c-id").readOnly=true;
   document.getElementById("c-name").value=c.name||"";document.getElementById("c-phone").value=c.phone||"";
   document.getElementById("c-recip").value=c.recipient||"";document.getElementById("c-addr").value=c.address||"";
-  document.getElementById("c-tax").value=c.taxInfo||"";document.getElementById("c-sns").value=c.sns||"";
+  document.getElementById("c-notes").value=c.notes||"";document.getElementById("c-sns").value=c.sns||"";
   openM("m-cust");
 }
 async function saveCust(){
@@ -2606,7 +2611,7 @@ async function saveCust(){
 
   const res=await api({action:mode==="add"?"addCustomer":"updateCustomer",customerId:cid,name,
     phone:document.getElementById("c-phone").value,recipient:document.getElementById("c-recip").value,
-    address:document.getElementById("c-addr").value,taxInfo:document.getElementById("c-tax").value,
+    address:document.getElementById("c-addr").value,notes:document.getElementById("c-notes").value,
     sns:document.getElementById("c-sns").value});
   if(res&&res.success){toast(res.message);closeM("m-cust");loadCustomers();}
   else toast(res?.message||"เกิดข้อผิดพลาด","err");
@@ -2621,9 +2626,9 @@ let pendingStockImageFile = null; // File object before upload
 let pendingStockImageDataUrl = ""; // for preview only (existing url if editing)
 let stockSort = (function(){
   try { const s = JSON.parse(localStorage.getItem("ken_stock_sort") || "null");
-        if (s && typeof s === "object") return s; }
+        if (s && typeof s === "object" && s.column) return s; }
   catch(e){}
-  return { column: null, direction: "asc" };
+  return { column: "name", direction: "asc" };
 })();
 let stockSuppliers = (function(){
   try { return JSON.parse(localStorage.getItem("ken_stock_suppliers") || "[]"); }
@@ -2701,6 +2706,48 @@ function exportStockCsv(){
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
   toast(`ส่งออก ${rows.length} รายการแล้ว ✓`, "ok");
+}
+
+function printStockList(){
+  if (!allStock.length) { toast("ไม่มีข้อมูลให้พิมพ์", "err"); return; }
+  const rows = allStock.slice().sort((a, b) => (a.name||"").localeCompare(b.name||"", "th"));
+  const esc = s => String(s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+  const today = new Date();
+  const pad = n => String(n).padStart(2,"0");
+  const dateStr = `${pad(today.getDate())}/${pad(today.getMonth()+1)}/${today.getFullYear()}`;
+  const bodyRows = rows.map((m, i) => `
+    <tr>
+      <td class="num">${i+1}</td>
+      <td>${esc(m.name)}</td>
+      <td class="num">${(m.current_stock||0).toLocaleString()} ${esc(m.unit||"")}</td>
+      <td>${m.updated_at ? esc(formatThaiDate(m.updated_at)) : "–"}</td>
+      <td class="notes">${esc(m.notes||"")}</td>
+    </tr>`).join("");
+  const html = `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8">
+<title>รายการวัสดุ ${dateStr}</title>
+<style>
+  body{font-family:'Sarabun','Roboto',sans-serif;margin:24px;color:#111;}
+  h1{font-size:18px;margin:0 0 4px;}
+  .meta{font-size:12px;color:#666;margin-bottom:14px;}
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  th,td{border:1px solid #999;padding:6px 8px;vertical-align:top;}
+  th{background:#f1f5f9;text-align:left;}
+  td.num{text-align:right;white-space:nowrap;}
+  td.notes{font-size:11px;color:#444;}
+  tr:nth-child(even) td{background:#fafafa;}
+  @media print{ @page{margin:12mm;} body{margin:0;} }
+</style></head><body>
+<h1>รายการวัสดุคงคลัง</h1>
+<div class="meta">วันที่พิมพ์: ${dateStr} • ทั้งหมด ${rows.length} รายการ (เรียงตามชื่อ A-Z)</div>
+<table>
+  <thead><tr><th style="width:36px">#</th><th>ชื่อ Material</th><th style="width:110px">คงเหลือ</th><th style="width:130px">อัปเดตล่าสุด</th><th>หมายเหตุ</th></tr></thead>
+  <tbody>${bodyRows}</tbody>
+</table>
+<script>window.onload=()=>{setTimeout(()=>window.print(),200);};</script>
+</body></html>`;
+  const w = window.open("", "_blank");
+  if (!w) { toast("Popup ถูกบล็อก กรุณาอนุญาต popup", "err"); return; }
+  w.document.write(html); w.document.close();
 }
 function fillSupplierReason(){
   const supplier = document.getElementById("stx-supplier").value.trim();

@@ -60,7 +60,7 @@ function setupSystem() {
   let cSheet = ss.getSheetByName(SHEET_CUSTOMERS);
   if (!cSheet) cSheet = ss.insertSheet(SHEET_CUSTOMERS);
   if (cSheet.getLastRow() === 0) {
-    cSheet.appendRow(["Row ID","Id","รหัสลูกค้า","ชื่อลูกค้า","เบอร์โทรศัพท์","ชื่อผู้รับ","ที่อยู่จัดส่ง","รายละเอียดใบกำกับภาษี","ลิ้งค์ SNS","ยอดรวม"]);
+    cSheet.appendRow(["Row ID","Id","รหัสลูกค้า","ชื่อลูกค้า","เบอร์โทรศัพท์","ชื่อผู้รับ","ที่อยู่จัดส่ง","Notes","ลิ้งค์ SNS","ยอดรวม"]);
     styleHeader(cSheet, 10);
   }
 
@@ -295,7 +295,7 @@ function getCustomers(p) {
     return {
       rowId, customerId, name:fmt(r["ชื่อลูกค้า"]),
       phone:fmt(r["เบอร์โทรศัพท์"]), recipient:fmt(r["ชื่อผู้รับ"]), address:fmt(r["ที่อยู่จัดส่ง"]),
-      taxInfo:fmt(r["รายละเอียดใบกำกับภาษี"]), sns:fmt(r["ลิ้งค์ SNS"]),
+      notes:fmt(r["Notes"]), sns:fmt(r["ลิ้งค์ SNS"]),
       total: totalMap[customerId]||0  // sum จาก orders จริง (join by customerId)
     };
   });
@@ -336,7 +336,7 @@ function addCustomer(b) {
       case"Row ID":return rowId;
       case"รหัสลูกค้า":return "'"+customerId;case"ชื่อลูกค้า":return b.name||"";
       case"เบอร์โทรศัพท์":return b.phone||"";case"ชื่อผู้รับ":return b.recipient||"";
-      case"ที่อยู่จัดส่ง":return b.address||"";case"รายละเอียดใบกำกับภาษี":return b.taxInfo||"";
+      case"ที่อยู่จัดส่ง":return b.address||"";case"Notes":return b.notes||"";
       case"ลิ้งค์ SNS":return b.sns||"";default:return"";}}));
     return {success:true, message:"เพิ่มลูกค้าสำเร็จ", customerId, rowId};
   } finally {
@@ -347,7 +347,7 @@ function updateCustomer(b) {
   const sh=getSheet(SHEET_CUSTOMERS),rowNum=findRow(sh,"รหัสลูกค้า",b.customerId);
   if(rowNum<0)return{success:false,message:"ไม่พบลูกค้า"};
   const h=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0];
-  const map={"ชื่อลูกค้า":b.name,"เบอร์โทรศัพท์":b.phone,"ชื่อผู้รับ":b.recipient,"ที่อยู่จัดส่ง":b.address,"รายละเอียดใบกำกับภาษี":b.taxInfo,"ลิ้งค์ SNS":b.sns};
+  const map={"ชื่อลูกค้า":b.name,"เบอร์โทรศัพท์":b.phone,"ชื่อผู้รับ":b.recipient,"ที่อยู่จัดส่ง":b.address,"Notes":b.notes,"ลิ้งค์ SNS":b.sns};
   h.forEach((c,i)=>{const k=String(c).trim();if(map[k]!==undefined)sh.getRange(rowNum,i+1).setValue(map[k]);});
   return {success:true,message:"อัพเดทสำเร็จ"};
 }

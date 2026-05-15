@@ -438,6 +438,11 @@ textarea.fc{resize:vertical;min-height:76px;}
 .txn-order-link:hover{text-decoration:underline;}
 .user-pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--text2);}
 .user-pill img{width:18px;height:18px;border-radius:50%;object-fit:cover;flex-shrink:0;display:block;}
+.stock-table th.sortable{cursor:pointer;user-select:none;}
+.stock-table th.sortable:hover{background:#eef2f7;}
+.stock-table th .sort-ico{margin-left:5px;font-size:9px;color:var(--text3);}
+.stock-table th.sortable:hover .sort-ico{color:var(--text2);}
+.sort-ico-active{color:var(--navy2)!important;}
 .overlay-center{align-items:center !important;padding:20px;}
 .overlay-center .modal{border-radius:12px !important;animation:popIn .2s ease !important;
   max-height:88vh;}
@@ -906,9 +911,25 @@ textarea.fc{resize:vertical;min-height:76px;}
     <div id="m-stx-material" style="font-size:13px;color:var(--text2);margin-bottom:14px;
       padding:10px 12px;background:var(--bg);border-radius:8px"></div>
     <div class="fg"><label class="lbl">จำนวน *</label>
-      <input class="fc" id="stx-qty" type="number" inputmode="decimal" min="0" placeholder="0" autofocus></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input class="fc" id="stx-qty" type="number" inputmode="decimal" min="0" placeholder="0" autofocus style="flex:1">
+        <span id="stx-unit" style="font-size:14px;color:var(--text2);min-width:48px;font-weight:500"></span>
+      </div>
+    </div>
+    <div class="fg" id="stx-supplier-row" style="display:none">
+      <label class="lbl">ซัพพลายเออร์</label>
+      <div style="display:flex;gap:6px">
+        <input class="fc" id="stx-supplier" list="stx-supplier-list" placeholder="พิมพ์ชื่อ หรือเลือกจากรายการ" style="flex:1">
+        <button class="btn btn-ghost btn-sm" onclick="fillSupplierReason()" type="button" title="กรอก 'Supplier : ...' ลงในช่องเหตุผล">⬆ ใช้</button>
+      </div>
+      <datalist id="stx-supplier-list"></datalist>
+    </div>
     <div class="fg"><label class="lbl">เหตุผล / หมายเหตุ</label>
-      <input class="fc" id="stx-reason" placeholder="(ไม่บังคับ) เช่น รับจากซัพ, งานลูกค้า X"></div>
+      <div style="display:flex;gap:6px">
+        <input class="fc" id="stx-reason" placeholder="(ไม่บังคับ) เช่น รับจากซัพ, งานลูกค้า X" style="flex:1">
+        <button class="btn btn-ghost btn-sm" id="btn-fill-shopee" onclick="fillShopeeReason()" type="button" title="กรอก 'Shopee' อัตโนมัติ" style="display:none">🛍️ Shopee</button>
+      </div>
+    </div>
     <div class="fg" id="stx-order-row" style="display:none">
       <label class="lbl">อ้างอิงเลขที่ออเดอร์ (ถ้ามี)</label>
       <input class="fc" id="stx-order" placeholder="เช่น WEB_xxx">
@@ -966,7 +987,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.58.1";
+const APP_VERSION = "v1.58.2";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -2597,6 +2618,51 @@ let allStock = [];
 let currentStockHistoryMaterialId = null;
 let pendingStockImageFile = null; // File object before upload
 let pendingStockImageDataUrl = ""; // for preview only (existing url if editing)
+let stockSort = (function(){
+  try { const s = JSON.parse(localStorage.getItem("ken_stock_sort") || "null");
+        if (s && typeof s === "object") return s; }
+  catch(e){}
+  return { column: null, direction: "asc" };
+})();
+let stockSuppliers = (function(){
+  try { return JSON.parse(localStorage.getItem("ken_stock_suppliers") || "[]"); }
+  catch(e) { return []; }
+})();
+function saveStockSuppliers(){
+  try { localStorage.setItem("ken_stock_suppliers", JSON.stringify(stockSuppliers)); }
+  catch(e) {}
+}
+function renderSupplierDatalist(){
+  const dl = document.getElementById("stx-supplier-list");
+  if (!dl) return;
+  dl.innerHTML = stockSuppliers
+    .slice().sort((a,b) => a.localeCompare(b, "th"))
+    .map(s => `<option value="${escapeHtml(s)}">`).join("");
+}
+function setStockSort(col){
+  if (stockSort.column === col) {
+    stockSort.direction = stockSort.direction === "asc" ? "desc" : "asc";
+  } else {
+    stockSort = { column: col, direction: "asc" };
+  }
+  try { localStorage.setItem("ken_stock_sort", JSON.stringify(stockSort)); } catch(e){}
+  renderStockTable();
+}
+function fillShopeeReason(){
+  document.getElementById("stx-reason").value = "Shopee";
+}
+function fillSupplierReason(){
+  const supplier = document.getElementById("stx-supplier").value.trim();
+  if (!supplier) { toast("กรุณาเลือกหรือพิมพ์ชื่อซัพพลายเออร์", "err"); return; }
+  document.getElementById("stx-reason").value = `Supplier : ${supplier}`;
+  const exists = stockSuppliers.find(s => s.toLowerCase() === supplier.toLowerCase());
+  if (!exists) {
+    stockSuppliers.push(supplier);
+    saveStockSuppliers();
+    renderSupplierDatalist();
+    toast(`เพิ่ม "${supplier}" เข้ารายการ ✓`, "ok");
+  }
+}
 
 function loadStockCache(){
   try { return JSON.parse(localStorage.getItem("ken_stock_cache") || "[]"); }
@@ -2689,10 +2755,23 @@ function renderStockTable() {
   if (!wrap) return;
   let rows = allStock.slice();
   if (q) rows = rows.filter(m => m.name.toLowerCase().includes(q));
-  // Pinned rows first
+  // Sort: pinned first, then by user-selected column
   rows.sort((a, b) => {
     const ap = a.pinned ? 1 : 0, bp = b.pinned ? 1 : 0;
     if (ap !== bp) return bp - ap;
+    if (!stockSort.column) return 0;
+    const dir = stockSort.direction === "asc" ? 1 : -1;
+    const c = stockSort.column;
+    if (c === "name")      return (a.name||"").localeCompare(b.name||"", "th") * dir;
+    if (c === "stock")     return ((a.current_stock||0) - (b.current_stock||0)) * dir;
+    if (c === "threshold") return ((a.low_threshold||0) - (b.low_threshold||0)) * dir;
+    if (c === "status") {
+      const order = {"out":0,"low":1,"ok":2};
+      const sa = computeStockStatus(a.current_stock, a.low_threshold).status;
+      const sb = computeStockStatus(b.current_stock, b.low_threshold).status;
+      return (order[sa] - order[sb]) * dir;
+    }
+    if (c === "updated")   return String(a.updated_at||"").localeCompare(String(b.updated_at||"")) * dir;
     return 0;
   });
 
@@ -2748,17 +2827,21 @@ function renderStockTable() {
     </tr>`;
   }).join("");
 
+  const arrow = (col) => {
+    if (stockSort.column !== col) return '<span class="sort-ico">↕</span>';
+    return stockSort.direction === "asc" ? '<span class="sort-ico sort-ico-active">▲</span>' : '<span class="sort-ico sort-ico-active">▼</span>';
+  };
   wrap.innerHTML = `
     <table class="stock-table">
       <thead>
         <tr>
           <th class="col-pin"></th>
           <th class="col-img">รูป</th>
-          <th class="col-name">ชื่อ Material</th>
-          <th class="col-stock">คงเหลือ</th>
-          <th class="col-threshold">ขั้นต่ำ</th>
-          <th class="col-status">สถานะ</th>
-          <th class="col-updated">อัปเดต</th>
+          <th class="col-name sortable" onclick="setStockSort('name')">ชื่อ Material${arrow("name")}</th>
+          <th class="col-stock sortable" onclick="setStockSort('stock')">คงเหลือ${arrow("stock")}</th>
+          <th class="col-threshold sortable" onclick="setStockSort('threshold')">ขั้นต่ำ${arrow("threshold")}</th>
+          <th class="col-status sortable" onclick="setStockSort('status')">สถานะ${arrow("status")}</th>
+          <th class="col-updated sortable" onclick="setStockSort('updated')">อัปเดต${arrow("updated")}</th>
           <th class="col-actions">จัดการ</th>
         </tr>
       </thead>
@@ -2972,7 +3055,18 @@ function openStockTxn(materialId, mode) {
   document.getElementById("m-stx-title").textContent = (mode === "deposit" ? "➕ เติม" : "➖ เบิก") + " Material";
   document.getElementById("m-stx-material").innerHTML =
     `<b>${escapeHtml(m.name)}</b> · คงเหลือปัจจุบัน: <b style="color:var(--navy2)">${m.current_stock.toLocaleString()} ${escapeHtml(m.unit)}</b>`;
+  // Unit display next to qty
+  document.getElementById("stx-unit").textContent = m.unit;
   document.getElementById("stx-order-row").style.display = mode === "withdraw" ? "" : "none";
+  // Shopee button → withdraw only
+  document.getElementById("btn-fill-shopee").style.display = mode === "withdraw" ? "" : "none";
+  // Supplier row → deposit only
+  const supRow = document.getElementById("stx-supplier-row");
+  supRow.style.display = mode === "deposit" ? "" : "none";
+  if (mode === "deposit") {
+    document.getElementById("stx-supplier").value = "";
+    renderSupplierDatalist();
+  }
   const btn = document.getElementById("btn-save-stx");
   btn.className = "btn " + (mode === "deposit" ? "btn-success" : "btn-danger");
   btn.textContent = mode === "deposit" ? "💾 เติม" : "💾 เบิก";

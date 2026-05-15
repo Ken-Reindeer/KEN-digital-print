@@ -653,6 +653,7 @@ textarea.fc{resize:vertical;min-height:76px;}
         <div class="tab-panel" id="tab-stock">
           <div class="toolbar">
             <button class="btn btn-primary" onclick="openAddMaterial()" id="btn-add-material">+ เพิ่ม Material</button>
+            <button class="btn" onclick="exportStockCsv()" id="btn-export-stock" title="ดาวน์โหลด CSV ตามรายการที่แสดง">⬇ Export CSV</button>
             <div class="srch"><span>🔍</span>
               <input type="text" id="stock-search" placeholder="ค้นหาชื่อ material..." oninput="renderStockTable()">
             </div>
@@ -2650,6 +2651,56 @@ function setStockSort(col){
 }
 function fillShopeeReason(){
   document.getElementById("stx-reason").value = "Shopee";
+}
+
+function exportStockCsv(){
+  if (!allStock.length) { toast("ไม่มีข้อมูลให้ส่งออก", "err"); return; }
+  const q = (document.getElementById("stock-search")?.value || "").toLowerCase().trim();
+  let rows = allStock.slice();
+  if (q) rows = rows.filter(m => (m.name||"").toLowerCase().includes(q));
+  rows.sort((a, b) => {
+    const ap = a.pinned ? 1 : 0, bp = b.pinned ? 1 : 0;
+    if (ap !== bp) return bp - ap;
+    if (!stockSort.column) return 0;
+    const dir = stockSort.direction === "asc" ? 1 : -1;
+    const c = stockSort.column;
+    if (c === "name")      return (a.name||"").localeCompare(b.name||"", "th") * dir;
+    if (c === "stock")     return ((a.current_stock||0) - (b.current_stock||0)) * dir;
+    if (c === "threshold") return ((a.low_threshold||0) - (b.low_threshold||0)) * dir;
+    if (c === "status") {
+      const order = {"out":0,"low":1,"ok":2};
+      const sa = computeStockStatus(a.current_stock, a.low_threshold).status;
+      const sb = computeStockStatus(b.current_stock, b.low_threshold).status;
+      return (order[sa] - order[sb]) * dir;
+    }
+    if (c === "updated")   return String(a.updated_at||"").localeCompare(String(b.updated_at||"")) * dir;
+    return 0;
+  });
+  const statusLabel = s => s === "out" ? "หมด" : s === "low" ? "ใกล้หมด" : "ปกติ";
+  const csvCell = v => {
+    const s = (v === null || v === undefined) ? "" : String(v);
+    return /[",\r\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
+  };
+  const headers = ["รหัส","ชื่อ Material","คงเหลือ","หน่วย","ขั้นต่ำ","ราคา/หน่วย","สถานะ","หมายเหตุ","อัปเดตล่าสุด","อัปเดตโดย"];
+  const lines = [headers.map(csvCell).join(",")];
+  rows.forEach(m => {
+    const st = computeStockStatus(m.current_stock, m.low_threshold).status;
+    lines.push([
+      m.material_id, m.name, m.current_stock, m.unit, m.low_threshold,
+      m.price_per_unit || "", statusLabel(st), m.notes || "",
+      m.updated_at || "", m.updated_by || ""
+    ].map(csvCell).join(","));
+  });
+  const csv = "﻿" + lines.join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const d = new Date(), pad = n => String(n).padStart(2,"0");
+  const fname = `stock_${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}.csv`;
+  const a = document.createElement("a");
+  a.href = url; a.download = fname;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast(`ส่งออก ${rows.length} รายการแล้ว ✓`, "ok");
 }
 function fillSupplierReason(){
   const supplier = document.getElementById("stx-supplier").value.trim();

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="th">
 <head>
 <meta charset="UTF-8">
@@ -988,7 +988,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // STATE
 // ══════════════════════════════════════════════
 const APP_VERSION = "v1.58.2";
-let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
+let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbxf-LEPzthAp0rAxpbuLA3tL-kMGPbunlf1Tg_UGEAI7d5oTt28UBzSmlfPulJp1jw2SA/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
 let allUsers   = [];     // [{username, fullname, role, avatar_url}, ...]
@@ -1306,7 +1306,7 @@ function switchTab(t) {
 // ══════════════════════════════════════════════
 // GOOGLE IDENTITY SERVICES — token สำหรับ Sheets API
 // ══════════════════════════════════════════════
-const GIS_CLIENT_ID = "223704026014-vtd60jd53asfi4eldbhmbehjv5dg0vfp.apps.googleusercontent.com";
+const GIS_CLIENT_ID = "203339542793-u0l2apfhenh6l3olu0ouk5t4vk5l05mh.apps.googleusercontent.com";
 const SHEETS_SCOPE  = "https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive";
 let gisToken = null, gisTokenExpiry = 0, gisClient = null;
 

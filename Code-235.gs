@@ -8,6 +8,30 @@ const SHEET_ORDERS    = "ประวัติการสั่งซื้อ"
 const SHEET_USERS     = "Users";
 const DRIVE_FOLDER    = "Customer database (KEN Digital Print)";
 const TOKEN_HOURS     = 24;
+const ORDER_PREFIX    = "235";  // brand prefix for order IDs (e.g. 235-2605-0001)
+
+function generateOrderId(sh) {
+  const now = new Date();
+  const yy = String(now.getFullYear()).slice(-2);
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const ymPrefix = ORDER_PREFIX + "-" + yy + mm + "-";
+  const last = sh.getLastRow();
+  let maxSeq = 0;
+  if (last >= 2) {
+    const rowIdCol = colIdx(sh, "Row ID") + 1;
+    if (rowIdCol > 0) {
+      const vals = sh.getRange(2, rowIdCol, last - 1, 1).getValues();
+      for (let i = 0; i < vals.length; i++) {
+        const v = String(vals[i][0] || "");
+        if (v.indexOf(ymPrefix) === 0) {
+          const n = parseInt(v.substring(ymPrefix.length), 10) || 0;
+          if (n > maxSeq) maxSeq = n;
+        }
+      }
+    }
+  }
+  return ymPrefix + String(maxSeq + 1).padStart(4, "0");
+}
 
 // ============================================================
 // SETUP — รันครั้งเดียวตอนติดตั้ง
@@ -450,10 +474,13 @@ function deleteOrder(b) {
 }
 
 function addOrder(b) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
   const sh=getSheet(SHEET_ORDERS);
   ensureCol(sh,"Image URL");ensureCol(sh,"PDF URL");
   const now=new Date();
-  const rowId="WEB_"+now.getTime();
+  const rowId = generateOrderId(sh);
 
   // เก็บ customerId (รหัส 000016) โดยตรง — ไม่ต้องแปลงเป็น Row ID อีกต่อไป
 
@@ -486,6 +513,9 @@ function addOrder(b) {
   }
   updateCustomerTotal(b.customerId,parseFloat(b.price)||0);
   return {success:true,message:"บันทึกออเดอร์สำเร็จ",rowId};
+  } finally {
+    lock.releaseLock();
+  }
 }
 function updateOrderStatus(b) {
   const sh=getSheet(SHEET_ORDERS),rowNum=findRow(sh,"Row ID",b.rowId);
@@ -605,7 +635,7 @@ function getStats() {
     const p=parseFloat(String(o["ราคารวม"]).replace(/,/g,""))||0;if(p<=0)return;
     total+=p;const d=new Date(o["วันที่/เวลา"]);
     if(!isNaN(d)){if(d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear())month+=p;
-    const k=d.getFullYear()+"-"+(d.getMonth()+1);byMonth[k]=(byMonth[k]||0)+p;}
+    const k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");byMonth[k]=(byMonth[k]||0)+p;}
     if(String(o["สถานะ"])==="กำลังผลิต")pending++;
   });
   return {success:true,totalCustomers:customers.length,totalOrders:orders.length,totalRevenue:total,monthRevenue:month,pending,byMonth};

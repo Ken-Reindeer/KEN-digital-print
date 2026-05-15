@@ -341,6 +341,17 @@ textarea.fc{resize:vertical;min-height:76px;}
 .bar-track{flex:1;height:18px;background:#f1f5f9;border-radius:4px;overflow:hidden;}
 .bar-fill{height:100%;background:var(--success);border-radius:4px;transition:width .6s ease;}
 .bar-val{font-size:13px;font-family:var(--mono);color:var(--text2);width:96px;flex-shrink:0;text-align:right;}
+.line-legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px;font-size:12px;color:var(--text2);}
+.line-legend .lg-item{display:flex;align-items:center;gap:5px;}
+.line-legend .lg-dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+.line-wrap{position:relative;width:100%;}
+.line-wrap svg{width:100%;height:auto;display:block;}
+.line-wrap .line-path{fill:none;stroke-width:2;}
+.line-wrap .line-point{cursor:pointer;transition:r .15s;}
+.line-wrap .line-point:hover{r:6;}
+.line-wrap .line-axis{stroke:#e2e8f0;stroke-width:1;}
+.line-wrap .line-axis-lbl{font-size:10px;fill:var(--text3);font-family:var(--mono);}
+.line-wrap .line-tooltip{position:absolute;background:#1e293b;color:white;padding:6px 10px;border-radius:6px;font-size:11px;pointer-events:none;white-space:nowrap;opacity:0;transition:opacity .15s;transform:translate(-50%,-100%);margin-top:-8px;z-index:5;}
 
 /* ── USER CARDS ── */
 .user-card{background:white;border:1px solid var(--border);border-radius:10px;
@@ -675,11 +686,6 @@ textarea.fc{resize:vertical;min-height:76px;}
             <div class="stat"><div class="stat-ico ic-amber">🔁</div><div><div class="stat-lbl">ลูกค้าซ้ำ</div><div class="stat-val" id="s-repeat">–</div></div></div>
           </div>
           <div class="insight-pipeline">
-            <div class="pipe-card pipe-wait">
-              <div class="pipe-lbl">⏸ รอชำระเงิน</div>
-              <div class="pipe-count" id="pipe-wait-c">–</div>
-              <div class="pipe-sum" id="pipe-wait-s">–</div>
-            </div>
             <div class="pipe-card pipe-prod">
               <div class="pipe-lbl">⚙️ กำลังผลิต</div>
               <div class="pipe-count" id="pipe-prod-c">–</div>
@@ -690,10 +696,16 @@ textarea.fc{resize:vertical;min-height:76px;}
               <div class="pipe-count" id="pipe-done-c">–</div>
               <div class="pipe-sum" id="pipe-done-s">–</div>
             </div>
+            <div class="pipe-card pipe-wait">
+              <div class="pipe-lbl">⏸ รอชำระเงิน</div>
+              <div class="pipe-count" id="pipe-wait-c">–</div>
+              <div class="pipe-sum" id="pipe-wait-s">–</div>
+            </div>
           </div>
           <div class="chart-grid">
             <div class="chart-card"><div class="chart-ttl">ยอดขายรายเดือน (12 เดือนล่าสุด)</div>
-              <div class="bar-wrap" id="chart-monthly"><div style="color:var(--text3);font-size:12px">กำลังโหลด...</div></div></div>
+              <div id="chart-monthly-legend" class="line-legend"></div>
+              <div id="chart-monthly" class="line-wrap"><div style="color:var(--text3);font-size:12px">กำลังโหลด...</div></div></div>
             <div class="chart-card"><div class="chart-ttl">ลูกค้าที่ใช้จ่ายสูงสุด (Top 10)</div>
               <div id="chart-top-cust"><div style="color:var(--text3);font-size:12px">กำลังโหลด...</div></div></div>
           </div>
@@ -945,6 +957,16 @@ textarea.fc{resize:vertical;min-height:76px;}
   </div>
 </div></div>
 
+<!-- ══ MODAL: MONTH DETAIL (from Insight chart) ══ -->
+<div class="overlay overlay-center" id="m-month-detail">
+<div class="modal" style="max-width:760px">
+  <div class="modal-hd">
+    <span class="modal-title" id="m-month-title">📅 รายละเอียดเดือน</span>
+    <button class="modal-x" onclick="closeM('m-month-detail')">✕</button>
+  </div>
+  <div class="modal-body" id="m-month-body"></div>
+</div></div>
+
 <!-- ══ MODAL: STOCK HISTORY ══ -->
 <div class="overlay overlay-center" id="m-stock-history">
 <div class="modal" style="max-width:820px">
@@ -989,7 +1011,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.60.1";
+const APP_VERSION = "v1.61.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbxf-LEPzthAp0rAxpbuLA3tL-kMGPbunlf1Tg_UGEAI7d5oTt28UBzSmlfPulJp1jw2SA/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -1141,12 +1163,12 @@ function saveConfig() {
   document.getElementById("cfg-bar").style.display="none";
   toast("บันทึก URL สำเร็จ ✓"); loadAll();
 }
-function refresh() { syncOrders(true); loadCustomers(); loadStats(); toast("กำลังซิงค์ข้อมูลใหม่..."); }
+function refresh() { syncOrders(true); loadCustomers(); if(userCan("insight")) loadStats(); toast("กำลังซิงค์ข้อมูลใหม่..."); }
 function loadAll() {
   initGIS();
   loadOrders(); loadCustomers(); loadUsersForAvatars();
   if (userCan("stock")) loadStock();
-  if(SESSION?.user.role==="owner") loadStats();
+  if(userCan("insight")) loadStats();
   startAutoSync();
 }
 
@@ -3284,13 +3306,17 @@ async function loadStats(){
   const aov = res.totalOrders ? res.totalRevenue / res.totalOrders : 0;
   document.getElementById("s-aov").textContent = fmt(aov);
 
-  // month-over-month % (server may emit padded or unpadded month keys, accept both)
+  // Compute monthly stats client-side from allOrders (authoritative: handles Thai date format correctly)
+  const monthlyStats = computeMonthlyStats();
   const now = new Date();
   const pad = n => String(n).padStart(2,"0");
-  const lookupMonth = (y, m) => res.byMonth?.[`${y}-${pad(m)}`] ?? res.byMonth?.[`${y}-${m}`] ?? 0;
+  const curKey = `${now.getFullYear()}-${pad(now.getMonth()+1)}`;
   const prev = new Date(now.getFullYear(), now.getMonth()-1, 1);
-  const curRev = lookupMonth(now.getFullYear(), now.getMonth()+1);
-  const prevRev = lookupMonth(prev.getFullYear(), prev.getMonth()+1);
+  const prevKey = `${prev.getFullYear()}-${pad(prev.getMonth()+1)}`;
+  const curRev = monthlyStats[curKey]?.all || 0;
+  const prevRev = monthlyStats[prevKey]?.all || 0;
+  // override server-reported monthRevenue with client-side computed value
+  document.getElementById("s-month").textContent = fmt(curRev);
   const momEl = document.getElementById("s-mom");
   if (prevRev > 0) {
     const pct = ((curRev - prevRev) / prevRev) * 100;
@@ -3327,13 +3353,8 @@ async function loadStats(){
   document.getElementById("pipe-done-c").textContent = byStatus["จัดส่งสำเร็จ"].count.toLocaleString();
   document.getElementById("pipe-done-s").textContent = fmt(byStatus["จัดส่งสำเร็จ"].sum);
 
-  // === Row 3a: monthly bar chart (last 12 months) ===
-  const months = Object.entries(res.byMonth || {}).sort((a,b) => a[0] > b[0] ? 1 : -1).slice(-12);
-  const mx = Math.max(...months.map(m => m[1]), 1);
-  document.getElementById("chart-monthly").innerHTML = months.map(([k,v]) => {
-    const [y,m] = k.split("-");
-    return `<div class="bar-row"><div class="bar-lbl">${th[parseInt(m)]} ${y.slice(2)}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/mx*100)}%"></div></div><div class="bar-val">${fmt(v)}</div></div>`;
-  }).join("");
+  // === Row 3a: monthly line chart (last 12 months) — 3 lines: all, new, repeat ===
+  renderMonthlyLineChart(monthlyStats);
 
   // === Row 3b: Top 10 customers by revenue ===
   const custTotals = {};
@@ -3364,6 +3385,163 @@ async function loadStats(){
       </div>`;
     }).join("");
   }
+}
+
+// ───────── Thai d/M/yyyy HH:mm parser (V8 new Date doesn't reliably parse this) ─────────
+function parseThaiDate(s) {
+  if (!s) return null;
+  if (s instanceof Date) return isNaN(s) ? null : s;
+  const m = String(s).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[\sT]+(\d{1,2}):(\d{1,2}))?/);
+  if (!m) {
+    const d = new Date(s);
+    return isNaN(d) ? null : d;
+  }
+  return new Date(+m[3], +m[2]-1, +m[1], +(m[4]||0), +(m[5]||0));
+}
+
+function computeMonthlyStats() {
+  const firstMonthByCust = {};
+  allOrders.forEach(o => {
+    if (!o.customerId) return;
+    const d = parseThaiDate(o.date); if (!d) return;
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+    if (!firstMonthByCust[o.customerId] || key < firstMonthByCust[o.customerId]) {
+      firstMonthByCust[o.customerId] = key;
+    }
+  });
+  const now = new Date();
+  const keys = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    keys.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);
+  }
+  const stats = {};
+  keys.forEach(k => stats[k] = {all:0, new:0, repeat:0, orders:[], newOrders:[], repeatOrders:[]});
+  allOrders.forEach(o => {
+    const d = parseThaiDate(o.date); if (!d) return;
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+    if (!stats[key]) return;
+    const p = parseFloat(String(o.price).replace(/,/g,"")) || 0;
+    stats[key].all += p;
+    stats[key].orders.push(o);
+    if (o.customerId && firstMonthByCust[o.customerId] === key) {
+      stats[key].new += p;
+      stats[key].newOrders.push(o);
+    } else {
+      stats[key].repeat += p;
+      stats[key].repeatOrders.push(o);
+    }
+  });
+  stats._keys = keys;
+  return stats;
+}
+
+function renderMonthlyLineChart(stats) {
+  const th = ["","ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+  const keys = stats._keys;
+  const series = [
+    {key:"all",    label:"ทั้งหมด",  color:"#b60105"},
+    {key:"new",    label:"ลูกค้าใหม่", color:"#16a34a"},
+    {key:"repeat", label:"ลูกค้าเก่า", color:"#f59e0b"},
+  ];
+  document.getElementById("chart-monthly-legend").innerHTML = series.map(s =>
+    `<span class="lg-item"><span class="lg-dot" style="background:${s.color}"></span>${s.label}</span>`
+  ).join("");
+  let maxV = 0;
+  keys.forEach(k => series.forEach(s => { if (stats[k][s.key] > maxV) maxV = stats[k][s.key]; }));
+  if (maxV <= 0) maxV = 1;
+  const niceMax = Math.pow(10, Math.floor(Math.log10(maxV))) * Math.ceil(maxV / Math.pow(10, Math.floor(Math.log10(maxV))));
+  const W = 800, H = 320, padL = 56, padR = 16, padT = 16, padB = 36;
+  const innerW = W - padL - padR, innerH = H - padT - padB;
+  const xAt = i => padL + (keys.length<=1 ? innerW/2 : (i * innerW / (keys.length-1)));
+  const yAt = v => padT + innerH - (v / niceMax) * innerH;
+  const smoothPath = points => {
+    if (!points.length) return "";
+    if (points.length === 1) return `M${points[0].x},${points[0].y}`;
+    let d = `M${points[0].x},${points[0].y}`;
+    for (let i = 0; i < points.length-1; i++) {
+      const p0 = points[i-1] || points[i];
+      const p1 = points[i];
+      const p2 = points[i+1];
+      const p3 = points[i+2] || p2;
+      const t = 0.18;
+      const c1x = p1.x + (p2.x - p0.x) * t;
+      const c1y = p1.y + (p2.y - p0.y) * t;
+      const c2x = p2.x - (p3.x - p1.x) * t;
+      const c2y = p2.y - (p3.y - p1.y) * t;
+      d += ` C${c1x},${c1y} ${c2x},${c2y} ${p2.x},${p2.y}`;
+    }
+    return d;
+  };
+  const ticks = 4;
+  let axisHtml = "";
+  for (let i = 0; i <= ticks; i++) {
+    const v = niceMax * i / ticks;
+    const y = yAt(v);
+    axisHtml += `<line class="line-axis" x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}"/>`;
+    axisHtml += `<text class="line-axis-lbl" x="${padL-6}" y="${y+3}" text-anchor="end">฿${Math.round(v).toLocaleString()}</text>`;
+  }
+  let xLblHtml = "";
+  keys.forEach((k, i) => {
+    const [y, m] = k.split("-");
+    xLblHtml += `<text class="line-axis-lbl" x="${xAt(i)}" y="${H-padB+16}" text-anchor="middle">${th[parseInt(m)]} ${y.slice(2)}</text>`;
+  });
+  let lineHtml = "";
+  series.forEach(s => {
+    const pts = keys.map((k, i) => ({x: xAt(i), y: yAt(stats[k][s.key]||0), v: stats[k][s.key]||0, k}));
+    lineHtml += `<path class="line-path" d="${smoothPath(pts)}" stroke="${s.color}"/>`;
+    pts.forEach(p => {
+      lineHtml += `<circle class="line-point" cx="${p.x}" cy="${p.y}" r="4" fill="${s.color}" stroke="white" stroke-width="1.5" data-month="${p.k}" data-type="${s.key}" data-val="${p.v}" data-label="${s.label}"/>`;
+    });
+  });
+  const svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${axisHtml}${xLblHtml}${lineHtml}</svg>
+    <div class="line-tooltip" id="line-tooltip"></div>`;
+  const wrap = document.getElementById("chart-monthly");
+  wrap.innerHTML = svg;
+  const tooltip = wrap.querySelector("#line-tooltip");
+  wrap.querySelectorAll(".line-point").forEach(pt => {
+    pt.addEventListener("mouseenter", () => {
+      const r = pt.getBoundingClientRect(), wr = wrap.getBoundingClientRect();
+      const val = parseFloat(pt.getAttribute("data-val"))||0;
+      const [yy,mm] = pt.getAttribute("data-month").split("-");
+      tooltip.innerHTML = `${pt.getAttribute("data-label")} • ${th[parseInt(mm)]} ${yy.slice(2)}<br>฿${Math.round(val).toLocaleString()}`;
+      tooltip.style.left = (r.left - wr.left + r.width/2) + "px";
+      tooltip.style.top  = (r.top - wr.top) + "px";
+      tooltip.style.opacity = "1";
+    });
+    pt.addEventListener("mouseleave", () => tooltip.style.opacity = "0");
+    pt.addEventListener("click", () => {
+      showMonthDetail(pt.getAttribute("data-month"), pt.getAttribute("data-type"), window._monthlyStats);
+    });
+  });
+  window._monthlyStats = stats;
+}
+
+function showMonthDetail(monthKey, type, stats) {
+  const th = ["","ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+  const [y, m] = monthKey.split("-");
+  const typeLabel = {all:"ทั้งหมด", new:"ลูกค้าใหม่", repeat:"ลูกค้าเก่า"}[type] || type;
+  const ordersKey = type === "all" ? "orders" : (type === "new" ? "newOrders" : "repeatOrders");
+  const list = (stats[monthKey]?.[ordersKey] || []).slice().sort((a,b) => {
+    const da = parseThaiDate(a.date), db = parseThaiDate(b.date);
+    return (db?.getTime()||0) - (da?.getTime()||0);
+  });
+  const total = list.reduce((s,o) => s + (parseFloat(String(o.price).replace(/,/g,""))||0), 0);
+  document.getElementById("m-month-title").textContent = `📅 ${typeLabel} • ${th[parseInt(m)]} ${y} (${list.length} ออเดอร์ • ฿${Math.round(total).toLocaleString()})`;
+  const rows = list.map(o => `
+    <tr style="cursor:pointer" onclick="closeM('m-month-detail');showDetail('${o.rowId}')">
+      <td style="font-size:11px;color:var(--text3);white-space:nowrap">${o.date||""}</td>
+      <td style="font-size:12px"><strong>${o.customerLabel||o.customerId||"–"}</strong></td>
+      <td><span class="badge ${o.status==='จัดส่งสำเร็จ'?'b-done':o.status==='กำลังผลิต'?'b-prod':'b-wait'}" style="font-size:10px">${o.status||"–"}</span></td>
+      <td style="font-size:12px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(o.detail||"").substring(0,60)}</td>
+      <td style="font-weight:600;color:var(--success);text-align:right;white-space:nowrap">฿${(parseFloat(o.price)||0).toLocaleString()}</td>
+    </tr>`).join("");
+  document.getElementById("m-month-body").innerHTML = `
+    <div style="max-height:60vh;overflow-y:auto">
+      <table style="width:100%"><thead><tr><th>วันที่</th><th>ลูกค้า</th><th>สถานะ</th><th>รายละเอียด</th><th style="text-align:right">ราคา</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">ไม่มีออเดอร์</td></tr>'}</tbody></table>
+    </div>`;
+  openM("m-month-detail");
 }
 
 // ══════════════════════════════════════════════

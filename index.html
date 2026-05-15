@@ -436,6 +436,12 @@ textarea.fc{resize:vertical;min-height:76px;}
 .txn-order-link{color:var(--navy2);font-size:10px;text-decoration:none;
   background:#dbeafe;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;}
 .txn-order-link:hover{text-decoration:underline;}
+.user-pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--text2);}
+.user-pill img{width:18px;height:18px;border-radius:50%;object-fit:cover;flex-shrink:0;display:block;}
+.overlay-center{align-items:center !important;padding:20px;}
+.overlay-center .modal{border-radius:12px !important;animation:popIn .2s ease !important;
+  max-height:88vh;}
+@keyframes popIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
 @media (max-width:1000px){
   .stock-table-wrap{overflow-x:auto;}
   .stock-table{min-width:1100px;}
@@ -917,7 +923,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 </div></div>
 
 <!-- ══ MODAL: STOCK HISTORY ══ -->
-<div class="overlay" id="m-stock-history">
+<div class="overlay overlay-center" id="m-stock-history">
 <div class="modal" style="max-width:820px">
   <div class="modal-hd">
     <span class="modal-title" id="m-stk-hist-title">📋 ประวัติ</span>
@@ -960,7 +966,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.58.0";
+const APP_VERSION = "v1.58.1";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbx7GvkAE7CgFRViGm_5Es6HpKcmwJ3YcqlV7IUD4IsYBQhmpTHXGtDaxX-8F1RNxAzg4Q/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -2592,18 +2598,36 @@ let currentStockHistoryMaterialId = null;
 let pendingStockImageFile = null; // File object before upload
 let pendingStockImageDataUrl = ""; // for preview only (existing url if editing)
 
-async function loadStock() {
+function loadStockCache(){
+  try { return JSON.parse(localStorage.getItem("ken_stock_cache") || "[]"); }
+  catch(e) { return []; }
+}
+function saveStockCache(data){
+  try { localStorage.setItem("ken_stock_cache", JSON.stringify(data || [])); }
+  catch(e) {}
+}
+
+async function loadStock(forceSync) {
   if (!userCan("stock")) return;
   const wrap = document.getElementById("stock-table-wrap");
-  if (wrap && !allStock.length) {
-    wrap.innerHTML = '<div class="loading-r"><span class="spin"></span>กำลังโหลด...</div>';
+  // 1) Render from cache immediately if we have any
+  if (!allStock.length) {
+    const cached = loadStockCache();
+    if (cached.length) {
+      allStock = cached;
+      renderStockTable();
+    } else if (wrap) {
+      wrap.innerHTML = '<div class="loading-r"><span class="spin"></span>กำลังโหลด...</div>';
+    }
   }
+  // 2) Fetch fresh from API and replace
   const res = await api({action:"getStock"});
   if (!res || !res.success) {
-    if (wrap) wrap.innerHTML = '<div class="tbl-empty">โหลดไม่ได้</div>';
+    if (!allStock.length && wrap) wrap.innerHTML = '<div class="tbl-empty">โหลดไม่ได้</div>';
     return;
   }
   allStock = res.data || [];
+  saveStockCache(allStock);
   renderStockTable();
 }
 
@@ -2624,13 +2648,15 @@ function statusBadgeHtml(status) {
 }
 
 function stockUserAvatarPill(username) {
-  if (!username) return `<span class="av-fallback">?</span><span>–</span>`;
+  if (!username) return `<span class="user-pill"><span class="av-fallback">?</span><span>–</span></span>`;
   const url = userAvatarMap[username];
-  const initial = (username[0] || "?").toUpperCase();
+  const u = (typeof allUsers !== "undefined") ? allUsers.find(x => x.username === username) : null;
+  const displayName = (u && u.fullname) || username;
+  const initial = (displayName[0] || "?").toUpperCase();
   const avatarHtml = url
     ? `<img src="${url}" alt="">`
     : `<span class="av-fallback">${escapeHtml(initial)}</span>`;
-  return `${avatarHtml}<span>${escapeHtml(username)}</span>`;
+  return `<span class="user-pill">${avatarHtml}<span>${escapeHtml(displayName)}</span></span>`;
 }
 
 function escapeHtml(s) {

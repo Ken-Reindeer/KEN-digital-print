@@ -464,6 +464,11 @@ function updateOrder(b) {
     else if(k==="PDF URL"&&b.pdfUrl)row[i]=b.pdfUrl;
   });
   sh.getRange(rowNum,1,1,sh.getLastColumn()).setValues([row]);
+  // Phone must be saved as text to preserve leading zero
+  if (b.phone !== undefined) {
+    const phoneIdx = colIdx(sh, "เบอร์โทรศัพท์");
+    if (phoneIdx >= 0) { const c=sh.getRange(rowNum,phoneIdx+1); c.setNumberFormat("@"); c.setValue(b.phone); }
+  }
   return {success:true,message:"แก้ไขสำเร็จ"};
 }
 
@@ -497,7 +502,7 @@ function addOrder(b) {
       case"สถานะ":return b.status||"กำลังผลิต";
       case"รายละเอียด":return b.detail||"";case"ราคารวม":return parseFloat(b.price)||0;
       case"ชื่อผู้รับ":return b.recipient||"";case"ที่อยู่จัดส่ง":return b.address||"";
-      case"เบอร์โทรศัพท์":return b.phone||"";case"ลิ้งค์ลูกค้า":return b.link||"";
+      case"เบอร์โทรศัพท์":return b.phone?"'"+b.phone:"";case"ลิ้งค์ลูกค้า":return b.link||"";
       case"รหัสลูกค้า":return b.customerId||"";case"Tracking number":return b.tracking||"";
       case"Image URL":return b.imageUrl||"";case"PDF URL":return b.pdfUrl||"";
       case"บันทึกโดย":return b.createdBy||"";

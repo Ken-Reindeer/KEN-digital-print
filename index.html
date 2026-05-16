@@ -2027,7 +2027,7 @@ function showDetail(rowId) {
       <div><div style="font-size:10px;font-family:var(--mono);color:var(--text3)">รหัสลูกค้า</div>
         <strong style="cursor:pointer;color:var(--navy2);text-decoration:underline dotted" onclick="showCustProfile('${o.customerId}')">${o.customerLabel||o.customerId}</strong></div>
       <div><div style="font-size:10px;font-family:var(--mono);color:var(--text3)">วันที่</div>${o.date}</div>
-      ${isOwner?`<div><div style="font-size:10px;font-family:var(--mono);color:var(--text3)">ราคารวม</div><strong style="color:var(--success);font-size:17px">฿${(parseFloat(o.price)||0).toLocaleString()}</strong></div>`:""}
+      ${isOwner?`<div><div style="font-size:10px;font-family:var(--mono);color:var(--text3)">ราคารวม</div><strong style="color:var(--success);font-size:17px">฿${(parseFloat(String(o.price).replace(/,/g,""))||0).toLocaleString()} <span style="font-size:13px;font-weight:500">บาท</span></strong></div>`:""}
       <div><div style="font-size:10px;font-family:var(--mono);color:var(--text3)">สถานะ</div>${o.status||"–"}</div>
       <div><div style="font-size:10px;font-family:var(--mono);color:var(--text3)">ผู้รับ</div>${o.recipient||"–"}</div>
       <div><div style="font-size:10px;font-family:var(--mono);color:var(--text3)">เบอร์</div>${o.phone||"–"}</div>

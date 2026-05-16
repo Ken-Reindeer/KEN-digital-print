@@ -39,6 +39,22 @@ body{background:var(--bg);color:var(--tx);font-size:14px;display:flex;flex-direc
   font-size:11px;font-family:var(--sans);color:rgba(255,255,255,.55);cursor:pointer;transition:all .15s;white-space:nowrap;}
 .mp-edit:hover{border-color:rgba(255,255,255,.7);color:#fff;}
 
+.tb-scroll::-webkit-scrollbar{display:none;}
+.tb-scroll.dragging{cursor:grabbing;}
+.tb-scroll.dragging *{pointer-events:none;}
+
+/* preset group dropdowns */
+.mp-group{position:relative;flex-shrink:0;}
+.mp-menu{position:fixed;background:#fff;border-radius:8px;
+  box-shadow:0 6px 24px rgba(0,0,0,.25);padding:5px;min-width:260px;z-index:9999;display:none;}
+.mp-menu.open{display:block;}
+.mp-menu-item{display:flex;justify-content:space-between;align-items:center;gap:14px;
+  padding:7px 10px;border-radius:5px;cursor:pointer;color:#0f172a;font-size:12px;white-space:nowrap;}
+.mp-menu-item:hover{background:var(--blue-bg);}
+.mp-menu-item.active{background:var(--blue-bg);color:var(--blue2);font-weight:600;}
+.mp-menu-item .sz{color:var(--tx3);font-size:11px;}
+.mp-menu-item.active .sz{color:var(--blue2);}
+
 .tb-unit{display:flex;align-items:center;gap:5px;flex-shrink:0;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:7px;padding:4px 8px;}
 .tb-unit label{font-size:11px;color:rgba(255,255,255,.6);font-weight:500;}
 .tb-unit select{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:5px;padding:3px 6px;font-family:var(--sans);font-size:12px;color:#fff;outline:none;cursor:pointer;}
@@ -220,7 +236,7 @@ body{background:var(--bg);color:var(--tx);font-size:14px;display:flex;flex-direc
       <sub style="font-size:10px;color:rgba(255,255,255,.45);font-weight:400;letter-spacing:0;vertical-align:middle;margin-left:3px;">Layout Planner</sub>
     </div>
     <div class="tb-sep"></div>
-    <div style="display:flex;align-items:center;gap:4px;flex:1;overflow-x:auto;-webkit-overflow-scrolling:touch;min-width:0;scrollbar-width:none;">
+    <div id="tb-scroll" class="tb-scroll" style="display:flex;align-items:center;gap:4px;flex:1;overflow-x:auto;-webkit-overflow-scrolling:touch;min-width:0;scrollbar-width:none;cursor:grab;">
       <div id="mat-profiles" style="display:contents"></div>
       <button class="mp-edit" style="flex-shrink:0" onclick="openPresetModal()">✏ แก้ไข preset</button>
       <div class="tb-sep" style="flex-shrink:0"></div>
@@ -232,6 +248,7 @@ body{background:var(--bg);color:var(--tx);font-size:14px;display:flex;flex-direc
           <option value="in">inch</option>
         </select>
       </div>
+      <button class="mp-edit" style="flex-shrink:0;margin-left:auto" onclick="resetPresets()">↺ Reset</button>
     </div>
   </div>
 </div>
@@ -248,6 +265,14 @@ body{background:var(--bg);color:var(--tx);font-size:14px;display:flex;flex-direc
       <div class="pe-form" id="pe-form">
         <label>ชื่อ Preset</label>
         <input type="text" id="pe-name" placeholder="เช่น STK 13x19''">
+        <label style="margin-top:8px">กลุ่ม</label>
+        <input type="text" id="pe-group" list="pe-group-list" placeholder="เช่น กระดาษ">
+        <datalist id="pe-group-list">
+          <option value="กระดาษ"></option>
+          <option value="ม้วน"></option>
+          <option value="UV Canon"></option>
+          <option value="อื่นๆ"></option>
+        </datalist>
         <div class="pe-dim-row">
           <div><label>กว้าง</label><input type="number" id="pe-w" min="0.1" step="0.1"></div>
           <div class="pe-cross">×</div>
@@ -366,31 +391,126 @@ function changeUnit(nu){
 
 // ── PRESETS ───────────────────────────────────────
 const DEFAULT_PRESETS = [
-  { name:"STK 13x19''",  w:30.0, h:42.0 },
-  { name:"Paper 13x19''",w:32.0, h:47.0 },
-  { name:"PVC 63.5 cm",  w:57.0, h:157.0 },
-  { name:"PVC 127 cm",   w:120.0,h:75.0 },
-  { name:"PVC 152 cm",   w:65.0, h:146.0 },
-  { name:"ฟรอย 60 cm",   w:55.0, h:155.0 },
+  { name:"STK 13x19''",                  w:30.0,  h:42.0,   group:"กระดาษ" },
+  { name:"Paper 13x19''",                w:32.0,  h:47.0,   group:"กระดาษ" },
+  { name:"กระดาษ 31x43 นิ้ว",            w:78.74, h:109.22, group:"กระดาษ" },
+  { name:"PVC 127 cm",                   w:120.0, h:75.0,   group:"ม้วน" },
+  { name:"PVC 152 cm",                   w:65.0,  h:146.0,  group:"ม้วน" },
+  { name:"ฟรอย 60 cm",                   w:55.0,  h:155.0,  group:"ม้วน" },
+  { name:"uv canon pvc 127 พิมพ์ 4 สี",  w:123.5, h:78.0,   group:"UV Canon" },
+  { name:"uv canonpvc 152 พิมพ์ 4 สี",   w:148.5, h:65.0,   group:"UV Canon" },
+  { name:"uv canon ฟอย 61 พิมพ์ 4 สี",   w:57.0,  h:160.0,  group:"UV Canon" },
+  { name:"uv canon pvc 127 พิมพ์ ขาว",   w:121.5, h:78.0,   group:"UV Canon" },
+  { name:"uv canonpvc 152 พิมพ์ ขาว",    w:146.5, h:65.0,   group:"UV Canon" },
+  { name:"uv canon ฟอย 61 พิมพ์ ขาว",    w:55.5,  h:160.0,  group:"UV Canon" },
 ];
 
 // load from localStorage or use defaults (all in cm)
-let PRESETS = JSON.parse(localStorage.getItem('kdpcut_presets') || 'null') || DEFAULT_PRESETS.map(p=>({...p}));
+let PRESETS = JSON.parse(localStorage.getItem('kdpcut_presets_v2') || 'null') || DEFAULT_PRESETS.map(p=>({...p}));
 let activeMat = 0;
 let matW_cm = PRESETS[0].w, matH_cm = PRESETS[0].h;
 let editingIdx = 0;
 
 function savePresetsToStorage(){
-  localStorage.setItem('kdpcut_presets', JSON.stringify(PRESETS));
+  localStorage.setItem('kdpcut_presets_v2', JSON.stringify(PRESETS));
+}
+function resetPresets(){
+  if(!confirm('Reset presets to defaults? Your custom presets will be lost.')) return;
+  localStorage.removeItem('kdpcut_presets_v2');
+  PRESETS = DEFAULT_PRESETS.map(p=>({...p}));
+  activeMat = 0;
+  matW_cm = PRESETS[0].w; matH_cm = PRESETS[0].h;
+  renderMatProfiles();
+  rerender();
 }
 
+const GROUP_ORDER = ['กระดาษ','ม้วน','UV Canon','อื่นๆ'];
+const FLAT_GROUPS = new Set(['กระดาษ']);
 function renderMatProfiles(){
-  document.getElementById('mat-profiles').innerHTML = PRESETS.map((p,i)=>`
-    <button class="mp-btn${i===activeMat?' active':''}" onclick="selectPreset(${i})">
-      <div class="mpname">${esc(p.name)}</div>
-      <div class="mpsize">${fromCm(p.w)}×${fromCm(p.h)}</div>
-    </button>`).join('');
+  const groups = {};
+  PRESETS.forEach((p,i)=>{
+    const g = p.group || 'อื่นๆ';
+    (groups[g] = groups[g] || []).push({p, idx:i});
+  });
+  const gnames = Object.keys(groups).sort((a,b)=>{
+    const ai = GROUP_ORDER.indexOf(a), bi = GROUP_ORDER.indexOf(b);
+    return (ai<0?99:ai) - (bi<0?99:bi);
+  });
+  const ap = PRESETS[activeMat];
+  const ag = ap ? (ap.group || 'อื่นๆ') : null;
+  document.getElementById('mat-profiles').innerHTML = gnames.map(g=>{
+    if(FLAT_GROUPS.has(g)){
+      return groups[g].map(({p,idx})=>`
+        <button class="mp-btn${idx===activeMat?' active':''}" onclick="selectPreset(${idx})">
+          <div class="mpname">${esc(p.name)}</div>
+          <div class="mpsize">${fromCm(p.w)}×${fromCm(p.h)}</div>
+        </button>`).join('');
+    }
+    const isActive = g === ag;
+    const sub = isActive
+      ? `<div class="mpsize">${esc(ap.name)} · ${fromCm(ap.w)}×${fromCm(ap.h)}</div>`
+      : '';
+    const items = groups[g].map(({p,idx})=>`
+      <div class="mp-menu-item${idx===activeMat?' active':''}" onclick="selectPreset(${idx});closeAllMenus();event.stopPropagation()">
+        <span>${esc(p.name)}</span><span class="sz">${fromCm(p.w)}×${fromCm(p.h)}</span>
+      </div>`).join('');
+    return `<div class="mp-group">
+      <button class="mp-btn${isActive?' active':''}" onclick="toggleGroupMenu(this);event.stopPropagation()">
+        <div class="mpname">${esc(g)} ▾</div>${sub}
+      </button>
+      <div class="mp-menu">${items}</div>
+    </div>`;
+  }).join('');
 }
+function toggleGroupMenu(btn){
+  const menu = btn.nextElementSibling;
+  const wasOpen = menu.classList.contains('open');
+  closeAllMenus();
+  if(!wasOpen){
+    const r = btn.getBoundingClientRect();
+    menu.style.top  = (r.bottom + 4) + 'px';
+    menu.style.left = r.left + 'px';
+    menu.classList.add('open');
+  }
+}
+function closeAllMenus(){
+  document.querySelectorAll('.mp-menu.open').forEach(m=>m.classList.remove('open'));
+}
+document.addEventListener('click', closeAllMenus);
+
+// drag-to-scroll on topbar
+(function(){
+  const el = document.getElementById('tb-scroll');
+  if(!el) return;
+  let isDown=false, startX=0, startScroll=0, moved=0;
+  el.addEventListener('mousedown', e=>{
+    if(e.button !== 0) return;
+    isDown=true; moved=0;
+    startX = e.pageX; startScroll = el.scrollLeft;
+  });
+  window.addEventListener('mousemove', e=>{
+    if(!isDown) return;
+    const dx = e.pageX - startX;
+    if(Math.abs(dx) > 3 && !el.classList.contains('dragging')){
+      el.classList.add('dragging');
+    }
+    if(el.classList.contains('dragging')){
+      e.preventDefault();
+      el.scrollLeft = startScroll - dx;
+      moved = Math.abs(dx);
+    }
+  });
+  window.addEventListener('mouseup', e=>{
+    if(!isDown) return;
+    isDown=false;
+    if(el.classList.contains('dragging')){
+      // swallow the trailing click after a drag
+      const swallow = ev=>{ ev.stopPropagation(); ev.preventDefault(); window.removeEventListener('click', swallow, true); };
+      window.addEventListener('click', swallow, true);
+      setTimeout(()=>el.classList.remove('dragging'), 0);
+    }
+  });
+})();
 
 function selectPreset(idx){
   activeMat = idx;
@@ -425,6 +545,7 @@ function pickPePreset(idx){
 function loadPeForm(idx){
   const p = PRESETS[idx];
   document.getElementById('pe-name').value = p.name;
+  document.getElementById('pe-group').value = p.group || 'อื่นๆ';
   document.getElementById('pe-w').step = STEP[UNIT];
   document.getElementById('pe-h').step = STEP[UNIT];
   document.getElementById('pe-w').value = fromCm(p.w);
@@ -432,11 +553,12 @@ function loadPeForm(idx){
 }
 function savePreset(){
   if(editingIdx < 0) return;
-  const name = document.getElementById('pe-name').value.trim();
-  const wv   = parseFloat(document.getElementById('pe-w').value)||0;
-  const hv   = parseFloat(document.getElementById('pe-h').value)||0;
+  const name  = document.getElementById('pe-name').value.trim();
+  const group = document.getElementById('pe-group').value.trim() || 'อื่นๆ';
+  const wv    = parseFloat(document.getElementById('pe-w').value)||0;
+  const hv    = parseFloat(document.getElementById('pe-h').value)||0;
   if(!name || wv<=0 || hv<=0){ alert('กรุณากรอกข้อมูลให้ครบ'); return; }
-  PRESETS[editingIdx] = { name, w: toCm(wv), h: toCm(hv) };
+  PRESETS[editingIdx] = { name, w: toCm(wv), h: toCm(hv), group };
   savePresetsToStorage();
   renderPeGrid();
   renderMatProfiles();

@@ -464,10 +464,12 @@ function updateOrder(b) {
     else if(k==="PDF URL"&&b.pdfUrl)row[i]=b.pdfUrl;
   });
   sh.getRange(rowNum,1,1,sh.getLastColumn()).setValues([row]);
-  // Phone must be saved as text to preserve leading zero
-  if (b.phone !== undefined) {
-    const phoneIdx = colIdx(sh, "เบอร์โทรศัพท์");
-    if (phoneIdx >= 0) { const c=sh.getRange(rowNum,phoneIdx+1); c.setNumberFormat("@"); c.setValue(b.phone); }
+  // Always re-apply text format on phone after setValues to prevent leading zero being stripped.
+  // Use b.phone if provided, otherwise preserve the value already in the row.
+  const phoneIdx = colIdx(sh, "เบอร์โทรศัพท์");
+  if (phoneIdx >= 0) {
+    const phoneVal = String(b.phone !== undefined ? b.phone : (row[phoneIdx] || ""));
+    if (phoneVal) { const c=sh.getRange(rowNum,phoneIdx+1); c.setNumberFormat("@"); c.setValue(phoneVal); }
   }
   return {success:true,message:"แก้ไขสำเร็จ"};
 }

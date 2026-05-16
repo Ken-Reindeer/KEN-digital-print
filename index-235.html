@@ -1035,7 +1035,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.62.0";
+const APP_VERSION = "v1.62.1";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbxf-LEPzthAp0rAxpbuLA3tL-kMGPbunlf1Tg_UGEAI7d5oTt28UBzSmlfPulJp1jw2SA/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -2214,11 +2214,14 @@ function printOrder(rowId) {
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'Sarabun',sans-serif;font-size:14px;color:#111;}
 .hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
-.hdr-left{display:flex;align-items:center;gap:10px;}
+.hdr-left{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:120px;}
 .logo{width:50px;height:50px;border-radius:50%;object-fit:cover;}
 .hdr-title{font-size:26px;font-weight:700;text-align:center;flex:1;}
-.hdr-right{font-size:13px;font-weight:700;color:#333;min-width:50px;text-align:right;}
-.date{font-size:12px;color:#555;margin-bottom:12px;}
+.hdr-right{min-width:50px;text-align:right;}
+.date{font-size:12px;color:#555;}
+.orderid{font-size:12px;color:#555;margin-bottom:12px;}
+.llm-sel{font-family:'Sarabun',sans-serif;font-size:14px;padding:3px 8px;border:1.5px solid #bbb;border-radius:5px;cursor:pointer;background:white;}
+@media print{.llm-sel{border:none;padding:0;background:transparent;-webkit-appearance:none;appearance:none;font-weight:600;color:#111;}}
 hr{border:none;border-top:1.5px solid #333;margin:10px 0;}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 32px;margin:14px 0;}
 .row{display:flex;gap:0;}
@@ -2254,7 +2257,7 @@ hr{border:none;border-top:1.5px solid #333;margin:10px 0;}
 <div class="hdr">
   <div class="hdr-left">
     <div class="date">วันที่ ${o.date||""}</div>
-    <div class="date">เลขที่ ${o.rowId||""}</div>
+    <div class="orderid">เลขที่ ${o.rowId||""}</div>
   </div>
   <div class="hdr-title">ใบสั่งงาน</div>
   <div class="hdr-right">${logoSrc?`<img class="logo" src="${logoSrc}">`:"235"}</div>
@@ -2271,7 +2274,11 @@ hr{border:none;border-top:1.5px solid #333;margin:10px 0;}
 <div class="cbs">
   <label class="cb"><input type="checkbox">รับหน้าร้าน</label>
   <label class="cb"><input type="checkbox">ส่งขนส่ง</label>
-  <label class="cb"><input type="checkbox">Lalamove</label>
+  <select class="llm-sel">
+    <option value="">– Lalamove –</option>
+    <option value="จ่ายต้นทาง">Lalamove จ่ายต้นทาง</option>
+    <option value="จ่ายปลายทาง">Lalamove จ่ายปลายทาง</option>
+  </select>
 </div>
 <hr>
 <div class="sec">รายละเอียด</div>

@@ -360,7 +360,7 @@ function addCustomer(b) {
     sh.appendRow(hRow.map(col=>{switch(String(col).trim()){
       case"Row ID":return rowId;
       case"รหัสลูกค้า":return "'"+customerId;case"ชื่อลูกค้า":return b.name||"";
-      case"เบอร์โทรศัพท์":return b.phone||"";case"ชื่อผู้รับ":return b.recipient||"";
+      case"เบอร์โทรศัพท์":return b.phone?"'"+b.phone:"";case"ชื่อผู้รับ":return b.recipient||"";
       case"ที่อยู่จัดส่ง":return b.address||"";case"Notes":return b.notes||"";
       case"ลิ้งค์ SNS":return b.sns||"";default:return"";}}));
     return {success:true, message:"เพิ่มลูกค้าสำเร็จ", customerId, rowId};
@@ -373,7 +373,7 @@ function updateCustomer(b) {
   if(rowNum<0)return{success:false,message:"ไม่พบลูกค้า"};
   const h=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0];
   const map={"ชื่อลูกค้า":b.name,"เบอร์โทรศัพท์":b.phone,"ชื่อผู้รับ":b.recipient,"ที่อยู่จัดส่ง":b.address,"Notes":b.notes,"ลิ้งค์ SNS":b.sns};
-  h.forEach((c,i)=>{const k=String(c).trim();if(map[k]!==undefined)sh.getRange(rowNum,i+1).setValue(map[k]);});
+  h.forEach((c,i)=>{const k=String(c).trim();if(map[k]!==undefined){const r=sh.getRange(rowNum,i+1);if(k==="เบอร์โทรศัพท์")r.setNumberFormat("@");r.setValue(map[k]);}});
   return {success:true,message:"อัพเดทสำเร็จ"};
 }
 function deleteCustomer(b) {

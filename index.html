@@ -3330,6 +3330,8 @@ async function showStockHistory(materialId) {
 }
 
 function renderStockHistoryRows(m, txns, totalCount, cachedAt) {
+  const _histSearchFocused = document.activeElement &&
+    document.activeElement.closest && document.activeElement.closest("#m-stk-hist-body");
   // ── Running balance from full (unfiltered) list ──
   const sortedAsc = [...txns].sort((a,b) => (a.timestamp < b.timestamp ? -1 : 1));
   const totalDelta = sortedAsc.reduce((s,t) => s + t.delta, 0);
@@ -3420,6 +3422,10 @@ function renderStockHistoryRows(m, txns, totalCount, cachedAt) {
     </div>
   `;
   document.getElementById("m-stk-hist-body").innerHTML = summary;
+  if (_histSearchFocused) {
+    const inp = document.querySelector("#m-stk-hist-body .txn-srch input");
+    if (inp) { inp.focus(); const l = inp.value.length; inp.setSelectionRange(l, l); }
+  }
 }
 
 function openEditFromStockHistory() {
@@ -3454,6 +3460,8 @@ async function showAllTransactions() {
 }
 
 function renderAllTxnRows() {
+  const _allSearchFocused = document.activeElement &&
+    document.activeElement.closest && document.activeElement.closest("#m-all-txns-body");
   // Apply filter
   let filtered = _allTxns;
   if (allTxnFilterType === "deposit")  filtered = filtered.filter(t => t.delta > 0);
@@ -3531,6 +3539,10 @@ function renderAllTxnRows() {
       ${rowsHtml}
     </div>`;
   document.getElementById("m-all-txns-body").innerHTML = html;
+  if (_allSearchFocused) {
+    const inp = document.querySelector("#m-all-txns-body .txn-srch input");
+    if (inp) { inp.focus(); const l = inp.value.length; inp.setSelectionRange(l, l); }
+  }
 }
 
 // ══════════════════════════════════════════════

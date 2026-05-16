@@ -773,7 +773,7 @@ textarea.fc{resize:vertical;min-height:76px;}
       <div class="fg full"><label class="lbl">รายละเอียด *</label>
         <textarea class="fc" id="o-detail" rows="4" placeholder="ชื่อสินค้า, ขนาด, จำนวน, รายละเอียด..."></textarea></div>
       <div class="fg"><label class="lbl">ราคารวม (฿)</label>
-        <input class="fc" id="o-price" type="number" inputmode="decimal" placeholder="0.00"></div>
+        <input class="fc" id="o-price" type="text" inputmode="decimal" placeholder="0" oninput="fmtPriceInput(this)"></div>
       <div class="fg"><label class="lbl">สถานะ</label>
         <select class="fc" id="o-status">
           <option value="กำลังผลิต">⏳ กำลังผลิต</option>
@@ -2052,7 +2052,7 @@ function editOrder(rowId) {
   document.getElementById("o-phone").value=o.phone||"";
   document.getElementById("o-addr").value=o.address||"";
   document.getElementById("o-detail").value=o.detail||"";
-  document.getElementById("o-price").value=o.price||"";
+  setPriceInput("o-price", o.price);
   document.getElementById("o-track").value=o.tracking||"";
   document.getElementById("o-link").value=o.link||"";
   document.getElementById("o-status").value=o.status||"กำลังผลิต";
@@ -2079,7 +2079,7 @@ async function submitEditOrder(rowId, c={}) {
 
   const res=await api({action:"updateOrder",rowId,
     datetime:document.getElementById("o-datetime").value,
-    detail,price:document.getElementById("o-price").value,
+    detail,price:priceInputVal("o-price"),
     recipient:document.getElementById("o-recip").value,
     address:document.getElementById("o-addr").value,
     phone:document.getElementById("o-phone").value,
@@ -2115,7 +2115,7 @@ function copyOrder(rowId) {
   document.getElementById("o-phone").value=o.phone||"";
   document.getElementById("o-addr").value=o.address||"";
   document.getElementById("o-detail").value=o.detail||"";
-  document.getElementById("o-price").value=o.price||"";
+  setPriceInput("o-price", o.price);
   document.getElementById("o-track").value="";
   document.getElementById("o-link").value=o.link||"";
   document.getElementById("o-status").value="กำลังผลิต";
@@ -2431,7 +2431,7 @@ async function submitOrder(){
   // บันทึก order ก่อนเพื่อได้ rowId สำหรับตั้งชื่อไฟล์รูป
   const or=await api({action:"addOrder",customerId:cid,detail,
     datetime:document.getElementById("o-datetime").value,
-    price:document.getElementById("o-price").value,
+    price:priceInputVal("o-price"),
     recipient:document.getElementById("o-recip").value,address:document.getElementById("o-addr").value,
     phone:document.getElementById("o-phone").value,tracking:document.getElementById("o-track").value,
     link:document.getElementById("o-link").value,status:document.getElementById("o-status").value,
@@ -2921,6 +2921,32 @@ function stockUserAvatarPill(username) {
 function escapeHtml(s) {
   return String(s||"").replace(/[&<>"']/g, c =>
     ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+}
+// Format price input with thousand commas while typing (preserves cursor position)
+function fmtPriceInput(el) {
+  const oldVal = el.value;
+  const cursor = el.selectionStart;
+  // Strip everything except digits and one decimal point
+  let raw = oldVal.replace(/[^0-9.]/g, "");
+  const dotIdx = raw.indexOf(".");
+  if (dotIdx >= 0) raw = raw.slice(0, dotIdx + 1) + raw.slice(dotIdx + 1).replace(/\./g, "");
+  const trailingDot = raw.endsWith(".");
+  const [intPart, decPart] = raw.split(".");
+  const intFmt = intPart ? parseInt(intPart, 10).toLocaleString("en-US") : "";
+  const newVal = intFmt + (trailingDot ? "." : (decPart !== undefined ? "." + decPart : ""));
+  el.value = newVal;
+  // Shift cursor by number of added/removed comma characters
+  const shift = newVal.length - oldVal.length;
+  el.setSelectionRange(cursor + shift, cursor + shift);
+}
+// Strip commas and return raw numeric string for sending to API
+function priceInputVal(id) {
+  return (document.getElementById(id)?.value || "").replace(/,/g, "");
+}
+// Set a price input value formatted with commas
+function setPriceInput(id, v) {
+  const n = parseFloat(String(v || "").replace(/,/g, ""));
+  document.getElementById(id).value = isNaN(n) || !v ? "" : n.toLocaleString("en-US");
 }
 
 function formatRelativeTime(iso) {

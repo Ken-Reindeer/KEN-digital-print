@@ -690,7 +690,7 @@ function changePassword(b,user) {
 // ============================================================
 // ROLES & PERMISSIONS
 // ============================================================
-const ALL_PERMISSIONS = ["orders","progress","customers","insight","dycut","users"];
+const ALL_PERMISSIONS = ["orders","progress","customers","stock","insight","dycut","users"];
 
 function getRolesSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();

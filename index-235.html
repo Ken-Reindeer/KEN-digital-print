@@ -447,6 +447,19 @@ textarea.fc{resize:vertical;min-height:76px;}
 .txn-order-link{color:var(--navy2);font-size:10px;text-decoration:none;
   background:#dbeafe;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;}
 .txn-order-link:hover{text-decoration:underline;}
+/* ── TXN FILTER BAR ── */
+.txn-filter-bar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+.txn-srch{display:flex;align-items:center;background:white;border:1px solid var(--border);
+  border-radius:8px;padding:7px 11px;gap:6px;flex:1;min-width:180px;max-width:340px;}
+.txn-srch input{background:none;border:none;outline:none;font-family:var(--sans);
+  font-size:13px;width:100%;color:var(--text);}
+.txn-srch input::placeholder{color:var(--text3);}
+.txn-chip{display:inline-flex;align-items:center;padding:5px 13px;border-radius:20px;
+  font-size:12px;font-weight:500;cursor:pointer;border:1.5px solid var(--border);
+  background:white;color:var(--text2);transition:all .12s;white-space:nowrap;}
+.txn-chip:hover{border-color:var(--navy3);color:var(--navy2);}
+.txn-chip.active{background:var(--navy2);color:white;border-color:var(--navy2);}
+.txn-cache-hint{font-size:11px;color:var(--text3);margin-left:auto;white-space:nowrap;}
 .user-pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--text2);}
 .user-pill img{width:18px;height:18px;border-radius:50%;object-fit:cover;flex-shrink:0;display:block;}
 .stock-table th.sortable{cursor:pointer;user-select:none;}
@@ -665,6 +678,7 @@ textarea.fc{resize:vertical;min-height:76px;}
           <div class="toolbar">
             <button class="btn btn-primary" onclick="openAddMaterial()" id="btn-add-material">+ เพิ่ม Material</button>
             <button class="btn" onclick="exportStockCsv()" id="btn-export-stock" title="ดาวน์โหลด CSV ตามรายการที่แสดง">⬇ Export CSV</button>
+            <button class="btn" onclick="showAllTransactions()" id="btn-all-txns" title="ดูประวัติ transaction ทุก material">📋 ประวัติทั้งหมด</button>
             <button class="btn" onclick="printStockList()" id="btn-print-stock" title="พิมพ์รายการวัสดุ (เรียงตามชื่อ A-Z)">🖨️ Print</button>
             <div class="srch"><span>🔍</span>
               <input type="text" id="stock-search" placeholder="ค้นหาชื่อ material..." oninput="renderStockTable()">
@@ -980,6 +994,16 @@ textarea.fc{resize:vertical;min-height:76px;}
   <div class="modal-body" id="m-stk-hist-body"></div>
 </div></div>
 
+<!-- ══ MODAL: ALL STOCK TRANSACTIONS ══ -->
+<div class="overlay overlay-center" id="m-all-txns">
+<div class="modal" style="max-width:960px">
+  <div class="modal-hd">
+    <span class="modal-title">📋 ประวัติ Transaction ทั้งหมด</span>
+    <button class="modal-x" onclick="closeM('m-all-txns')">✕</button>
+  </div>
+  <div class="modal-body" id="m-all-txns-body"></div>
+</div></div>
+
 <!-- ══ HIDDEN FILE INPUT FOR AVATAR ══ -->
 <input type="file" id="avatar-file-input" accept="image/*" style="display:none">
 
@@ -1011,7 +1035,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.61.1";
+const APP_VERSION = "v1.62.0";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbxf-LEPzthAp0rAxpbuLA3tL-kMGPbunlf1Tg_UGEAI7d5oTt28UBzSmlfPulJp1jw2SA/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -2646,6 +2670,10 @@ async function saveCust(){
 // ══════════════════════════════════════════════
 let allStock = [];
 let currentStockHistoryMaterialId = null;
+let allTxnFilterText = "", allTxnFilterType = "all";
+let histFilterText = "",   histFilterType = "all";
+let _histM = null, _histTxns = [], _histTotalCount = 0, _histCachedAt = null;
+let _allTxns = [], _allTxnTotalCount = 0, _allTxnCachedAt = null;
 let pendingStockImageFile = null;
 let pendingStockImageDataUrl = "";
 let stockSort = (function(){
@@ -2793,6 +2821,46 @@ function loadStockCache(){
 function saveStockCache(data){
   try { localStorage.setItem("ken_stock_cache", JSON.stringify(data || [])); }
   catch(e) {}
+}
+
+// ── Transaction Cache Helpers ──
+const TXN_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+function txnCacheGet(key) {
+  try {
+    const storageKey = key === "__all__" ? "ken_all_txn_cache" : "ken_txn_cache";
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const entry = key === "__all__" ? parsed : parsed[key];
+    if (!entry || !entry.cachedAt) return null;
+    if (Date.now() - entry.cachedAt > TXN_CACHE_TTL) return null;
+    return entry;
+  } catch(e) { return null; }
+}
+function txnCacheSet(key, data, totalCount) {
+  try {
+    const entry = {data, totalCount, cachedAt: Date.now()};
+    if (key === "__all__") {
+      localStorage.setItem("ken_all_txn_cache", JSON.stringify(entry));
+    } else {
+      const map = JSON.parse(localStorage.getItem("ken_txn_cache") || "{}");
+      map[key] = entry;
+      localStorage.setItem("ken_txn_cache", JSON.stringify(map));
+    }
+  } catch(e) {}
+}
+function txnCacheInvalidate(key) {
+  try {
+    if (key === "__all__") { localStorage.removeItem("ken_all_txn_cache"); return; }
+    const map = JSON.parse(localStorage.getItem("ken_txn_cache") || "{}");
+    delete map[key];
+    localStorage.setItem("ken_txn_cache", JSON.stringify(map));
+  } catch(e) {}
+}
+function txnCacheAgeLabel(cachedAt) {
+  const diff = Math.floor((Date.now() - cachedAt) / 60000);
+  return diff < 1 ? "เมื่อสักครู่" : `${diff} นาทีที่แล้ว`;
 }
 
 async function loadStock(forceSync) {
@@ -3202,6 +3270,10 @@ async function saveStockTxn() {
   const res = await api({action, material_id:materialId, qty, reason, order_ref: mode === "withdraw" ? orderRef : ""});
   if (!res || !res.success) return toast(res?.message || "บันทึกล้มเหลว", "err");
 
+  // Invalidate transaction caches for this material and all-txns
+  txnCacheInvalidate(materialId);
+  txnCacheInvalidate("__all__");
+
   closeM("m-stock-txn");
   toast(mode === "deposit" ? `เติมสำเร็จ +${qty} ${m.unit} ✓` : `เบิกสำเร็จ -${qty} ${m.unit} ✓`, "ok");
   await loadStock();
@@ -3214,30 +3286,73 @@ async function showStockHistory(materialId) {
   const m = allStock.find(x => x.material_id === materialId);
   if (!m) return;
   currentStockHistoryMaterialId = materialId;
+  histFilterText = ""; histFilterType = "all";
   document.getElementById("m-stk-hist-title").textContent = `📋 ประวัติ: ${m.name}`;
   document.getElementById("m-stk-hist-body").innerHTML = '<div class="loading-r" style="padding:30px"><span class="spin"></span>กำลังโหลด...</div>';
   openM("m-stock-history");
 
-  const res = await api({action:"getStockTransactions", materialId, limit:20});
+  const cached = txnCacheGet(materialId);
+  if (cached) {
+    _histM=m; _histTxns=cached.data; _histTotalCount=cached.totalCount; _histCachedAt=cached.cachedAt;
+    renderStockHistoryRows(m, cached.data, cached.totalCount, cached.cachedAt);
+    return;
+  }
+  const res = await api({action:"getStockTransactions", materialId, limit:0});
   if (!res || !res.success) {
     document.getElementById("m-stk-hist-body").innerHTML = '<div class="tbl-empty">โหลดประวัติไม่ได้</div>';
     return;
   }
-  renderStockHistoryRows(m, res.data || [], res.totalCount || 0);
+  const data = res.data || [];
+  txnCacheSet(materialId, data, res.totalCount || data.length);
+  _histM=m; _histTxns=data; _histTotalCount=res.totalCount||data.length; _histCachedAt=Date.now();
+  renderStockHistoryRows(m, data, res.totalCount || data.length, Date.now());
 }
 
-function renderStockHistoryRows(m, txns, totalCount) {
+function renderStockHistoryRows(m, txns, totalCount, cachedAt) {
+  // ── Running balance from full (unfiltered) list ──
   const sortedAsc = [...txns].sort((a,b) => (a.timestamp < b.timestamp ? -1 : 1));
-  const balanceByTxn = {};
   const totalDelta = sortedAsc.reduce((s,t) => s + t.delta, 0);
   let running = m.current_stock - totalDelta;
+  const balanceByTxn = {};
   sortedAsc.forEach(t => { running += t.delta; balanceByTxn[t.txn_id] = running; });
 
+  // ── Apply filter to display rows only ──
+  let filtered = txns;
+  if (histFilterType === "deposit")  filtered = filtered.filter(t => t.delta > 0);
+  if (histFilterType === "withdraw") filtered = filtered.filter(t => t.delta < 0);
+  if (histFilterText) {
+    const q = histFilterText.toLowerCase();
+    filtered = filtered.filter(t =>
+      (t.reason||"").toLowerCase().includes(q) ||
+      (t.order_ref||"").toLowerCase().includes(q) ||
+      (t.by_user||"").toLowerCase().includes(q)
+    );
+  }
+
+  const cacheHint = cachedAt
+    ? `<span class="txn-cache-hint">💾 ${txnCacheAgeLabel(cachedAt)}</span>` : "";
+
+  const filterBar = `
+    <div class="txn-filter-bar">
+      <div class="txn-srch"><span>🔍</span>
+        <input type="text" placeholder="ค้นหาเหตุผล, ออเดอร์, ผู้ใช้..."
+          value="${escapeHtml(histFilterText)}"
+          oninput="histFilterText=this.value;renderStockHistoryRows(_histM,_histTxns,_histTotalCount,_histCachedAt)">
+      </div>
+      <span class="txn-chip ${histFilterType==='all'?'active':''}"
+        onclick="histFilterType='all';renderStockHistoryRows(_histM,_histTxns,_histTotalCount,_histCachedAt)">ทั้งหมด</span>
+      <span class="txn-chip ${histFilterType==='deposit'?'active':''}"
+        onclick="histFilterType='deposit';renderStockHistoryRows(_histM,_histTxns,_histTotalCount,_histCachedAt)">➕ เติม</span>
+      <span class="txn-chip ${histFilterType==='withdraw'?'active':''}"
+        onclick="histFilterType='withdraw';renderStockHistoryRows(_histM,_histTxns,_histTotalCount,_histCachedAt)">➖ เบิก</span>
+      ${cacheHint}
+    </div>`;
+
   let rowsHtml = "";
-  if (txns.length === 0) {
-    rowsHtml = '<div style="text-align:center;padding:30px;color:var(--text3);font-size:13px">ยังไม่มีประวัติ</div>';
+  if (filtered.length === 0) {
+    rowsHtml = `<div style="text-align:center;padding:30px;color:var(--text3);font-size:13px">${txns.length===0?"ยังไม่มีประวัติ":"ไม่พบรายการที่ตรงเงื่อนไข"}</div>`;
   } else {
-    rowsHtml = txns.map(t => {
+    rowsHtml = filtered.map(t => {
       const sign = t.delta > 0 ? "+" : t.delta < 0 ? "" : "±";
       const cls = t.delta > 0 ? "txn-delta-pos" : t.delta < 0 ? "txn-delta-neg" : "";
       const typeIcon = t.delta > 0 ? "➕ เติม" : t.delta < 0 ? "➖ เบิก" : "✏️ ปรับ";
@@ -3257,6 +3372,10 @@ function renderStockHistoryRows(m, txns, totalCount) {
     }).join("");
   }
 
+  const countLabel = filtered.length !== txns.length
+    ? `${filtered.length} รายการ <span style="font-size:11px;color:var(--text3);font-weight:400">(กรองจาก ${txns.length})</span>`
+    : `${txns.length} รายการ`;
+
   const summary = `
     <div style="display:flex;gap:14px;align-items:center;padding:10px 14px;background:var(--bg);border-radius:8px;margin-bottom:14px;font-size:13px;flex-wrap:wrap">
       <div><b>คงเหลือ:</b> <span style="font-size:16px;font-weight:700;color:var(--navy2)">${m.current_stock.toLocaleString()}</span> ${escapeHtml(m.unit)}</div>
@@ -3265,7 +3384,8 @@ function renderStockHistoryRows(m, txns, totalCount) {
       ${m.price_per_unit ? `<div style="color:var(--text2)">·</div><div><b>ราคา:</b> ฿${parseFloat(m.price_per_unit).toLocaleString()}/${escapeHtml(m.unit)}</div>` : ""}
     </div>
     ${m.notes ? `<div style="font-size:12px;color:var(--text2);margin-bottom:12px">📝 ${escapeHtml(m.notes)}</div>` : ""}
-    <div style="font-size:14px;font-weight:600;margin-bottom:8px">${txns.length} รายการ <span style="font-size:11px;color:var(--text3);font-weight:500">(จากทั้งหมด ${totalCount} รายการ)</span></div>
+    ${filterBar}
+    <div style="font-size:14px;font-weight:600;margin-bottom:8px">${countLabel} <span style="font-size:11px;color:var(--text3);font-weight:500">(ทั้งหมด ${totalCount} รายการ)</span></div>
     <div class="dt">
       <div class="dt-head" style="background:white;font-size:11px">
         <div class="dt-cell" style="width:120px;padding:8px 10px">วันที่/เวลา</div>
@@ -3285,6 +3405,110 @@ function openEditFromStockHistory() {
   if (!currentStockHistoryMaterialId) return;
   closeM("m-stock-history");
   openEditMaterial(currentStockHistoryMaterialId);
+}
+
+// ── All Transactions modal ──
+async function showAllTransactions() {
+  allTxnFilterText = ""; allTxnFilterType = "all";
+  document.getElementById("m-all-txns-body").innerHTML =
+    '<div class="loading-r" style="padding:30px"><span class="spin"></span>กำลังโหลด...</div>';
+  openM("m-all-txns");
+
+  const cached = txnCacheGet("__all__");
+  if (cached) {
+    _allTxns=cached.data; _allTxnTotalCount=cached.totalCount; _allTxnCachedAt=cached.cachedAt;
+    renderAllTxnRows();
+    return;
+  }
+  const res = await api({action:"getAllStockTransactions"});
+  if (!res || !res.success) {
+    document.getElementById("m-all-txns-body").innerHTML = '<div class="tbl-empty">โหลดประวัติไม่ได้</div>';
+    return;
+  }
+  _allTxns = res.data || [];
+  _allTxnTotalCount = res.totalCount || _allTxns.length;
+  _allTxnCachedAt = Date.now();
+  txnCacheSet("__all__", _allTxns, _allTxnTotalCount);
+  renderAllTxnRows();
+}
+
+function renderAllTxnRows() {
+  let filtered = _allTxns;
+  if (allTxnFilterType === "deposit")  filtered = filtered.filter(t => t.delta > 0);
+  if (allTxnFilterType === "withdraw") filtered = filtered.filter(t => t.delta < 0);
+  if (allTxnFilterText) {
+    const q = allTxnFilterText.toLowerCase();
+    filtered = filtered.filter(t =>
+      (t.material_name||"").toLowerCase().includes(q) ||
+      (t.reason||"").toLowerCase().includes(q) ||
+      (t.order_ref||"").toLowerCase().includes(q) ||
+      (t.by_user||"").toLowerCase().includes(q)
+    );
+  }
+
+  const cacheHint = _allTxnCachedAt
+    ? `<span class="txn-cache-hint">💾 ${txnCacheAgeLabel(_allTxnCachedAt)}</span>` : "";
+
+  const filterBar = `
+    <div class="txn-filter-bar">
+      <div class="txn-srch"><span>🔍</span>
+        <input type="text" placeholder="ค้นหา material, เหตุผล, ออเดอร์, ผู้ใช้..."
+          value="${escapeHtml(allTxnFilterText)}"
+          oninput="allTxnFilterText=this.value;renderAllTxnRows()">
+      </div>
+      <span class="txn-chip ${allTxnFilterType==='all'?'active':''}"
+        onclick="allTxnFilterType='all';renderAllTxnRows()">ทั้งหมด</span>
+      <span class="txn-chip ${allTxnFilterType==='deposit'?'active':''}"
+        onclick="allTxnFilterType='deposit';renderAllTxnRows()">➕ เติม</span>
+      <span class="txn-chip ${allTxnFilterType==='withdraw'?'active':''}"
+        onclick="allTxnFilterType='withdraw';renderAllTxnRows()">➖ เบิก</span>
+      ${cacheHint}
+    </div>`;
+
+  let rowsHtml = "";
+  if (filtered.length === 0) {
+    rowsHtml = `<div style="text-align:center;padding:30px;color:var(--text3);font-size:13px">${_allTxns.length===0?"ยังไม่มีประวัติ":"ไม่พบรายการที่ตรงเงื่อนไข"}</div>`;
+  } else {
+    rowsHtml = filtered.map(t => {
+      const sign = t.delta > 0 ? "+" : t.delta < 0 ? "" : "±";
+      const cls = t.delta > 0 ? "txn-delta-pos" : t.delta < 0 ? "txn-delta-neg" : "";
+      const typeIcon = t.delta > 0 ? "➕ เติม" : t.delta < 0 ? "➖ เบิก" : "✏️ ปรับ";
+      const orderLink = t.order_ref
+        ? `<a class="txn-order-link" onclick="toast('👉 ${escapeHtml(t.order_ref)}','ok')">ดู ${escapeHtml(t.order_ref)}</a>`
+        : "";
+      return `
+      <div class="dt-row" style="border-bottom:1px solid #f1f5f9">
+        <div class="dt-cell" style="width:120px;color:var(--text2);font-size:12px;padding:8px 10px">${formatThaiDate(t.timestamp)}</div>
+        <div class="dt-cell" style="width:150px;padding:8px 10px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(t.material_name||t.material_id)}">${escapeHtml(t.material_name||t.material_id)}</div>
+        <div class="dt-cell" style="width:90px;padding:8px 10px">${typeIcon}</div>
+        <div class="dt-cell ${cls}" style="width:70px;padding:8px 10px;justify-content:flex-end">${sign}${t.delta}</div>
+        <div class="dt-cell" style="flex:1;min-width:140px;padding:8px 10px">${escapeHtml(t.reason||"")}${orderLink}</div>
+        <div class="dt-cell" style="width:140px;padding:8px 10px;gap:5px">${stockUserAvatarPill(t.by_user)}</div>
+      </div>`;
+    }).join("");
+  }
+
+  const countLabel = filtered.length !== _allTxns.length
+    ? `${filtered.length} รายการ <span style="font-size:11px;color:var(--text3);font-weight:400">(กรองจาก ${_allTxns.length})</span>`
+    : `${_allTxns.length} รายการ`;
+
+  const html = `
+    ${filterBar}
+    <div style="font-size:14px;font-weight:600;margin-bottom:8px">${countLabel}
+      <span style="font-size:11px;color:var(--text3);font-weight:500">(ทั้งหมด ${_allTxnTotalCount} รายการ)</span>
+    </div>
+    <div class="dt">
+      <div class="dt-head" style="background:white;font-size:11px">
+        <div class="dt-cell" style="width:120px;padding:8px 10px">วันที่/เวลา</div>
+        <div class="dt-cell" style="width:150px;padding:8px 10px">Material</div>
+        <div class="dt-cell" style="width:90px;padding:8px 10px">ประเภท</div>
+        <div class="dt-cell" style="width:70px;padding:8px 10px;justify-content:flex-end">จำนวน</div>
+        <div class="dt-cell" style="flex:1;min-width:140px;padding:8px 10px">เหตุผล</div>
+        <div class="dt-cell" style="width:140px;padding:8px 10px">โดย</div>
+      </div>
+      ${rowsHtml}
+    </div>`;
+  document.getElementById("m-all-txns-body").innerHTML = html;
 }
 
 // ══════════════════════════════════════════════

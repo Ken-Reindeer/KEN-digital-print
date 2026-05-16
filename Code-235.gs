@@ -215,7 +215,8 @@ function handleAction(action, p, body, user) {
     case "getUserAvatarFolder": return guard(isOwner || user.username===body.username, ()=>getUserAvatarFolder(body));
     case "saveUserAvatarUrl":   return guard(isOwner || user.username===body.username, ()=>saveUserAvatarUrl(body));
     case "getStock":             return guard(isStaff, ()=>getStock());
-    case "getStockTransactions": return guard(isStaff, ()=>getStockTransactions(body));
+    case "getStockTransactions":    return guard(isStaff, ()=>getStockTransactions(body));
+    case "getAllStockTransactions": return guard(isStaff, ()=>getAllStockTransactions(body));
     case "addStock":             return guard(isOwner, ()=>addStock(body));
     case "updateStock":          return guard(isOwner, ()=>updateStock(body));
     case "deleteStock":          return guard(isOwner, ()=>deleteStock(body));
@@ -850,7 +851,8 @@ function getStock() {
 
 function getStockTransactions(b) {
   const materialId = String(b.materialId || "").trim();
-  const limit = parseInt(b.limit) || 20;
+  const limitRaw = b.limit !== undefined ? parseInt(b.limit) : 20;
+  const limit = (!isNaN(limitRaw) && limitRaw === 0) ? Infinity : (limitRaw || 20);
   if (!materialId) return {success:false, message:"ไม่ระบุ material"};
   const sh = getStockTxnSheet();
   const all = sheetToObjects(sh)
@@ -866,7 +868,28 @@ function getStockTransactions(b) {
     }));
   // Sort newest first
   all.sort((a,b) => (a.timestamp < b.timestamp ? 1 : -1));
-  return {success:true, data: all.slice(0, limit), totalCount: all.length};
+  return {success:true, data: limit === Infinity ? all : all.slice(0, limit), totalCount: all.length};
+}
+
+function getAllStockTransactions(b) {
+  const sh = getStockTxnSheet();
+  const nameMap = {};
+  sheetToObjects(getStockSheet()).forEach(r => {
+    const id = fmt(r["material_id"]);
+    if (id) nameMap[id] = fmt(r["name"]);
+  });
+  const all = sheetToObjects(sh).map(r => ({
+    txn_id:        fmt(r["txn_id"]),
+    timestamp:     fmt(r["timestamp"]),
+    material_id:   fmt(r["material_id"]),
+    material_name: nameMap[fmt(r["material_id"])] || fmt(r["material_id"]),
+    delta:         parseFloat(r["delta"]) || 0,
+    reason:        fmt(r["reason"]),
+    order_ref:     fmt(r["order_ref"]),
+    by_user:       fmt(r["by_user"])
+  }));
+  all.sort((a,b) => (a.timestamp < b.timestamp ? 1 : -1));
+  return {success:true, data:all, totalCount:all.length};
 }
 
 function genMaterialId(sh) {

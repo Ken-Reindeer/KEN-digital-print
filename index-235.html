@@ -1035,7 +1035,7 @@ textarea.fc{resize:vertical;min-height:76px;}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const APP_VERSION = "v1.62.2";
+const APP_VERSION = "v1.62.3";
 let SCRIPT_URL = localStorage.getItem("ken_gas_url")||"https://script.google.com/macros/s/AKfycbxf-LEPzthAp0rAxpbuLA3tL-kMGPbunlf1Tg_UGEAI7d5oTt28UBzSmlfPulJp1jw2SA/exec";
 let SESSION    = JSON.parse(localStorage.getItem("ken_session")||"null");
 let customers  = [], allOrders = [];
@@ -2722,7 +2722,7 @@ function fillShopeeReason(){
 function exportStockCsv(){
   if (!allStock.length) { toast("ไม่มีข้อมูลให้ส่งออก", "err"); return; }
   const q = (document.getElementById("stock-search")?.value || "").toLowerCase().trim();
-  let rows = allStock.slice();
+  let rows = allStock.slice().filter(m => !m.archived);
   if (q) rows = rows.filter(m => (m.name||"").toLowerCase().includes(q));
   rows.sort((a, b) => {
     const ap = a.pinned ? 1 : 0, bp = b.pinned ? 1 : 0;
@@ -2771,7 +2771,7 @@ function exportStockCsv(){
 
 function printStockList(){
   if (!allStock.length) { toast("ไม่มีข้อมูลให้พิมพ์", "err"); return; }
-  const rows = allStock.slice().sort((a, b) => (a.name||"").localeCompare(b.name||"", "th"));
+  const rows = allStock.slice().filter(m => !m.archived).sort((a, b) => (a.name||"").localeCompare(b.name||"", "th"));
   const esc = s => String(s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
   const today = new Date();
   const pad = n => String(n).padStart(2,"0");
@@ -2971,7 +2971,7 @@ function renderStockTable() {
   const q = (document.getElementById("stock-search")?.value || "").toLowerCase().trim();
   const wrap = document.getElementById("stock-table-wrap");
   if (!wrap) return;
-  let rows = allStock.slice();
+  let rows = allStock.slice().filter(m => !m.archived);
   if (q) rows = rows.filter(m => m.name.toLowerCase().includes(q));
   rows.sort((a, b) => {
     const ap = a.pinned ? 1 : 0, bp = b.pinned ? 1 : 0;
@@ -3231,7 +3231,7 @@ async function deleteMaterial() {
   if (!id) return;
   const m = allStock.find(x => x.material_id === id);
   if (!m) return;
-  if (!confirm(`ลบ "${m.name}" ?`)) return;
+  if (!confirm(`เก็บ "${m.name}" เข้าคลัง?\n\n(จะไม่แสดงในรายการ แต่ประวัติยังอยู่ — ถ้าต้องการเอากลับมาต้องแก้ใน database โดยตรง)`)) return;
   const res = await api({action:"deleteStock", material_id:id});
   if (!res || !res.success) return toast(res?.message || "ลบไม่ได้", "err");
   if (currentStockHistoryMaterialId === id) {
@@ -3239,7 +3239,7 @@ async function deleteMaterial() {
     closeM("m-stock-history");
   }
   closeM("m-stock-edit");
-  toast("ลบสำเร็จ ✓", "ok");
+  toast("เก็บเข้าคลังแล้ว ✓", "ok");
   await loadStock();
 }
 

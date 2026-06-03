@@ -815,8 +815,8 @@ function getStockSheet() {
   if (!sh) {
     sh = ss.insertSheet(SHEET_STOCK);
     sh.appendRow(["material_id","name","unit","current_stock","low_threshold",
-                  "price_per_unit","notes","image_url","pinned","updated_at","updated_by"]);
-    styleHeader(sh, 11);
+                  "price_per_unit","notes","image_url","pinned","updated_at","updated_by","archived"]);
+    styleHeader(sh, 12);
   }
   return sh;
 }
@@ -851,7 +851,8 @@ function getStock() {
     image_url: fmt(r["image_url"]),
     pinned: String(r["pinned"]).toLowerCase() === "true",
     updated_at: fmt(r["updated_at"]),
-    updated_by: fmt(r["updated_by"])
+    updated_by: fmt(r["updated_by"]),
+    archived: String(r["archived"]).toLowerCase() === "true"
   }));
   return {success:true, data};
 }
@@ -975,21 +976,11 @@ function deleteStock(b) {
   const sh = getStockSheet();
   const rowNum = findRow(sh, "material_id", material_id);
   if (rowNum < 1) return {success:false, message:"ไม่พบ material"};
-  // Block delete if txns exist
-  const txsh = getStockTxnSheet();
-  const txData = txsh.getDataRange().getValues();
-  const iCid = txData[0].map(x=>String(x).trim()).indexOf("material_id");
-  let count = 0;
-  if (iCid >= 0) {
-    for (let i=1; i<txData.length; i++) {
-      if (String(txData[i][iCid]).trim() === material_id) count++;
-    }
-  }
-  if (count > 0) {
-    return {success:false, message:`ลบไม่ได้: มี ${count} ประวัติ transaction ติดอยู่`};
-  }
-  sh.deleteRow(rowNum);
-  return {success:true, message:"ลบสำเร็จ"};
+  // Soft-delete: flip archived flag instead of removing the row,
+  // so that Stock Transactions history can still resolve material_name by id.
+  ensureCol(sh, "archived");
+  sh.getRange(rowNum, colIdx(sh, "archived")+1).setValue(true);
+  return {success:true, message:"เก็บเข้าคลังแล้ว"};
 }
 
 function togglePinStock(b) {

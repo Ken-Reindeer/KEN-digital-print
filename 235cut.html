@@ -457,8 +457,9 @@ function renderMatProfiles(){
     (groups[g] = groups[g] || []).push({p, idx:i});
   });
   const gnames = Object.keys(groups).sort((a,b)=>{
-    if (a === '' && b !== '') return 1;
-    if (b === '' && a !== '') return -1;
+    // Flat (empty) bucket goes first; grouped dropdowns follow.
+    if (a === '' && b !== '') return -1;
+    if (b === '' && a !== '') return 1;
     const ai = GROUP_ORDER.indexOf(a), bi = GROUP_ORDER.indexOf(b);
     return (ai<0?99:ai) - (bi<0?99:bi);
   });

@@ -81,6 +81,8 @@ body{background:var(--bg);color:var(--tx);font-size:14px;display:flex;flex-direc
 .pe-btn .pen{font-size:11px;font-weight:700;color:var(--navy);line-height:1.3;}
 .pe-btn.active .pen{color:var(--blue2);}
 .pe-btn .pes{font-size:9px;color:var(--tx3);margin-top:1px;}
+.pe-btn.pe-add{border-style:dashed;border-color:var(--border2);background:transparent;color:var(--tx3);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;min-height:42px;}
+.pe-btn.pe-add:hover{border-color:var(--blue2);color:var(--blue2);background:var(--blue-bg);}
 .pe-form{background:var(--s2);border-radius:10px;padding:14px 16px;border:1px solid var(--border);}
 .pe-form label{font-size:11px;color:var(--tx2);display:block;margin-bottom:3px;font-weight:500;}
 .pe-form input[type=text],.pe-form input[type=number]{
@@ -157,6 +159,20 @@ body{background:var(--bg);color:var(--tx);font-size:14px;display:flex;flex-direc
 .placed{position:absolute;inset:0;pointer-events:none;}
 .pi{position:absolute;border:1.5px solid var(--blue2);background:rgba(37,99,235,.05);box-sizing:border-box;}
 .pi.rot{background:rgba(37,99,235,.10);border-style:dashed;}
+.pi.circle{border-radius:50%;}
+
+/* shape toggle */
+.shape-toggle{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:8px;}
+.shape-btn{padding:6px 4px;border-radius:7px;border:1.5px solid var(--border);background:var(--s2);
+  font-family:var(--sans);font-size:11px;font-weight:600;color:var(--tx2);cursor:pointer;
+  transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px;}
+.shape-btn:hover{border-color:var(--border2);}
+.shape-btn.active{border-color:var(--blue2);background:var(--blue-bg);color:var(--blue2);}
+.shape-btn .sicon{font-size:13px;line-height:1;}
+
+/* center the single diameter field when shape=circle */
+.dc-row.circle-mode{display:flex;justify-content:center;}
+.dc-row.circle-mode > div:first-child{width:55%;}
 .count-ov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;}
 .count-big{font-size:clamp(32px,10vw,96px);font-weight:700;color:rgba(26,63,170,.12);font-family:var(--sans);user-select:none;}
 
@@ -265,12 +281,11 @@ body{background:var(--bg);color:var(--tx);font-size:14px;display:flex;flex-direc
         <label>ชื่อ Preset</label>
         <input type="text" id="pe-name" placeholder="เช่น STK 13x19''">
         <label style="margin-top:8px">กลุ่ม</label>
-        <input type="text" id="pe-group" list="pe-group-list" placeholder="เช่น กระดาษ">
+        <input type="text" id="pe-group" list="pe-group-list" placeholder="ว่างไว้ = ไม่จัดกลุ่ม">
         <datalist id="pe-group-list">
           <option value="กระดาษ"></option>
           <option value="ม้วน"></option>
           <option value="UV Canon"></option>
-          <option value="อื่นๆ"></option>
         </datalist>
         <div class="pe-dim-row">
           <div><label>กว้าง</label><input type="number" id="pe-w" min="0.1" step="0.1"></div>
@@ -288,11 +303,15 @@ body{background:var(--bg);color:var(--tx);font-size:14px;display:flex;flex-direc
   <div class="panel">
     <!-- Die-cut size -->
     <div class="psec">
+      <div class="shape-toggle">
+        <button class="shape-btn active" id="shape-rect" onclick="setShape('rect')"><span class="sicon">▭</span>สี่เหลี่ยม</button>
+        <button class="shape-btn" id="shape-circle" onclick="setShape('circle')"><span class="sicon">⬤</span>วงกลม</button>
+      </div>
       <div class="stitle">ขนาดไดคัท</div>
-      <div class="dc-row">
-        <div><label>กว้าง</label><input type="number" id="cw" value="14" min="0.1" step="0.1" oninput="rerender()"></div>
-        <div class="dc-cross">×</div>
-        <div><label>สูง</label><input type="number" id="ch" value="10" min="0.1" step="0.1" oninput="rerender()"></div>
+      <div class="dc-row" id="dc-row">
+        <div><label id="cw-label">กว้าง</label><input type="number" id="cw" value="14" min="0.1" step="0.1" oninput="rerender()"></div>
+        <div class="dc-cross" id="dc-cross">×</div>
+        <div id="ch-wrap"><label>สูง</label><input type="number" id="ch" value="10" min="0.1" step="0.1" oninput="rerender()"></div>
       </div>
       <div class="gap-row">
         <label>Gap</label>
@@ -431,22 +450,27 @@ function resetPresets(){
   rerender();
 }
 
-const GROUP_ORDER = ['กระดาษ','ม้วน','UV Canon','อื่นๆ'];
-const FLAT_GROUPS = new Set(['กระดาษ']);
+const GROUP_ORDER = ['กระดาษ','ม้วน','UV Canon'];
 function renderMatProfiles(){
   const groups = {};
   PRESETS.forEach((p,i)=>{
-    const g = p.group || 'อื่นๆ';
+    // Empty/missing group => bucket '' which is rendered as flat standalone
+    // buttons (no dropdown). Any non-empty string groups under that name.
+    const g = (p.group || '').trim();
     (groups[g] = groups[g] || []).push({p, idx:i});
   });
   const gnames = Object.keys(groups).sort((a,b)=>{
+    // Flat (empty) bucket goes last so dropdowns appear first.
+    if (a === '' && b !== '') return 1;
+    if (b === '' && a !== '') return -1;
     const ai = GROUP_ORDER.indexOf(a), bi = GROUP_ORDER.indexOf(b);
     return (ai<0?99:ai) - (bi<0?99:bi);
   });
   const ap = PRESETS[activeMat];
-  const ag = ap ? (ap.group || 'อื่นๆ') : null;
+  const ag = ap ? (ap.group || '').trim() : null;
   document.getElementById('mat-profiles').innerHTML = gnames.map(g=>{
-    if(FLAT_GROUPS.has(g)){
+    if(g === ''){
+      // Flat individual buttons for ungrouped presets.
       return groups[g].map(({p,idx})=>`
         <button class="mp-btn${idx===activeMat?' active':''}" onclick="selectPreset(${idx})">
           <div class="mpname">${esc(p.name)}</div>
@@ -533,14 +557,32 @@ function openPresetModal(){
   document.getElementById('preset-overlay').classList.add('open');
 }
 function closePresetModal(){
+  // Drop any blank slots that were added via "+ เพิ่ม" but never filled in.
+  const before = PRESETS.length;
+  PRESETS = PRESETS.filter(p => p.name && p.w > 0 && p.h > 0);
+  if(PRESETS.length !== before){
+    savePresetsToStorage();
+    renderMatProfiles();
+  }
   document.getElementById('preset-overlay').classList.remove('open');
 }
 function renderPeGrid(){
-  document.getElementById('pe-grid').innerHTML = PRESETS.map((p,i)=>`
+  const items = PRESETS.map((p,i)=>`
     <button class="pe-btn${i===editingIdx?' active':''}" onclick="pickPePreset(${i})">
       <div class="pen">${esc(p.name)}</div>
       <div class="pes">${fromCm(p.w)}×${fromCm(p.h)} ${u()}</div>
     </button>`).join('');
+  const addBtn = `<button class="pe-btn pe-add" onclick="addPresetSlot()" title="เพิ่ม preset ใหม่">+ เพิ่ม</button>`;
+  document.getElementById('pe-grid').innerHTML = items + addBtn;
+}
+function addPresetSlot(){
+  // Append a blank preset, switch editing to it, focus the name field.
+  PRESETS.push({ name:'', w:0, h:0, group:'' });
+  editingIdx = PRESETS.length - 1;
+  renderPeGrid();
+  loadPeForm(editingIdx);
+  const nameEl = document.getElementById('pe-name');
+  if(nameEl){ nameEl.focus(); nameEl.select(); }
 }
 function pickPePreset(idx){
   editingIdx = idx;
@@ -550,7 +592,7 @@ function pickPePreset(idx){
 function loadPeForm(idx){
   const p = PRESETS[idx];
   document.getElementById('pe-name').value = p.name;
-  document.getElementById('pe-group').value = p.group || 'อื่นๆ';
+  document.getElementById('pe-group').value = p.group || '';
   document.getElementById('pe-w').step = STEP[UNIT];
   document.getElementById('pe-h').step = STEP[UNIT];
   document.getElementById('pe-w').value = fromCm(p.w);
@@ -559,7 +601,7 @@ function loadPeForm(idx){
 function savePreset(){
   if(editingIdx < 0) return;
   const name  = document.getElementById('pe-name').value.trim();
-  const group = document.getElementById('pe-group').value.trim() || 'อื่นๆ';
+  const group = document.getElementById('pe-group').value.trim();
   const wv    = parseFloat(document.getElementById('pe-w').value)||0;
   const hv    = parseFloat(document.getElementById('pe-h').value)||0;
   if(!name || wv<=0 || hv<=0){ alert('กรุณากรอกข้อมูลให้ครบ'); return; }
@@ -573,14 +615,13 @@ function savePreset(){
     matH_cm = PRESETS[editingIdx].h;
     rerender();
   }
-  // feedback
-  const btn = document.querySelector('.pe-save');
-  btn.textContent = '✅ บันทึกแล้ว!';
-  setTimeout(()=>{ btn.textContent = '💾 บันทึก Preset นี้'; }, 1200);
+  // close modal immediately after save
+  closePresetModal();
 }
 
 // ── LAYOUT CALC ───────────────────────────────────
 let selLayout = 0;
+let SHAPE = 'rect';   // 'rect' | 'circle'
 let projects  = JSON.parse(localStorage.getItem('kdpcut_v1')||'[]');
 let activePid = null;
 
@@ -591,7 +632,144 @@ function fitCount(sw,sh,iw,ih,gap){
   return {cols,rows,n:cols*rows};
 }
 
-function calcLayouts(sw,sh,cw,ch,gap){
+// ── CIRCLE LAYOUT CALC ────────────────────────────
+// Hex-packed circle layouts. Returns up to 3 candidates (tight, stretched-N,
+// stretched-N-1). Flush-edge counting: first circle's left edge sits on sheet
+// edge (no padding), so we squeeze every possible row/column.
+function calcCircleHex(sw, sh, cw, gap){
+  if(cw<=0||sw<=0||sh<=0) return [];
+  const r = (cw + gap) / 2;                       // center-to-center half-step
+  const N = Math.floor((sw + gap) / (cw + gap));  // flush-edge row capacity
+  const out = [];
+  if (N < 1) return [];
+
+  // L1: tight staggered — dy = r*sqrt(3). Even rows flush-left (X=cw/2),
+  // odd rows shifted by r (X=cw/2+r). Recompute odd-row capacity flush.
+  const oddStartTight = cw/2 + r;
+  const oddSpan = sw - cw/2 - oddStartTight;
+  const oddCountTight = oddSpan < -1e-9 ? 0 : 1 + Math.floor((oddSpan + 1e-9) / (cw + gap));
+  out.push(buildHexPlan(sw, sh, cw, cw + gap, r*Math.sqrt(3),
+                        cw/2, N, oddStartTight, oddCountTight, 'tight'));
+
+  // L2/L3 validity constraint: stretched layouts only make sense when
+  // x < r*sqrt(3). Beyond that, dy drops below r and circles in the SAME
+  // row-type (two even rows, or two odd rows) overlap vertically — the
+  // diagonal-neighbor Pythagorean check alone is NOT enough.
+  const X_MAX = r * Math.sqrt(3);
+
+  // L2: stretched-N (only if N>=2). Even row spread flush across sw with N
+  // circles; odd row sits in pockets with N-1.
+  if (N >= 2){
+    const evenStep = (sw - cw) / (N - 1);
+    const x = evenStep / 2;
+    if (x < X_MAX){
+      const dy = Math.sqrt((cw + gap)*(cw + gap) - x*x);
+      out.push(buildHexPlan(sw, sh, cw, evenStep, dy,
+                            cw/2, N, cw/2 + x, N - 1, 'stretchN'));
+    }
+  }
+
+  // L3: stretched-(N-1) (only if N>=3, same x<r*sqrt(3) guard).
+  if (N >= 3){
+    const Np = N - 1;
+    const evenStep = (sw - cw) / (Np - 1);
+    const x = evenStep / 2;
+    if (x < X_MAX){
+      const dy = Math.sqrt((cw + gap)*(cw + gap) - x*x);
+      out.push(buildHexPlan(sw, sh, cw, evenStep, dy,
+                            cw/2, Np, cw/2 + x, Np - 1, 'stretchN1'));
+    }
+  }
+  return out;
+}
+
+function buildHexPlan(sw, sh, cw, dx, dy, evenStart, evenCount, oddStart, oddCount, kind){
+  const rows = [];
+  let total = 0;
+  let y = cw / 2;
+  let i = 0;
+  // safety: dy must be positive to avoid infinite loop
+  if (!(dy > 1e-9)) return { kind, rows, n: 0, dx, dy:0 };
+  while (y <= sh - cw/2 + 1e-9){
+    const isOdd = i % 2 === 1;
+    const start = isOdd ? oddStart  : evenStart;
+    const count = isOdd ? oddCount  : evenCount;
+    if (count > 0){
+      rows.push({ y, startX: start, dx, count });
+      total += count;
+    }
+    y += dy;
+    i++;
+  }
+  return { kind, rows, n: total, dx, dy };
+}
+
+// Plain square grid (safety net — sometimes beats hex on small sheets).
+function calcCircleSquare(sw, sh, cw, gap){
+  if(cw<=0||sw<=0||sh<=0) return null;
+  const step = cw + gap;
+  const cols = Math.floor((sw + gap) / step);
+  const rows = Math.floor((sh + gap) / step);
+  if (cols < 1 || rows < 1) return null;
+  const planRows = [];
+  for (let r = 0; r < rows; r++){
+    planRows.push({ y: cw/2 + r*step, startX: cw/2, dx: step, count: cols });
+  }
+  return { kind:'square', rows: planRows, n: cols * rows, dx: step, dy: step };
+}
+
+const CIRCLE_LABELS = {
+  tight:     { label:'L1 ชิด',     desc:'hex' },
+  stretchN:  { label:'L2 ยืด-N',   desc:'hex' },
+  stretchN1: { label:'L3 ยืด-(N-1)', desc:'hex' },
+  square:    { label:'L4 ตาราง',   desc:'grid' },
+};
+
+function calcCircleLayouts(sw, sh, cw, gap){
+  // Fixed order by kind (NOT sorted by count):
+  //  L1 tight, L2 stretchN, L3 stretchN1   — as-is orientation
+  //  L4 tight, L5 stretchN, L6 stretchN1   — rotated orientation
+  //  L7 square (as-is), L8 square (rotated)
+  // Candidates with n=0 are skipped, so layout numbering may have gaps in
+  // edge cases (e.g. N<2 means no stretchN); that's intentional — the
+  // remaining valid layouts shift up to keep numbering sequential.
+  const KIND_ORDER = { tight:0, stretchN:1, stretchN1:2 };
+  const orient = [
+    { rotated:false, w:sw, h:sh },
+    { rotated:true,  w:sh, h:sw },
+  ];
+  const hexAll = [];
+  for (const o of orient){
+    const hex = calcCircleHex(o.w, o.h, cw, gap);
+    for (const cand of hex){
+      if (!cand || cand.n <= 0) continue;
+      hexAll.push({ ...cand, circle:true, rotated:o.rotated,
+        sheetW:o.w, sheetH:o.h,
+        cols: cand.rows[0] ? cand.rows[0].count : 0,
+        rowsN: cand.rows.length });
+    }
+  }
+  // Square grid: rotating an as-is grid 90° gives identical count
+  // (multiplication commutes) and identical visual (circles are symmetric),
+  // so only the as-is orientation is included.
+  const sq = calcCircleSquare(sw, sh, cw, gap);
+  const sqAll = [];
+  if (sq && sq.n > 0){
+    sqAll.push({ ...sq, circle:true, rotated:false,
+      sheetW:sw, sheetH:sh,
+      cols: sq.rows[0] ? sq.rows[0].count : 0,
+      rowsN: sq.rows.length });
+  }
+  // Within hex: rotated=false first, then by tight/stretchN/stretchN1.
+  hexAll.sort((a,b)=>{
+    if (a.rotated !== b.rotated) return a.rotated ? 1 : -1;
+    return (KIND_ORDER[a.kind] ?? 9) - (KIND_ORDER[b.kind] ?? 9);
+  });
+  const combined = hexAll.concat(sqAll);
+  return combined.map((L,i)=>({ ...L, id:i, label:`Layout ${i+1}`, desc:'' }));
+}
+
+function calcRectLayouts(sw,sh,cw,ch,gap){
   // L1: portrait full grid
   const l1=fitCount(sw,sh,cw,ch,gap);
   // L2: landscape full grid
@@ -654,16 +832,48 @@ function calcLayouts(sw,sh,cw,ch,gap){
   }
 
   return [
-    {...l1, id:0, label:'Layout 1', desc:'แนวตั้ง', mixed:false, rotated:false},
-    {...l2, id:1, label:'Layout 2', desc:'แนวนอน', mixed:false, rotated:true},
-    {...l3, id:2, label:'Layout 3', desc:'ล่าง', mixed:true, kind:'bottom'},
-    {...l4, id:3, label:'Layout 4', desc:'ขวา',  mixed:true, kind:'right'},
+    {...l1, id:0, label:'Layout 1', desc:'', mixed:false, rotated:false},
+    {...l2, id:1, label:'Layout 2', desc:'', mixed:false, rotated:true},
+    {...l3, id:2, label:'Layout 3', desc:'', mixed:true, kind:'bottom'},
+    {...l4, id:3, label:'Layout 4', desc:'',  mixed:true, kind:'right'},
   ];
 }
 
-function buildRects(sw,sh,cw,ch,gap,idx){
+// Dispatcher — picks rect or circle pipeline based on current shape.
+function calcLayouts(sw,sh,cw,ch,gap,shape){
+  shape = shape || SHAPE;
+  if (shape === 'circle') return calcCircleLayouts(sw, sh, cw, gap);
+  return calcRectLayouts(sw, sh, cw, ch, gap);
+}
+
+function buildRects(sw,sh,cw,ch,gap,idx,shape){
+  shape = shape || SHAPE;
+  const layouts = calcLayouts(sw,sh,cw,ch,gap,shape);
+  const L = layouts[idx];
+  if (!L) return [];
+  if (L.circle) return buildCircleRects(L, cw);
+  return buildRectRects(L, sw, sh, cw, ch, gap);
+}
+
+function buildCircleRects(L, cw){
+  // Each row defines a series of circle centers along an axis. In non-rotated
+  // layouts: row.y is Y center, startX + k*dx is X center. In rotated layouts
+  // the sheet is conceptually swapped, so row.y becomes the X center and the
+  // along-row axis becomes Y.
+  const rects = [];
+  for (const row of L.rows){
+    for (let k = 0; k < row.count; k++){
+      const along = row.startX + k * row.dx;
+      const cx = L.rotated ? row.y : along;
+      const cy = L.rotated ? along : row.y;
+      rects.push({ x: cx - cw/2, y: cy - cw/2, w: cw, h: cw, shape:'circle' });
+    }
+  }
+  return rects;
+}
+
+function buildRectRects(L, sw, sh, cw, ch, gap){
   const rects=[];
-  const L=calcLayouts(sw,sh,cw,ch,gap)[idx];
   function grid(ox,oy,iw,ih,cols,rows,rot){
     for(let r=0;r<rows;r++) for(let c=0;c<cols;c++)
       rects.push({x:ox+c*(iw+gap),y:oy+r*(ih+gap),w:iw,h:ih,rot});
@@ -688,8 +898,24 @@ function buildRects(sw,sh,cw,ch,gap,idx){
 }
 
 // ── LAYOUT ICONS ─────────────────────────────────
-function makeIcon(idx,active){
+function makeIcon(idx,active,layout){
   const W=36,H=26,sc=active?'var(--blue2)':'#b0b6c4';
+  // Circle icons — hex stagger glyph or square grid glyph
+  if(layout && layout.circle){
+    const fill = active ? 'var(--blue-bg)' : '#f4f7fc';
+    if(layout.kind === 'square'){
+      // 2×2 square grid of circles
+      const cs = `<svg width="${W}" height="${H}" fill="${fill}" stroke="${sc}" stroke-width="1.1">
+        <circle cx="10" cy="7"  r="5"/><circle cx="26" cy="7"  r="5"/>
+        <circle cx="10" cy="19" r="5"/><circle cx="26" cy="19" r="5"/></svg>`;
+      return layout.rotated ? cs.replace('width="36" height="26"','width="36" height="26" style="transform:rotate(90deg)"') : cs;
+    }
+    // hex (tight / stretched) — 3 + 2 staggered circles
+    const cs = `<svg width="${W}" height="${H}" fill="${fill}" stroke="${sc}" stroke-width="1.1">
+      <circle cx="7"  cy="7"  r="5"/><circle cx="18" cy="7"  r="5"/><circle cx="29" cy="7"  r="5"/>
+      <circle cx="12" cy="18" r="5"/><circle cx="24" cy="18" r="5"/></svg>`;
+    return layout.rotated ? cs.replace('width="36" height="26"','width="36" height="26" style="transform:rotate(90deg)"') : cs;
+  }
   if(idx===0){
     const c1=(W-2)/3+1,c2=(W-2)*2/3+1,r1=(H-2)/2+1;
     return `<svg width="${W}" height="${H}" fill="none"><rect x="1" y="1" width="${W-2}" height="${H-2}" stroke="${sc}" stroke-width="1.2" rx="1"/>
@@ -727,9 +953,9 @@ function renderTabs(layouts){
     const cls = `lbtn${isActive?' active':''}${isBest?' best-layout':''}`;
     return `<button class="${cls}" onclick="selLayout=${i};rerender()" style="position:relative;">
       ${isBest?`<span style="position:absolute;top:-1px;right:-1px;background:#16a34a;color:#fff;font-size:7px;font-weight:700;padding:1px 4px;border-radius:0 6px 0 5px;line-height:1.6;letter-spacing:.3px;">BEST</span>`:''}
-      <div class="licon">${makeIcon(i,isActive)}</div>
+      <div class="licon">${makeIcon(i,isActive,L)}</div>
       <div class="lcount" style="${isBest?'color:var(--green);':''}">${L.n}</div>
-      <div class="lname">${L.label}<br><span style="font-size:8px;color:var(--tx3)">${L.desc}</span></div>
+      <div class="lname">${L.label}</div>
     </button>`;
   }).join('');
 }
@@ -738,12 +964,14 @@ function renderTabs(layouts){
 function rerender(){
   const sw  = matW_cm, sh = matH_cm;
   const cw  = toCm(parseFloat(document.getElementById('cw').value)||0);
-  const ch  = toCm(parseFloat(document.getElementById('ch').value)||0);
+  // For circle shape, height = diameter (same as cw).
+  const ch  = SHAPE === 'circle' ? cw : toCm(parseFloat(document.getElementById('ch').value)||0);
   const gap = toCm(parseFloat(document.getElementById('gap').value)||0);
-  const layouts = calcLayouts(sw,sh,cw,ch,gap);
+  const layouts = calcLayouts(sw,sh,cw,ch,gap,SHAPE);
+  if (selLayout >= layouts.length) selLayout = 0;
   renderTabs(layouts);
-  const L = layouts[selLayout];
-  const rects = buildRects(sw,sh,cw,ch,gap,selLayout);
+  const L = layouts[selLayout] || { n:0, label:'—', rows:0, cols:0 };
+  const rects = buildRects(sw,sh,cw,ch,gap,selLayout,SHAPE);
 
   const ca = document.getElementById('canvas-area');
   const PAD_W=80, PAD_H=100; // canvas-wrap padding × 2 + label space
@@ -764,10 +992,11 @@ function rerender(){
   const gR=document.getElementById('gap').value;
   document.getElementById('sheet-lbl').textContent=`${swR} × ${shR} ${u()}`;
 
-  // ── Render rectangles ──────────────────────────
+  // ── Render rectangles / circles ────────────────
   let html = rects.map(r=>{
     const x=r.x*scale,y=r.y*scale,w=r.w*scale,h=r.h*scale;
-    return `<div class="pi${r.rot?' rot':''}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"></div>`;
+    const cls = r.shape==='circle' ? 'pi circle' : `pi${r.rot?' rot':''}`;
+    return `<div class="${cls}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"></div>`;
   }).join('');
 
   // ── Annotations (only when there's at least 1 rect & valid dims) ──
@@ -794,8 +1023,9 @@ function rerender(){
       </div>`;
 
     // ── 1b. Height dimension — arrow + label LEFT of the sheet (outside) ──
+    // Skip for circle (redundant with width = diameter).
     const DIM_LEFT = 22; // px left of sheet left edge
-    html += `
+    if (SHAPE !== 'circle') html += `
       <!-- height dim outside sheet -->
       <svg style="position:absolute;left:${-DIM_LEFT}px;top:${y0}px;width:14px;height:${h0}px;overflow:visible;pointer-events:none;"
            viewBox="0 0 14 ${h0}" preserveAspectRatio="none">
@@ -807,15 +1037,16 @@ function rerender(){
         <span style="font-size:9px;font-weight:700;color:var(--blue2);writing-mode:vertical-lr;transform:rotate(180deg);white-space:nowrap;">${chD} ${u()}</span>
       </div>`;
 
-    // ── 1c. Gap dimension arrow (between col 0 and col 1, if gap>0 & ≥2 cols) ──
-    if(gap>0){
-      // find a rect in same row but next column
+    // ── 1c. Gap dimension arrow (rectangles only; for circles the in-row
+    //        spacing varies per layout and is shown by the grey edge guide). ──
+    if(gap>0 && SHAPE !== 'circle'){
       const r1 = rects.find(r => Math.abs(r.y - r0.y)<0.001 && r.x > r0.x + r0.w*0.5);
       if(r1){
         const gx0 = (r0.x + r0.w)*scale;
         const gx1 = r1.x*scale;
         const gy  = y0 + h0/2;
         const GAP_PX = gx1 - gx0;
+        const actualGapDisp = fromCm(r1.x - r0.x - r0.w);
         html += `
           <!-- gap dim -->
           <svg style="position:absolute;left:${gx0}px;top:${gy-8}px;width:${GAP_PX}px;height:16px;overflow:visible;pointer-events:none;"
@@ -825,25 +1056,24 @@ function rerender(){
             <line x1="${GAP_PX}" y1="4" x2="${GAP_PX}" y2="12" stroke="#f59e0b" stroke-width="1.2"/>
           </svg>
           <div style="position:absolute;left:${gx0}px;top:${gy-20}px;width:${GAP_PX}px;text-align:center;font-size:9px;font-weight:700;color:#d97706;pointer-events:none;white-space:nowrap;line-height:1;">
-            gap ${gD}
+            gap ${actualGapDisp}
           </div>`;
       }
     }
 
-    // ── 2. Right margin ─────────────────────────────────────────────
-    // Find the rightmost edge among all rects
+    // ── 2. Right margin (grey edge guide + arrow + label, no red fill) ──
     const rightmostX = Math.max(...rects.map(r=>(r.x+r.w)*scale));
     const sheetW = sw*scale;
     const marginR_px = sheetW - rightmostX;
     const marginR_val = fromCm(sw - Math.max(...rects.map(r=>r.x+r.w)));
+    if(marginR_px >= 1){
+      html += `<div style="position:absolute;left:${rightmostX}px;top:0;width:1px;height:${sh*scale}px;background:#cbd5e1;pointer-events:none;"></div>`;
+    }
     if(marginR_px >= 3){
       const mry = (sh*scale)/2;
       html += `
-        <!-- right margin -->
         <svg style="position:absolute;left:${rightmostX}px;top:0;width:${marginR_px}px;height:${sh*scale}px;overflow:visible;pointer-events:none;"
              viewBox="0 0 ${marginR_px} ${sh*scale}" preserveAspectRatio="none">
-          <rect x="0" y="0" width="${marginR_px}" height="${sh*scale}" fill="rgba(239,68,68,.07)"/>
-          <!-- double-headed arrow -->
           <line x1="${marginR_px/2}" y1="${mry-18}" x2="${marginR_px/2}" y2="${mry+18}" stroke="#ef4444" stroke-width="1" stroke-dasharray="3 2"/>
           <line x1="2" y1="${mry}" x2="${marginR_px-2}" y2="${mry}" stroke="#ef4444" stroke-width="1.2"/>
           <line x1="2" y1="${mry-4}" x2="2" y2="${mry+4}" stroke="#ef4444" stroke-width="1.2"/>
@@ -854,18 +1084,19 @@ function rerender(){
         </div>`;
     }
 
-    // ── 3. Bottom margin ────────────────────────────────────────────
+    // ── 3. Bottom margin (grey edge guide + arrow + label, no red fill) ──
     const bottommostY = Math.max(...rects.map(r=>(r.y+r.h)*scale));
     const sheetH = sh*scale;
     const marginB_px = sheetH - bottommostY;
     const marginB_val = fromCm(sh - Math.max(...rects.map(r=>r.y+r.h)));
+    if(marginB_px >= 1){
+      html += `<div style="position:absolute;left:0;top:${bottommostY}px;width:${sw*scale}px;height:1px;background:#cbd5e1;pointer-events:none;"></div>`;
+    }
     if(marginB_px >= 3){
       const mbx = (sw*scale)/2;
       html += `
-        <!-- bottom margin -->
         <svg style="position:absolute;left:0;top:${bottommostY}px;width:${sw*scale}px;height:${marginB_px}px;overflow:visible;pointer-events:none;"
              viewBox="0 0 ${sw*scale} ${marginB_px}" preserveAspectRatio="none">
-          <rect x="0" y="0" width="${sw*scale}" height="${marginB_px}" fill="rgba(239,68,68,.07)"/>
           <line x1="${mbx-18}" y1="${marginB_px/2}" x2="${mbx+18}" y2="${marginB_px/2}" stroke="#ef4444" stroke-width="1" stroke-dasharray="3 2"/>
           <line x1="${mbx}" y1="2" x2="${mbx}" y2="${marginB_px-2}" stroke="#ef4444" stroke-width="1.2"/>
           <line x1="${mbx-4}" y1="2" x2="${mbx+4}" y2="2" stroke="#ef4444" stroke-width="1.2"/>
@@ -883,9 +1114,15 @@ function rerender(){
   document.getElementById('st-n').textContent=L.n;
   document.getElementById('st-l').textContent=L.label;
   document.getElementById('st-sw').textContent=`${swR}×${shR}`;
-  document.getElementById('st-cw').textContent=`${cwR}×${chR}`;
+  document.getElementById('st-cw').textContent= SHAPE==='circle' ? `⌀ ${cwR}` : `${cwR}×${chR}`;
   document.getElementById('st-g').textContent=`${gR} ${u()}`;
-  if(!L.mixed){
+  if(L.circle){
+    // For hex layouts show "evenCount/oddCount" if they differ, else just one number.
+    const counts = L.rows.map(r=>r.count);
+    const distinct = [...new Set(counts)];
+    document.getElementById('st-c').textContent = distinct.join(' / ') + ' ช่อง';
+    document.getElementById('st-r').textContent = (L.rows.length || 0) + ' แถว';
+  } else if(!L.mixed){
     document.getElementById('st-c').textContent=(L.cols||0)+' ช่อง';
     document.getElementById('st-r').textContent=(L.rows||0)+' แถว';
   } else if(L.kind==='bottom'){
@@ -895,27 +1132,48 @@ function rerender(){
     document.getElementById('st-c').textContent=(L.mainCols||0)+' / '+(L.rightCols||0)+' ช่อง';
     document.getElementById('st-r').textContent=(L.mainRows||0)+' / '+(L.rightRows||0)+' แถว';
   }
-  const util=sw>0&&sh>0&&cw>0&&ch>0?Math.min(100,Math.round(L.n*cw*ch/(sw*sh)*100)):0;
+  // Circle uses πr² for area; rectangle uses cw*ch.
+  const itemArea = SHAPE==='circle' ? Math.PI*(cw/2)*(cw/2) : cw*ch;
+  const util=sw>0&&sh>0&&cw>0&&ch>0?Math.min(100,Math.round(L.n*itemArea/(sw*sh)*100)):0;
   document.getElementById('st-u').textContent=util+'%';
   const uf=document.getElementById('ufill');
   uf.style.width=util+'%';
   uf.style.background=util>=80?'var(--green)':util>=50?'var(--amber)':'var(--blue3)';
 }
 
+// ── SHAPE TOGGLE ──────────────────────────────────
+function setShape(s){
+  if (s !== 'rect' && s !== 'circle') return;
+  if (SHAPE === s) return;
+  SHAPE = s;
+  document.getElementById('shape-rect').classList.toggle('active', s==='rect');
+  document.getElementById('shape-circle').classList.toggle('active', s==='circle');
+  // Toggle the height input (and × separator) visibility; relabel diameter.
+  const isCircle = s==='circle';
+  document.getElementById('ch-wrap').style.display  = isCircle ? 'none' : '';
+  document.getElementById('dc-cross').style.display = isCircle ? 'none' : '';
+  document.getElementById('cw-label').textContent   = isCircle ? 'เส้นผ่านศูนย์กลาง' : 'กว้าง';
+  document.getElementById('dc-row').classList.toggle('circle-mode', isCircle);
+  selLayout = 0; // layout indices differ between shapes
+  rerender();
+}
+
 // ── SAVE / LOAD ───────────────────────────────────
 function saveProject(){
   const cwCm=toCm(parseFloat(document.getElementById('cw').value)||0);
-  const chCm=toCm(parseFloat(document.getElementById('ch').value)||0);
+  const chCm= SHAPE==='circle' ? cwCm : toCm(parseFloat(document.getElementById('ch').value)||0);
   const gapCm=toCm(parseFloat(document.getElementById('gap').value)||0);
-  const layouts=calcLayouts(matW_cm,matH_cm,cwCm,chCm,gapCm);
-  const n=layouts[selLayout].n;
+  const layouts=calcLayouts(matW_cm,matH_cm,cwCm,chCm,gapCm,SHAPE);
+  const L = layouts[selLayout] || {n:0,label:'—'};
+  const n = L.n;
   const p={
     id:Date.now(), swCm:matW_cm, shCm:matH_cm, cwCm, chCm, gapCm,
+    shape:SHAPE,
     cwR:document.getElementById('cw').value,
-    chR:document.getElementById('ch').value,
+    chR: SHAPE==='circle' ? document.getElementById('cw').value : document.getElementById('ch').value,
     gapR:document.getElementById('gap').value,
     swR:fromCm(matW_cm), shR:fromCm(matH_cm),
-    unit:UNIT, layout:selLayout, label:layouts[selLayout].label, n
+    unit:UNIT, layout:selLayout, label:L.label, n
   };
   projects.unshift(p);
   localStorage.setItem('kdpcut_v1',JSON.stringify(projects));
@@ -933,6 +1191,18 @@ function loadProject(id){
   document.getElementById('cw').value=fromCm(p.cwCm);
   document.getElementById('ch').value=fromCm(p.chCm);
   document.getElementById('gap').value=fromCm(p.gapCm);
+  // Restore shape (back-compat: older saves missing `shape` default to 'rect').
+  const targetShape = p.shape === 'circle' ? 'circle' : 'rect';
+  if (SHAPE !== targetShape){
+    SHAPE = targetShape;
+    document.getElementById('shape-rect').classList.toggle('active', SHAPE==='rect');
+    document.getElementById('shape-circle').classList.toggle('active', SHAPE==='circle');
+    const isCircle = SHAPE==='circle';
+    document.getElementById('ch-wrap').style.display  = isCircle ? 'none' : '';
+    document.getElementById('dc-cross').style.display = isCircle ? 'none' : '';
+    document.getElementById('cw-label').textContent   = isCircle ? 'เส้นผ่านศูนย์กลาง' : 'กว้าง';
+    document.getElementById('dc-row').classList.toggle('circle-mode', isCircle);
+  }
   selLayout=p.layout; renderMatProfiles(); renderProjects(); rerender();
 }
 function deleteProject(id,e){
@@ -945,15 +1215,19 @@ function deleteProject(id,e){
 function renderProjects(){
   const el=document.getElementById('proj-list');
   if(!projects.length){ el.innerHTML='<div class="empty-proj"><div class="ico">📁</div>ยังไม่มี project</div>'; return; }
-  el.innerHTML=projects.map(p=>`
+  el.innerHTML=projects.map(p=>{
+    const isCircle = p.shape === 'circle';
+    const sizeStr = isCircle ? `⬤ ⌀ ${p.cwR} ${p.unit}` : `▭ ${p.cwR}×${p.chR} ${p.unit}`;
+    return `
     <div class="pcard${p.id===activePid?' active':''}" onclick="loadProject(${p.id})">
       <div class="pcard-info">
-        <div class="pname">${p.cwR}×${p.chR} ${p.unit}</div>
+        <div class="pname">${sizeStr}</div>
         <div class="pmeta">${p.swR}×${p.shR} gap ${p.gapR}</div>
       </div>
       <div class="pbadge">${p.n}</div>
       <button class="pdel" onclick="deleteProject(${p.id},event)">✕</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }

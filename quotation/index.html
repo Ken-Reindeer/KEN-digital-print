@@ -13,82 +13,80 @@
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;background:var(--bg);font-family:var(--thai);color:var(--ink);min-height:100vh;}
-  .wrap{max-width:640px;margin:0 auto;padding:36px 24px;}
+  .wrap{max-width:680px;margin:0 auto;padding:36px 24px;}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:30px 28px;}
   .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:0 0 6px;}
   h1{font-size:22px;margin:0 0 4px;font-weight:700;}
   .sub{color:var(--ink-soft);font-size:13px;margin:0 0 24px;}
   table{width:100%;border-collapse:collapse;margin-bottom:18px;}
   th{text-align:left;font-size:12px;color:var(--ink-soft);font-weight:600;border-bottom:1px solid var(--line);padding:6px 4px;}
-  td{font-size:14px;padding:10px 4px;border-bottom:1px solid var(--line);}
-  td.num, th.num{text-align:right;font-family:var(--mono);}
+  td{font-size:13.5px;padding:10px 4px;border-bottom:1px solid var(--line);vertical-align:middle;}
+  td.num,th.num{text-align:right;font-family:var(--mono);}
+  td.img-cell{width:68px;padding-right:8px;}
+  td.img-cell img{width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid var(--line);}
+  td.img-cell .no-img{width:56px;height:56px;border-radius:6px;border:1px dashed var(--line);display:flex;align-items:center;justify-content:center;color:var(--line);font-size:20px;}
   .grand{display:flex;justify-content:space-between;align-items:baseline;padding-top:8px;}
   .grand .label{font-size:14px;color:var(--ink-soft);}
   .grand .value{font-size:26px;font-weight:700;font-family:var(--mono);}
   .note{font-size:11.5px;color:var(--ink-soft);margin-top:20px;}
   .error{padding:40px 20px;text-align:center;color:var(--ink-soft);}
-  @media print { body{background:#fff;} .card{border:none;} }
+  .no-img-notice{font-size:11px;color:var(--ink-soft);margin-top:6px;padding:8px 10px;border:1px dashed var(--line);border-radius:6px;background:var(--bg);}
+  @media print{body{background:#fff;}.card{border:none;}.no-img-notice{display:none;}}
 </style>
 </head>
 <body>
+<script src="material-price-rate.js"></script>
+<script src="tiered-sheet-pricing-engine.js"></script>
 <div class="wrap">
   <div class="card" id="card"></div>
 </div>
 
 <script>
 /* =========================================================
-   PRICING ENGINE — identical to admin calculator (v1: PP/Paper)
+   PRICING — same logic as sticker-price-calculator.html
    ========================================================= */
-const COST_BASIS = { material:{pp:5.3,paper:3.5}, ink:{CMYK:2.5,BW:0.3}, coldLaminate:1.76 };
-const SHEETS_PER_SQM = 6;
-const RATE_CARDS = {
-  pp_none: [{minQty:1,price:240},{minQty:10,price:210},{minQty:20,price:180},{minQty:50,price:168},{minQty:70,price:150},{minQty:100,price:130},{minQty:200,price:110},{minQty:400,price:100}],
-  pp_cold_laminate: [{minQty:1,price:300},{minQty:10,price:270},{minQty:20,price:230},{minQty:50,price:220},{minQty:70,price:200},{minQty:100,price:180},{minQty:200,price:160}],
-  paper_none: [{minQty:1,price:230},{minQty:10,price:200},{minQty:20,price:170},{minQty:50,price:158},{minQty:70,price:140},{minQty:100,price:120},{minQty:200,price:110}],
-  paper_cold_laminate: [{minQty:1,price:290},{minQty:10,price:260},{minQty:20,price:220},{minQty:50,price:210},{minQty:70,price:190},{minQty:100,price:170},{minQty:200,price:150}],
-};
-function round2(n){ return Math.round(n*100)/100; }
-function findTierPrice(card, qtySqm){ let t=card[0]; for(const x of card){ if(qtySqm>=x.minQty) t=x; else break; } return t.price; }
-function calcStickerLineItem(p){
-  const { material, finish, quantity, unitsPerSheet, printMode='CMYK' } = p;
-  const sheetsNeeded = Math.ceil(quantity/unitsPerSheet);
-  const qtySqm = sheetsNeeded/SHEETS_PER_SQM;
-  const card = RATE_CARDS[material+'_'+(finish==='cold_laminate'?'cold_laminate':'none')];
-  const pricePerSqm = findTierPrice(card, qtySqm);
-  const pricePerSheet = pricePerSqm/SHEETS_PER_SQM;
-  const totalPrice = round2(pricePerSheet*sheetsNeeded);
-  const pricePerUnit = round2(totalPrice/quantity);
-  return { material, finish, quantity, unitsPerSheet, printMode, sheetsNeeded, totalPrice, pricePerUnit };
+function resolveCostPerSheet(cat, printMode){
+  const mat = MaterialPriceRate.materials.find(m => m.id === cat.material);
+  if(!mat) throw new Error('ไม่พบวัสดุ: '+cat.material);
+  const tech = MaterialPriceRate.techniques.find(t => t.id === cat.finish);
+  if(!tech) throw new Error('ไม่พบเทคนิค: '+cat.finish);
+  const inkRate = MaterialPriceRate.inkCostPerSheet[printMode];
+  if(inkRate === undefined) throw new Error('ไม่รู้จักโหมดสีพิมพ์: '+printMode);
+  const passes = cat.passMultiplier || 1;
+  return mat.costPerSheet + (tech.costPerSheet * passes) + (inkRate * passes);
 }
+function calcStickerLineItem(p){
+  const { categoryIndex, quantity, unitsPerSheet, printMode } = p;
+  const cat = MaterialPriceRate.categories[categoryIndex];
+  if(!cat) throw new Error('ไม่พบประเภทนี้ (index '+categoryIndex+')');
+  const costPerSheet = resolveCostPerSheet(cat, printMode);
+  const r = TieredSheetEngine.calcTieredPrice({ quantity, unitsPerSheet, tiers: cat.tiers, costPerSheet });
+  return { categoryIndex, printMode, categoryName: cat.name, ...r };
+}
+function round2(n){ return TieredSheetEngine.round2(n); }
+function fmt(n){ return Number(n).toLocaleString('th-TH', {maximumFractionDigits:2}); }
 
 /* =========================================================
-   ORDER CODE — encode/decode, no database needed
+   ORDER CODE — decode must match encodeOrder() in calculator
    ========================================================= */
 function decodeOrder(code){
   let n = parseInt(code, 36);
   if(!Number.isFinite(n) || n < 0) return null;
   const qty = n % 8388608; n = Math.floor(n/8388608);
-  const ups = n % 1024; n = Math.floor(n/1024);
-  const pm = n % 2; n = Math.floor(n/2);
-  const f = n % 2; n = Math.floor(n/2);
-  const m = n % 2;
+  const ups = n % 1024;    n = Math.floor(n/1024);
+  const pmIdx = n % 2;     n = Math.floor(n/2);
+  const ci = n;
   if(qty <= 0 || ups <= 0) return null;
   return {
-    material: m ? 'paper' : 'pp',
-    finish: f ? 'cold_laminate' : 'none',
-    printMode: pm ? 'BW' : 'CMYK',
+    categoryIndex: ci,
+    printMode: ['CMYK','BW'][pmIdx],
     unitsPerSheet: ups,
     quantity: qty,
   };
 }
 
-const MATERIAL_LABEL = { pp: 'สติ๊กเกอร์ PP', paper: 'สติ๊กเกอร์กระดาษ' };
-const FINISH_LABEL = { none: 'ไม่เคลือบ', cold_laminate: 'เคลือบเย็น' };
-function fmt(n){ return Number(n).toLocaleString('th-TH', {maximumFractionDigits:2}); }
-
 /* =========================================================
-   READ CODE FROM URL — supports both /quotation/<code> path
-   and ?code=<code> query string, comma-separated for multi-item
+   URL PARSING
    ========================================================= */
 function getCodesFromUrl(){
   const params = new URLSearchParams(location.search);
@@ -99,37 +97,65 @@ function getCodesFromUrl(){
   return [];
 }
 
+/* =========================================================
+   RENDER
+   ========================================================= */
 function render(){
   const card = document.getElementById('card');
   const codes = getCodesFromUrl();
-  const items = codes.map(decodeOrder).filter(Boolean);
+  const decoded = codes.map(decodeOrder);
+  const valid = decoded.filter(Boolean);
 
-  if(items.length === 0){
+  if(valid.length === 0){
     card.innerHTML = `<div class="error">ไม่พบข้อมูลใบเสนอราคา<br><span style="font-family:var(--mono);font-size:12px;">ตรวจสอบลิงก์อีกครั้ง</span></div>`;
     return;
   }
 
-  const results = items.map(calcStickerLineItem);
-  const grandTotal = round2(results.reduce((s,r)=>s+r.totalPrice,0));
+  let results;
+  try{
+    results = valid.map(calcStickerLineItem);
+  } catch(e){
+    card.innerHTML = `<div class="error">คำนวณราคาไม่ได้<br><span style="font-family:var(--mono);font-size:12px;">${e.message}</span></div>`;
+    return;
+  }
 
-  const rows = results.map(r => `
-    <tr>
-      <td>${MATERIAL_LABEL[r.material]} · ${FINISH_LABEL[r.finish]}${r.printMode==='BW'?' · ขาวดำ':''}</td>
-      <td class="num">${fmt(r.quantity)} ดวง</td>
-      <td class="num">฿${fmt(r.pricePerUnit)}</td>
-      <td class="num">฿${fmt(r.totalPrice)}</td>
-    </tr>
-  `).join('');
+  const grandTotal = round2(results.reduce((s,r) => s + r.totalPrice, 0));
+
+  /* try to load images from localStorage (saved by calculator on "สร้างลิงก์") */
+  const images = codes.map(code => {
+    try{ return localStorage.getItem('kdp_img_' + code) || null; }
+    catch(e){ return null; }
+  });
+  const hasAnyImage = images.some(Boolean);
+
+  const rows = results.map((r, i) => {
+    const imgCell = images[i]
+      ? `<img src="${images[i]}" alt="รายการ ${i+1}">`
+      : `<div class="no-img">🖼</div>`;
+    return `
+      <tr>
+        <td class="img-cell">${imgCell}</td>
+        <td>${r.categoryName}${r.printMode === 'BW' ? ' · ขาวดำ' : ''}</td>
+        <td class="num">${fmt(r.quantity)} ดวง</td>
+        <td class="num">฿${fmt(r.pricePerUnit)}</td>
+        <td class="num">฿${fmt(r.totalPrice)}</td>
+      </tr>`;
+  }).join('');
+
+  const noImgNotice = !hasAnyImage
+    ? `<p class="no-img-notice">ไม่พบรูปตัวอย่างงาน — รูปจะแสดงเฉพาะเมื่อเปิดลิงก์บนเครื่องที่สร้างใบเสนอราคา</p>`
+    : '';
 
   card.innerHTML = `
     <p class="eyebrow">Quotation</p>
     <h1>ใบเสนอราคา</h1>
     <p class="sub">วันที่ ${new Date().toLocaleDateString('th-TH', {year:'numeric',month:'long',day:'numeric'})}</p>
     <table>
-      <thead><tr><th>รายการ</th><th class="num">จำนวน</th><th class="num">ราคา/ดวง</th><th class="num">รวม</th></tr></thead>
+      <thead><tr><th class="img-cell"></th><th>รายการ</th><th class="num">จำนวน</th><th class="num">ราคา/ดวง</th><th class="num">รวม</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
     <div class="grand"><span class="label">ราคารวมทั้งหมด</span><span class="value">฿${fmt(grandTotal)}</span></div>
+    ${noImgNotice}
     <p class="note">ใบเสนอราคานี้สร้างจากระบบคำนวณราคาอัตโนมัติ ราคาอาจเปลี่ยนแปลงได้ตามเงื่อนไขการสั่งผลิตจริง</p>
   `;
 }
